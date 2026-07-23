@@ -12,25 +12,69 @@ class LinkoApp extends StatelessWidget {
     return MaterialApp(
       title: 'Linko',
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.handshake_rounded, size: 90, color: Colors.blue),
-              SizedBox(height: 20),
-              Text(
-                'LINKO',
-                style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Connecting trusted professionals\nwith people who need them.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, color: Colors.grey),
-              ),
-            ],
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
+        scaffoldBackgroundColor: Colors.white,
+        useMaterial3: true,
+      ),
+      home: _buildInitialScreen(),
+    );
+  }
+
+  Widget _buildInitialScreen() {
+    return const LinkoSplashScreen();
+  }
+}
+
+class LinkoSplashScreen extends StatelessWidget {
+  const LinkoSplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 112,
+                  height: 112,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.handshake_rounded,
+                    size: 58,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  'LINKO',
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Connecting trusted professionals with people who need them.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w400,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
