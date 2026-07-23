@@ -1,7 +1,30 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-class LinkoSplashScreen extends StatelessWidget {
-  const LinkoSplashScreen({super.key});
+class LinkoSplashScreen extends StatefulWidget {
+  const LinkoSplashScreen({required this.onComplete, super.key});
+
+  final VoidCallback onComplete;
+
+  @override
+  State<LinkoSplashScreen> createState() => _LinkoSplashScreenState();
+}
+
+class _LinkoSplashScreenState extends State<LinkoSplashScreen> {
+  late final Timer _navigationTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _navigationTimer = Timer(const Duration(seconds: 2), widget.onComplete);
+  }
+
+  @override
+  void dispose() {
+    _navigationTimer.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
