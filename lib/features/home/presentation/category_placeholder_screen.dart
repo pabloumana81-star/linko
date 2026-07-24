@@ -8,7 +8,10 @@ class CategoryPlaceholderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(categoryName)),
+      appBar: AppBar(
+        automaticallyImplyLeading: true,
+        title: Text(categoryName),
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -24,7 +27,7 @@ class CategoryPlaceholderScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'This feature will be implemented next.',
+                'Esta función estará disponible próximamente.',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge,
               ),

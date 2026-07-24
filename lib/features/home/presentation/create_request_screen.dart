@@ -6,8 +6,11 @@ class CreateRequestScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Request')),
-      body: const Center(child: Text('Create Request')),
+      appBar: AppBar(
+        automaticallyImplyLeading: true,
+        title: const Text('Crear solicitud'),
+      ),
+      body: const Center(child: Text('Crear solicitud')),
     );
   }
 }

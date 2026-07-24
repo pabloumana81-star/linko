@@ -46,7 +46,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Connecting trusted professionals with people who need them.',
+                    'Encuentra profesionales de confianza para cualquier necesidad.',
                     textAlign: TextAlign.center,
                     style: textTheme.titleMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
@@ -56,14 +56,14 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 40),
                   _WelcomeButton(
-                    label: 'Continue as Guest',
+                    label: 'Continuar como invitado',
                     icon: Icons.person_outline_rounded,
                     isPrimary: true,
                     onPressed: onContinue,
                   ),
                   const SizedBox(height: 12),
                   _WelcomeButton(
-                    label: 'Continue with Google',
+                    label: 'Continuar con Google',
                     leading: const Text(
                       'G',
                       style: TextStyle(
@@ -76,13 +76,13 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   _WelcomeButton(
-                    label: 'Continue with Apple',
+                    label: 'Continuar con Apple',
                     icon: Icons.apple,
                     onPressed: onContinue,
                   ),
                   const SizedBox(height: 12),
                   _WelcomeButton(
-                    label: 'Continue with Email',
+                    label: 'Continuar con correo',
                     icon: Icons.email_outlined,
                     onPressed: onContinue,
                   ),
@@ -95,7 +95,7 @@ class WelcomeScreen extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    child: const Text("I'm a Professional"),
+                    child: const Text('Soy profesional'),
                   ),
                 ],
               ),
@@ -129,7 +129,9 @@ class _WelcomeButton extends StatelessWidget {
       children: [
         SizedBox(width: 24, child: leading ?? Icon(icon, size: 22)),
         const SizedBox(width: 12),
-        Text(label),
+        Expanded(
+          child: FittedBox(fit: BoxFit.scaleDown, child: Text(label)),
+        ),
         const SizedBox(width: 36),
       ],
     );

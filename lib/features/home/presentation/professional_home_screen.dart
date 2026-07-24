@@ -5,8 +5,9 @@ class ProfessionalHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: SafeArea(child: Center(child: Text('Professional Home'))),
+    return Scaffold(
+      appBar: AppBar(automaticallyImplyLeading: true),
+      body: const SafeArea(child: Center(child: Text('Panel del profesional'))),
     );
   }
 }

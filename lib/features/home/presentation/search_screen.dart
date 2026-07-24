@@ -5,47 +5,50 @@ import 'package:linko/features/home/presentation/widgets/bottom_navigation_widge
 import 'package:linko/features/home/presentation/widgets/category_card.dart';
 import 'package:linko/features/home/presentation/widgets/professional_card.dart';
 import 'package:linko/features/home/presentation/widgets/search_bar_widget.dart';
+import 'package:linko/features/home/presentation/widgets/search_chip_widget.dart';
 
-class GuestHomeScreen extends StatelessWidget {
-  const GuestHomeScreen({
-    required this.onCategorySelected,
-    required this.onCreateRequest,
-    required this.onSearchRequested,
-    required this.onSearchTabSelected,
+class SearchScreen extends StatelessWidget {
+  const SearchScreen({
+    required this.showBackButton,
+    required this.onHomeSelected,
     required this.onProfessionalSelected,
+    required this.onResultsRequested,
     super.key,
   });
 
-  final ValueChanged<String> onCategorySelected;
-  final VoidCallback onCreateRequest;
-  final VoidCallback onSearchRequested;
-  final VoidCallback onSearchTabSelected;
+  final bool showBackButton;
+  final VoidCallback onHomeSelected;
   final ValueChanged<ProfessionalProfileData> onProfessionalSelected;
+  final ValueChanged<String> onResultsRequested;
+
+  static const _frequentSearches = [
+    'Electricista',
+    'Plomería',
+    'Limpieza',
+    'Jardinería',
+    'Pintura',
+  ];
 
   static const _categories = [
-    _CategoryData(
+    _SearchCategory(
       name: 'Electricista',
       icon: Icons.electrical_services_rounded,
     ),
-    _CategoryData(name: 'Plomería', icon: Icons.plumbing_rounded),
-    _CategoryData(name: 'Limpieza', icon: Icons.cleaning_services_rounded),
-    _CategoryData(name: 'Jardinería', icon: Icons.yard_rounded),
-    _CategoryData(name: 'Pintura', icon: Icons.format_paint_rounded),
-    _CategoryData(name: 'Aire acondicionado', icon: Icons.ac_unit_rounded),
-    _CategoryData(name: 'Carpintería', icon: Icons.carpenter_rounded),
-    _CategoryData(name: 'Más servicios', icon: Icons.grid_view_rounded),
+    _SearchCategory(name: 'Plomería', icon: Icons.plumbing_rounded),
+    _SearchCategory(name: 'Limpieza', icon: Icons.cleaning_services_rounded),
+    _SearchCategory(name: 'Jardinería', icon: Icons.yard_rounded),
+    _SearchCategory(name: 'Pintura', icon: Icons.format_paint_rounded),
+    _SearchCategory(name: 'Aire acondicionado', icon: Icons.ac_unit_rounded),
+    _SearchCategory(name: 'Carpintería', icon: Icons.carpenter_rounded),
+    _SearchCategory(name: 'Más servicios', icon: Icons.grid_view_rounded),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text(
-          'LINKO',
-          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 3),
-        ),
-        centerTitle: false,
+        automaticallyImplyLeading: showBackButton,
+        title: const Text('Buscar'),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -55,12 +58,16 @@ class GuestHomeScreen extends StatelessWidget {
             >= 720 => 4,
             _ => 2,
           };
-          final professionalColumns = constraints.maxWidth >= 900 ? 3 : 1;
+          final resultColumns = switch (constraints.maxWidth) {
+            >= 1100 => 3,
+            >= 720 => 2,
+            _ => 1,
+          };
 
           return SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
               horizontalPadding,
-              28,
+              24,
               horizontalPadding,
               48,
             ),
@@ -70,23 +77,27 @@ class GuestHomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      '¿Qué servicio necesitas hoy?',
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
+                    const SearchBarWidget(
+                      hintText: '¿Qué servicio necesitas?',
+                      autofocus: false,
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Encuentra profesionales de confianza cerca de ti.',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    const SizedBox(height: 32),
+                    const _SearchSectionTitle(label: 'Búsquedas frecuentes'),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final search in _frequentSearches)
+                          SearchChipWidget(
+                            label: search,
+                            onPressed: () => onResultsRequested(search),
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 28),
-                    SearchBarWidget(readOnly: true, onTap: onSearchRequested),
-                    const SizedBox(height: 40),
-                    const _SectionTitle(label: 'Categorías'),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 36),
+                    const _SearchSectionTitle(label: 'Categorías'),
+                    const SizedBox(height: 16),
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -102,19 +113,19 @@ class GuestHomeScreen extends StatelessWidget {
                         return CategoryCard(
                           icon: category.icon,
                           name: category.name,
-                          onTap: () => onCategorySelected(category.name),
+                          onTap: () => onResultsRequested(category.name),
                         );
                       },
                     ),
-                    const SizedBox(height: 44),
-                    const _SectionTitle(label: 'Profesionales destacados'),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 40),
+                    const _SearchSectionTitle(label: 'Resultados'),
+                    const SizedBox(height: 16),
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: 3,
+                      itemCount: placeholderProfessionals.length,
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: professionalColumns,
+                        crossAxisCount: resultColumns,
                         crossAxisSpacing: 18,
                         mainAxisSpacing: 18,
                         mainAxisExtent: 252,
@@ -140,9 +151,10 @@ class GuestHomeScreen extends StatelessWidget {
         },
       ),
       bottomNavigationBar: BottomNavigationWidget(
+        selectedIndex: 1,
         onDestinationSelected: (index) {
-          if (index == 1) {
-            onSearchTabSelected();
+          if (index == 0) {
+            onHomeSelected();
           }
         },
       ),
@@ -150,8 +162,8 @@ class GuestHomeScreen extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.label});
+class _SearchSectionTitle extends StatelessWidget {
+  const _SearchSectionTitle({required this.label});
 
   final String label;
 
@@ -166,8 +178,8 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _CategoryData {
-  const _CategoryData({required this.name, required this.icon});
+class _SearchCategory {
+  const _SearchCategory({required this.name, required this.icon});
 
   final String name;
   final IconData icon;

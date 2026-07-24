@@ -62,7 +62,7 @@ class _LinkoSplashScreenState extends State<LinkoSplashScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Connecting trusted professionals with people who need them.',
+                  'Conectamos profesionales de confianza con quienes los necesitan.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
