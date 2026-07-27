@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:linko/core/theme/linko_colors.dart';
 
 class ProfessionalCard extends StatelessWidget {
   const ProfessionalCard({
@@ -26,7 +27,7 @@ class ProfessionalCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: Color(0xFFDCE4EE)),
+        side: BorderSide(color: colorScheme.outline),
       ),
       child: InkWell(
         onTap: onViewProfile ?? () {},
@@ -66,7 +67,7 @@ class ProfessionalCard extends StatelessWidget {
                             const Icon(
                               Icons.star_rounded,
                               size: 18,
-                              color: Color(0xFFF59E0B),
+                              color: LinkoColors.warning,
                             ),
                             const SizedBox(width: 4),
                             Text(

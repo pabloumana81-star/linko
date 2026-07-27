@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:linko/core/theme/linko_colors.dart';
 import 'package:linko/features/home/presentation/models/professional_profile_data.dart';
 import 'package:linko/features/home/presentation/widgets/review_card.dart';
 import 'package:linko/features/home/presentation/widgets/service_chip.dart';
@@ -6,9 +7,14 @@ import 'package:linko/features/home/presentation/widgets/trust_indicator.dart';
 import 'package:linko/features/home/presentation/widgets/work_gallery_item.dart';
 
 class ProfessionalProfileScreen extends StatelessWidget {
-  const ProfessionalProfileScreen({required this.professional, super.key});
+  const ProfessionalProfileScreen({
+    required this.professional,
+    required this.onRequestService,
+    super.key,
+  });
 
   final ProfessionalProfileData professional;
+  final VoidCallback onRequestService;
 
   static const _services = [
     'Instalaciones eléctricas',
@@ -95,7 +101,7 @@ class ProfessionalProfileScreen extends StatelessWidget {
                           label:
                               '${professional.rating.toStringAsFixed(1)} '
                               '(${professional.reviewCount} reseñas)',
-                          iconColor: const Color(0xFFF59E0B),
+                          iconColor: LinkoColors.warning,
                         ),
                         _ProfileDetail(
                           icon: Icons.location_on_outlined,
@@ -215,7 +221,7 @@ class ProfessionalProfileScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 child: FilledButton(
-                  onPressed: () {},
+                  onPressed: onRequestService,
                   child: const Text('Solicitar servicio'),
                 ),
               ),

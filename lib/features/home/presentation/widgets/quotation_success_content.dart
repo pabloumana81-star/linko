@@ -1,0 +1,76 @@
+import 'package:flutter/material.dart';
+
+class QuotationSuccessContent extends StatelessWidget {
+  const QuotationSuccessContent({
+    required this.customerName,
+    required this.onViewRequests,
+    required this.onBackHome,
+    super.key,
+  });
+
+  final String customerName;
+  final VoidCallback onViewRequests;
+  final VoidCallback onBackHome;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  color: colors.tertiary.withValues(alpha: .12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check_rounded,
+                  size: 56,
+                  color: colors.tertiary,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'Cotización enviada',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Tu cotización fue enviada correctamente.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$customerName podrá revisarla y responder desde LinkO.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: colors.onSurfaceVariant),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onViewRequests,
+                  child: const Text('Ver solicitudes'),
+                ),
+              ),
+              TextButton(
+                onPressed: onBackHome,
+                child: const Text('Volver al inicio'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

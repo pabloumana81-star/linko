@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:linko/core/theme/linko_colors.dart';
 
 class ReviewCard extends StatelessWidget {
   const ReviewCard({
@@ -23,7 +24,7 @@ class ReviewCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Color(0xFFDCE4EE)),
+        side: BorderSide(color: colorScheme.outline),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -43,7 +44,7 @@ class ReviewCard extends StatelessWidget {
                 const Icon(
                   Icons.star_rounded,
                   size: 18,
-                  color: Color(0xFFF59E0B),
+                  color: LinkoColors.warning,
                 ),
                 const SizedBox(width: 4),
                 Text(

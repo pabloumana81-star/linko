@@ -12,6 +12,7 @@ class GuestHomeScreen extends StatelessWidget {
     required this.onCreateRequest,
     required this.onSearchRequested,
     required this.onSearchTabSelected,
+    required this.onRequestsSelected,
     required this.onProfessionalSelected,
     super.key,
   });
@@ -20,6 +21,7 @@ class GuestHomeScreen extends StatelessWidget {
   final VoidCallback onCreateRequest;
   final VoidCallback onSearchRequested;
   final VoidCallback onSearchTabSelected;
+  final VoidCallback onRequestsSelected;
   final ValueChanged<ProfessionalProfileData> onProfessionalSelected;
 
   static const _categories = [
@@ -42,7 +44,7 @@ class GuestHomeScreen extends StatelessWidget {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text(
-          'LINKO',
+          'LinkO',
           style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 3),
         ),
         centerTitle: false,
@@ -143,6 +145,8 @@ class GuestHomeScreen extends StatelessWidget {
         onDestinationSelected: (index) {
           if (index == 1) {
             onSearchTabSelected();
+          } else if (index == 2) {
+            onRequestsSelected();
           }
         },
       ),

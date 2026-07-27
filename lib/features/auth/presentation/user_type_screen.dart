@@ -16,7 +16,7 @@ class UserTypeScreen extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(automaticallyImplyLeading: true),
       body: SafeArea(
         child: LayoutBuilder(
@@ -47,7 +47,7 @@ class UserTypeScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        '¿Cómo deseas usar Linko?',
+                        '¿Cómo deseas usar LinkO?',
                         textAlign: TextAlign.center,
                         style: textTheme.headlineLarge?.copyWith(
                           color: colorScheme.onSurface,
@@ -114,7 +114,6 @@ class _UserTypeCard extends StatefulWidget {
 }
 
 class _UserTypeCardState extends State<_UserTypeCard> {
-  static const _accentColor = Color(0xFF2F80ED);
   static const _cardHeight = 376.0;
   static const _contentPadding = 28.0;
   static const _titleHeight = 58.0;
@@ -136,21 +135,25 @@ class _UserTypeCardState extends State<_UserTypeCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           decoration: BoxDecoration(
-            color: _isHovered ? const Color(0xFFF7FAFF) : Colors.white,
+            color: _isHovered
+                ? colorScheme.primaryContainer.withValues(alpha: 0.25)
+                : colorScheme.surface,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: _isHovered ? _accentColor : const Color(0xFFDCE4EE),
+              color: _isHovered ? colorScheme.primary : colorScheme.outline,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: _isHovered ? 0.10 : 0.05),
+                color: colorScheme.shadow.withValues(
+                  alpha: _isHovered ? 0.10 : 0.05,
+                ),
                 blurRadius: _isHovered ? 24 : 14,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Material(
-            color: Colors.transparent,
+            color: colorScheme.surface.withValues(alpha: 0),
             borderRadius: BorderRadius.circular(24),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -166,10 +169,14 @@ class _UserTypeCardState extends State<_UserTypeCard> {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEAF3FE),
+                        color: colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Icon(widget.icon, size: 34, color: _accentColor),
+                      child: Icon(
+                        widget.icon,
+                        size: 34,
+                        color: colorScheme.primary,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     SizedBox(

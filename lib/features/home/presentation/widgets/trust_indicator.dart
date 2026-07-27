@@ -15,7 +15,7 @@ class TrustIndicator extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFDCE4EE)),
+        border: Border.all(color: colorScheme.outline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

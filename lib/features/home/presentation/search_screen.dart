@@ -13,6 +13,7 @@ class SearchScreen extends StatelessWidget {
     required this.onHomeSelected,
     required this.onProfessionalSelected,
     required this.onResultsRequested,
+    required this.onRequestsSelected,
     super.key,
   });
 
@@ -20,6 +21,7 @@ class SearchScreen extends StatelessWidget {
   final VoidCallback onHomeSelected;
   final ValueChanged<ProfessionalProfileData> onProfessionalSelected;
   final ValueChanged<String> onResultsRequested;
+  final VoidCallback onRequestsSelected;
 
   static const _frequentSearches = [
     'Electricista',
@@ -48,7 +50,13 @@ class SearchScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: showBackButton,
-        title: const Text('Buscar'),
+        toolbarHeight: 88,
+        titleSpacing: showBackButton ? 0 : 20,
+        title: const SearchBarWidget(
+          hintText: '¿Qué servicio necesitas?',
+          autofocus: false,
+        ),
+        actions: const [SizedBox(width: 20)],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -77,12 +85,7 @@ class SearchScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SearchBarWidget(
-                      hintText: '¿Qué servicio necesitas?',
-                      autofocus: false,
-                    ),
-                    const SizedBox(height: 32),
-                    const _SearchSectionTitle(label: 'Búsquedas frecuentes'),
+                    const _SearchSectionTitle(label: 'Servicios populares'),
                     const SizedBox(height: 14),
                     Wrap(
                       spacing: 10,
@@ -106,7 +109,11 @@ class SearchScreen extends StatelessWidget {
                         crossAxisCount: categoryColumns,
                         crossAxisSpacing: 14,
                         mainAxisSpacing: 14,
-                        childAspectRatio: categoryColumns == 2 ? 1.3 : 1.15,
+                        childAspectRatio: switch (categoryColumns) {
+                          2 => 1.45,
+                          4 => 1.3,
+                          _ => 1.2,
+                        },
                       ),
                       itemBuilder: (context, index) {
                         final category = _categories[index];
@@ -155,6 +162,8 @@ class SearchScreen extends StatelessWidget {
         onDestinationSelected: (index) {
           if (index == 0) {
             onHomeSelected();
+          } else if (index == 2) {
+            onRequestsSelected();
           }
         },
       ),

@@ -30,7 +30,7 @@ class SearchBarWidget extends StatelessWidget {
           ),
           prefixIconConstraints: const BoxConstraints(minWidth: 60),
           filled: true,
-          fillColor: const Color(0xFFF4F7FB),
+          fillColor: Theme.of(context).colorScheme.surfaceContainer,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide.none,

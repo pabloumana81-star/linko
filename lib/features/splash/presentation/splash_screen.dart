@@ -53,7 +53,7 @@ class _LinkoSplashScreenState extends State<LinkoSplashScreen> {
                 ),
                 const SizedBox(height: 32),
                 Text(
-                  'LINKO',
+                  'LinkO',
                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
                     color: colorScheme.onSurface,
                     fontWeight: FontWeight.w800,

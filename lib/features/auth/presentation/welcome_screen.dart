@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({required this.onContinue, super.key});
 
-  static const _accentColor = Color(0xFF2F80ED);
-
   final VoidCallback onContinue;
 
   @override
@@ -13,7 +11,7 @@ class WelcomeScreen extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -25,19 +23,19 @@ class WelcomeScreen extends StatelessWidget {
                   Container(
                     width: 96,
                     height: 96,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEAF3FE),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.handshake_rounded,
                       size: 52,
-                      color: _accentColor,
+                      color: colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 28),
                   Text(
-                    'LINKO',
+                    'LinkO',
                     style: textTheme.displaySmall?.copyWith(
                       color: colorScheme.onSurface,
                       fontWeight: FontWeight.w800,
@@ -64,10 +62,10 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _WelcomeButton(
                     label: 'Continuar con Google',
-                    leading: const Text(
+                    leading: Text(
                       'G',
                       style: TextStyle(
-                        color: _accentColor,
+                        color: colorScheme.primary,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                       ),
@@ -90,7 +88,7 @@ class WelcomeScreen extends StatelessWidget {
                   TextButton(
                     onPressed: onContinue,
                     style: TextButton.styleFrom(
-                      foregroundColor: _accentColor,
+                      foregroundColor: colorScheme.primary,
                       textStyle: textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -124,6 +122,7 @@ class _WelcomeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final content = Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -149,8 +148,8 @@ class _WelcomeButton extends StatelessWidget {
         child: FilledButton(
           onPressed: onPressed,
           style: FilledButton.styleFrom(
-            backgroundColor: WelcomeScreen._accentColor,
-            foregroundColor: Colors.white,
+            backgroundColor: colorScheme.primary,
+            foregroundColor: colorScheme.onPrimary,
             shape: shape,
             textStyle: textStyle,
           ),
@@ -165,8 +164,8 @@ class _WelcomeButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF1F2937),
-          side: const BorderSide(color: Color(0xFFD8E0EA)),
+          foregroundColor: colorScheme.onSurface,
+          side: BorderSide(color: colorScheme.outline),
           shape: shape,
           textStyle: textStyle,
         ),
