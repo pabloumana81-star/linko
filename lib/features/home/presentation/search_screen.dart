@@ -14,6 +14,7 @@ class SearchScreen extends StatelessWidget {
     required this.onProfessionalSelected,
     required this.onResultsRequested,
     required this.onRequestsSelected,
+    required this.onProfileSelected,
     super.key,
   });
 
@@ -22,6 +23,7 @@ class SearchScreen extends StatelessWidget {
   final ValueChanged<ProfessionalProfileData> onProfessionalSelected;
   final ValueChanged<String> onResultsRequested;
   final VoidCallback onRequestsSelected;
+  final VoidCallback onProfileSelected;
 
   static const _frequentSearches = [
     'Electricista',
@@ -164,6 +166,8 @@ class SearchScreen extends StatelessWidget {
             onHomeSelected();
           } else if (index == 2) {
             onRequestsSelected();
+          } else if (index == 3) {
+            onProfileSelected();
           }
         },
       ),

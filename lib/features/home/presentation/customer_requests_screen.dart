@@ -1,48 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:linko/features/home/presentation/models/customer_service_request.dart';
 import 'package:linko/features/home/presentation/widgets/bottom_navigation_widget.dart';
+import 'package:linko/features/home/presentation/widgets/customer_requests_empty_state.dart';
+import 'package:linko/features/home/presentation/widgets/request_card.dart';
 
 class CustomerRequestsScreen extends StatelessWidget {
   const CustomerRequestsScreen({
     required this.onHomeSelected,
     required this.onSearchSelected,
+    required this.onRequestSelected,
+    required this.requests,
+    required this.onProfileSelected,
     super.key,
   });
 
   final VoidCallback onHomeSelected;
   final VoidCallback onSearchSelected;
+  final ValueChanged<CustomerServiceRequest> onRequestSelected;
+  final List<CustomerServiceRequest> requests;
+  final VoidCallback onProfileSelected;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Solicitudes'),
+        title: const Text('Mis solicitudes'),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.assignment_outlined,
-                size: 52,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Tus solicitudes aparecerán aquí.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+      body: requests.isEmpty
+          ? CustomerRequestsEmptyState(onSearchProfessionals: onSearchSelected)
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                  itemCount: requests.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final request = requests[index];
+                    return RequestCard(
+                      request: request,
+                      onTap: () => onRequestSelected(request),
+                    );
+                  },
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
       bottomNavigationBar: BottomNavigationWidget(
         selectedIndex: 2,
         onDestinationSelected: (index) {
@@ -50,6 +54,8 @@ class CustomerRequestsScreen extends StatelessWidget {
             onHomeSelected();
           } else if (index == 1) {
             onSearchSelected();
+          } else if (index == 3) {
+            onProfileSelected();
           }
         },
       ),

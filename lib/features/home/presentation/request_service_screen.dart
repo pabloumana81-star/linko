@@ -142,6 +142,7 @@ class _RequestServiceScreenState extends State<RequestServiceScreen> {
                         const RequestSectionTitle(label: '¿Qué necesitas?'),
                         const SizedBox(height: 12),
                         TextFormField(
+                          key: const ValueKey('request-description'),
                           controller: _descriptionController,
                           minLines: 4,
                           maxLines: 6,
@@ -165,6 +166,7 @@ class _RequestServiceScreenState extends State<RequestServiceScreen> {
                         ),
                         const SizedBox(height: 12),
                         TextFormField(
+                          key: const ValueKey('request-location'),
                           controller: _locationController,
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
@@ -184,6 +186,7 @@ class _RequestServiceScreenState extends State<RequestServiceScreen> {
                         const SizedBox(height: 12),
                         for (final timing in RequestTiming.values) ...[
                           TimingOptionCard(
+                            key: ValueKey('request-timing-${timing.name}'),
                             label: timing.label,
                             selected: _timing == timing,
                             onTap: () => _selectTiming(timing),

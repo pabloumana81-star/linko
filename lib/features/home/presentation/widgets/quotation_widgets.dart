@@ -34,10 +34,13 @@ class QuotationRequestSummary extends StatelessWidget {
           spacing: 16,
           runSpacing: 8,
           children: [
-            _Metadata(icon: Icons.location_on_outlined, text: request.location),
+            _Metadata(
+              icon: Icons.location_on_outlined,
+              text: 'Ubicación: ${request.location}',
+            ),
             _Metadata(
               icon: Icons.schedule_outlined,
-              text: request.timing.label,
+              text: 'Disponibilidad: ${request.timing.label}',
             ),
           ],
         ),

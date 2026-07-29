@@ -1,5 +1,5 @@
 import 'package:linko/features/home/presentation/models/request_draft.dart';
-import 'package:linko/features/home/presentation/models/request_status.dart';
+import 'package:linko/features/requests/domain/models/request_state.dart';
 
 class IncomingServiceRequest {
   const IncomingServiceRequest({
@@ -23,14 +23,14 @@ class IncomingServiceRequest {
   final String description;
   final String location;
   final RequestTiming timing;
-  final RequestStatus status;
+  final RequestState status;
   final String relativeDate;
   final String creationDate;
   final String memberSince;
   final int attachedPhotoCount;
   final DateTime? selectedDate;
 
-  IncomingServiceRequest copyWith({RequestStatus? status}) {
+  IncomingServiceRequest copyWith({RequestState? status}) {
     return IncomingServiceRequest(
       id: id,
       customerName: customerName,

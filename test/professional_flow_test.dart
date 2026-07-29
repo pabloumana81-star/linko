@@ -4,11 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:linko/app/app.dart';
 import 'package:linko/app/router.dart';
 import 'package:linko/core/utils/currency_formatter.dart';
+import 'package:linko/features/home/presentation/models/quotation_draft.dart';
+import 'package:linko/features/home/presentation/quotation_review_screen.dart';
+import 'package:linko/features/requests/data/mock_request_repository.dart';
+import 'package:linko/features/requests/presentation/adapters/request_view_adapters.dart';
 
 void main() {
   test('colón formatter and calculated total use numeric values', () {
-    expect(CurrencyFormatter.formatColones(25000), '₡25 000');
-    expect(CurrencyFormatter.formatColones(125000), '₡125 000');
+    expect(CurrencyFormatter.formatColones(25000), '₡ 25 000');
+    expect(CurrencyFormatter.formatColones(150500), '₡ 150 500');
   });
 
   testWidgets('professional prepares, edits, and sends a quotation', (
@@ -27,11 +31,14 @@ void main() {
 
     expect(find.text('Ana Martínez'), findsOneWidget);
     expect(find.text('Costo del servicio'), findsOneWidget);
-    expect(find.text('₡0'), findsNWidgets(3));
+    expect(find.text('₡ 0'), findsNWidgets(3));
 
     await tester.tap(find.text('Revisar cotización'));
     await tester.pump();
-    expect(find.text('Ingresa el costo de mano de obra.'), findsOneWidget);
+    expect(
+      find.text('Ingresa un monto válido en mano de obra o materiales.'),
+      findsOneWidget,
+    );
     expect(find.text('Describe el trabajo incluido.'), findsOneWidget);
     expect(find.text('Selecciona una duración estimada.'), findsOneWidget);
 
@@ -40,14 +47,14 @@ void main() {
       '25000',
     );
     await tester.pump();
-    expect(find.text('₡25 000'), findsNWidgets(2));
+    expect(find.text('₡ 25 000'), findsNWidgets(2));
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Materiales'),
       '10000',
     );
     await tester.pump();
-    expect(find.text('₡35 000'), findsOneWidget);
+    expect(find.text('₡ 35 000'), findsOneWidget);
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Descripción del trabajo'),
@@ -76,8 +83,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Revisar cotización'), findsOneWidget);
-    expect(find.text('₡35 000'), findsOneWidget);
+    expect(find.text('₡ 35 000'), findsOneWidget);
     expect(find.text('Medio día'), findsOneWidget);
+    expect(find.text('Ubicación: Escazú, San José'), findsOneWidget);
+    expect(find.text('Disponibilidad: Lo antes posible'), findsOneWidget);
 
     await tester.tap(find.text('Editar cotización'));
     await tester.pumpAndSettle();
@@ -106,18 +115,22 @@ void main() {
 
     expect(find.text('Cotización enviada'), findsOneWidget);
     expect(
-      find.text('Ana Martínez podrá revisarla y responder desde LinkO.'),
+      find.text(
+        'Tu cotización fue enviada correctamente.\n\n'
+        'El cliente podrá revisarla y responder desde la conversación.',
+      ),
       findsOneWidget,
     );
 
-    await tester.tap(find.text('Ver solicitudes'));
+    await tester.tap(find.text('Volver a solicitudes'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cotizadas'));
-    await tester.pumpAndSettle();
+    final quotedFilter = find.widgetWithText(FilterChip, 'Cotizadas');
+    expect(tester.widget<FilterChip>(quotedFilter).selected, isTrue);
+    expect(find.text('Cotización enviada correctamente.'), findsOneWidget);
     expect(find.text('Ana Martínez'), findsOneWidget);
-    expect(find.text('Cotizada'), findsOneWidget);
+    expect(find.text('Cotizada'), findsWidgets);
 
-    await tester.tap(find.text('Ver solicitud'));
+    await tester.tap(find.text('Ver solicitud').first);
     await tester.pumpAndSettle();
     expect(find.text('Ver cotización'), findsOneWidget);
     await tester.tap(find.text('Ver cotización'));
@@ -158,9 +171,53 @@ void main() {
       await tester.ensureVisible(find.text('Revisar cotización'));
       await tester.tap(find.text('Revisar cotización'));
       await tester.pump();
-      expect(find.text('El monto debe ser mayor que cero.'), findsOneWidget);
+      expect(
+        find.text('Ingresa un monto válido en mano de obra o materiales.'),
+        findsOneWidget,
+      );
       expect(find.text('Selecciona una fecha propuesta.'), findsOneWidget);
       expect(find.textContaining('Materiales'), findsWidgets);
     },
   );
+
+  testWidgets('review blocks sending when the calculated total is zero', (
+    tester,
+  ) async {
+    var sent = false;
+    final request = MockRequestRepository()
+        .getProfessionalRequests('professional-carlos')
+        .first
+        .toIncomingRequest();
+    final draft = QuotationDraft(
+      requestId: request.id,
+      customerName: request.customerName,
+      serviceCategory: request.serviceCategory,
+      workDescription: 'Diagnóstico completo del equipo solicitado.',
+      laborAmount: 0,
+      estimatedDuration: QuotationDuration.oneDay,
+      startTiming: QuotationStartTiming.asSoonAsPossible,
+      validityDays: 7,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: QuotationReviewScreen(
+          request: request,
+          draft: draft,
+          onEdit: () {},
+          onSend: () => sent = true,
+        ),
+      ),
+    );
+
+    final sendButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Enviar cotización'),
+    );
+    expect(sendButton.onPressed, isNull);
+    expect(
+      find.text('Ingresa un monto válido antes de enviar.'),
+      findsOneWidget,
+    );
+    expect(sent, isFalse);
+  });
 }

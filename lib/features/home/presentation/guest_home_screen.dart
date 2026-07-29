@@ -13,6 +13,7 @@ class GuestHomeScreen extends StatelessWidget {
     required this.onSearchRequested,
     required this.onSearchTabSelected,
     required this.onRequestsSelected,
+    required this.onProfileSelected,
     required this.onProfessionalSelected,
     super.key,
   });
@@ -22,6 +23,7 @@ class GuestHomeScreen extends StatelessWidget {
   final VoidCallback onSearchRequested;
   final VoidCallback onSearchTabSelected;
   final VoidCallback onRequestsSelected;
+  final VoidCallback onProfileSelected;
   final ValueChanged<ProfessionalProfileData> onProfessionalSelected;
 
   static const _categories = [
@@ -147,6 +149,8 @@ class GuestHomeScreen extends StatelessWidget {
             onSearchTabSelected();
           } else if (index == 2) {
             onRequestsSelected();
+          } else if (index == 3) {
+            onProfileSelected();
           }
         },
       ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/home/presentation/models/incoming_service_request.dart';
-import 'package:linko/features/home/presentation/models/request_status.dart';
+import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/home/presentation/providers/professional_requests_provider.dart';
 import 'package:linko/features/home/presentation/widgets/empty_requests_state.dart';
 import 'package:linko/features/home/presentation/widgets/filter_chip_widget.dart';
@@ -12,11 +12,17 @@ class ProfessionalRequestsScreen extends ConsumerStatefulWidget {
   const ProfessionalRequestsScreen({
     required this.onHomeSelected,
     required this.onRequestSelected,
+    this.showQuotedInitially = false,
+    this.showSentConfirmation = false,
+    required this.onProfileSelected,
     super.key,
   });
 
   final VoidCallback onHomeSelected;
   final ValueChanged<IncomingServiceRequest> onRequestSelected;
+  final bool showQuotedInitially;
+  final bool showSentConfirmation;
+  final VoidCallback onProfileSelected;
 
   @override
   ConsumerState<ProfessionalRequestsScreen> createState() =>
@@ -25,17 +31,34 @@ class ProfessionalRequestsScreen extends ConsumerStatefulWidget {
 
 class _ProfessionalRequestsScreenState
     extends ConsumerState<ProfessionalRequestsScreen> {
-  _ProfessionalRequestsFilter _selectedFilter =
-      _ProfessionalRequestsFilter.newRequests;
+  late _ProfessionalRequestsFilter _selectedFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedFilter = widget.showQuotedInitially
+        ? _ProfessionalRequestsFilter.quoted
+        : _ProfessionalRequestsFilter.newRequests;
+    if (widget.showSentConfirmation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cotización enviada correctamente.')),
+        );
+      });
+    }
+  }
 
   List<IncomingServiceRequest> get _visibleRequests {
     final status = _selectedFilter.status;
     if (status == null) {
-      return ref.read(professionalRequestsProvider).requests;
+      return ref.read(professionalRequestFlowProvider).requests;
     }
 
     return ref
-        .read(professionalRequestsProvider)
+        .read(professionalRequestFlowProvider)
         .requests
         .where((request) => request.status == status)
         .toList();
@@ -43,7 +66,7 @@ class _ProfessionalRequestsScreenState
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(professionalRequestsProvider);
+    ref.watch(professionalRequestFlowProvider);
     final visibleRequests = _visibleRequests;
 
     return Scaffold(
@@ -114,6 +137,8 @@ class _ProfessionalRequestsScreenState
         onDestinationSelected: (index) {
           if (index == 0) {
             widget.onHomeSelected();
+          } else if (index == 3) {
+            widget.onProfileSelected();
           }
         },
       ),
@@ -122,13 +147,14 @@ class _ProfessionalRequestsScreenState
 }
 
 enum _ProfessionalRequestsFilter {
-  newRequests('Nuevas', RequestStatus.newRequest),
-  underReview('En revisión', RequestStatus.underReview),
-  quoted('Cotizadas', RequestStatus.quoted),
+  newRequests('Nuevas', RequestState.pending),
+  underReview('En revisión', RequestState.underReview),
+  quoted('Cotizadas', RequestState.quoted),
+  accepted('Aceptadas', RequestState.accepted),
   all('Todas', null);
 
   const _ProfessionalRequestsFilter(this.label, this.status);
 
   final String label;
-  final RequestStatus? status;
+  final RequestState? status;
 }

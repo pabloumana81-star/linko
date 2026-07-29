@@ -106,161 +106,171 @@ class _QuotationFormScreenState extends State<QuotationFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Enviar cotización')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-          children: [
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    QuotationRequestSummary(request: widget.request),
-                    const SizedBox(height: 32),
-                    const RequestSectionTitle(label: 'Costo del servicio'),
-                    const SizedBox(height: 12),
-                    CurrencyInputField(
-                      label: 'Mano de obra',
-                      controller: _laborController,
-                      onChanged: (_) => setState(() {}),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Ingresa el costo de mano de obra.';
-                        }
-                        if ((int.tryParse(value) ?? 0) <= 0) {
-                          return 'El monto debe ser mayor que cero.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    CurrencyInputField(
-                      label: 'Materiales',
-                      controller: _materialsController,
-                      onChanged: (_) => setState(() {}),
-                      validator: (_) => null,
-                    ),
-                    const SizedBox(height: 18),
-                    QuotationCostSummary(labor: _labor, materials: _materials),
-                    const SizedBox(height: 32),
-                    const RequestSectionTitle(
-                      label: 'Detalles de la cotización',
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _descriptionController,
-                      minLines: 4,
-                      maxLines: 7,
-                      maxLength: 500,
-                      decoration: const InputDecoration(
-                        labelText: 'Descripción del trabajo',
-                        hintText:
-                            'Explica qué incluye el servicio y cualquier '
-                            'consideración importante.',
-                        alignLabelWithHint: true,
+      appBar: AppBar(toolbarHeight: 64, title: const Text('Enviar cotización')),
+      body: SafeArea(
+        top: false,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 760),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      QuotationRequestSummary(request: widget.request),
+                      const SizedBox(height: 32),
+                      const RequestSectionTitle(label: 'Costo del servicio'),
+                      const SizedBox(height: 12),
+                      CurrencyInputField(
+                        key: const ValueKey('quotation-labor'),
+                        label: 'Mano de obra',
+                        controller: _laborController,
+                        onChanged: (_) => setState(() {}),
+                        validator: (value) {
+                          if (_labor + _materials <= 0) {
+                            return 'Ingresa un monto válido en mano de obra o materiales.';
+                          }
+                          return null;
+                        },
                       ),
-                      validator: (value) {
-                        final length = value?.trim().length ?? 0;
-                        if (length == 0) {
-                          return 'Describe el trabajo incluido.';
-                        }
-                        if (length < 20) {
-                          return 'La descripción debe tener al menos 20 caracteres.';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    const RequestSectionTitle(label: 'Duración estimada'),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: QuotationDuration.values.map((option) {
-                        return ChoiceChip(
-                          label: Text(option.label),
-                          selected: _duration == option,
-                          onSelected: (_) => setState(() => _duration = option),
-                        );
-                      }).toList(),
-                    ),
-                    if (_duration == null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Selecciona una duración estimada.',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
+                      const SizedBox(height: 12),
+                      CurrencyInputField(
+                        key: const ValueKey('quotation-materials'),
+                        label: 'Materiales',
+                        controller: _materialsController,
+                        onChanged: (_) => setState(() {}),
+                        validator: (_) => null,
+                      ),
+                      const SizedBox(height: 18),
+                      QuotationCostSummary(
+                        labor: _labor,
+                        materials: _materials,
+                      ),
+                      const SizedBox(height: 32),
+                      const RequestSectionTitle(
+                        label: 'Detalles de la cotización',
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        key: const ValueKey('quotation-description'),
+                        controller: _descriptionController,
+                        minLines: 4,
+                        maxLines: 7,
+                        maxLength: 500,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripción del trabajo',
+                          hintText:
+                              'Explica qué incluye el servicio y cualquier '
+                              'consideración importante.',
+                          alignLabelWithHint: true,
                         ),
+                        validator: (value) {
+                          final length = value?.trim().length ?? 0;
+                          if (length == 0) {
+                            return 'Describe el trabajo incluido.';
+                          }
+                          if (length < 20) {
+                            return 'La descripción debe tener al menos 20 caracteres.';
+                          }
+                          return null;
+                        },
                       ),
-                    const SizedBox(height: 30),
-                    const RequestSectionTitle(
-                      label: '¿Cuándo podrías iniciar?',
-                    ),
-                    RadioGroup<QuotationStartTiming>(
-                      groupValue: _startTiming,
-                      onChanged: (value) {
-                        setState(() => _startTiming = value!);
-                        if (value == QuotationStartTiming.proposedDate) {
-                          _selectDate();
-                        }
-                      },
-                      child: Column(
-                        children: QuotationStartTiming.values
-                            .map(
-                              (option) => RadioListTile<QuotationStartTiming>(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(option.label),
-                                value: option,
-                              ),
-                            )
-                            .toList(),
+                      const SizedBox(height: 24),
+                      const RequestSectionTitle(label: 'Duración estimada'),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: QuotationDuration.values.map((option) {
+                          return ChoiceChip(
+                            key: ValueKey('quotation-duration-${option.name}'),
+                            label: Text(option.label),
+                            selected: _duration == option,
+                            onSelected: (_) =>
+                                setState(() => _duration = option),
+                          );
+                        }).toList(),
                       ),
-                    ),
-                    if (_startTiming == QuotationStartTiming.proposedDate) ...[
-                      OutlinedButton.icon(
-                        onPressed: _selectDate,
-                        icon: const Icon(Icons.calendar_month_outlined),
-                        label: Text(
-                          _proposedDate?.spanishDate ?? 'Seleccionar fecha',
-                        ),
-                      ),
-                      if (_proposedDate == null)
+                      if (_duration == null)
                         Padding(
-                          padding: const EdgeInsets.only(top: 6),
+                          padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            'Selecciona una fecha propuesta.',
+                            'Selecciona una duración estimada.',
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.error,
                             ),
                           ),
                         ),
+                      const SizedBox(height: 30),
+                      const RequestSectionTitle(
+                        label: '¿Cuándo podrías iniciar?',
+                      ),
+                      RadioGroup<QuotationStartTiming>(
+                        groupValue: _startTiming,
+                        onChanged: (value) {
+                          setState(() => _startTiming = value!);
+                          if (value == QuotationStartTiming.proposedDate) {
+                            _selectDate();
+                          }
+                        },
+                        child: Column(
+                          children: QuotationStartTiming.values
+                              .map(
+                                (option) => RadioListTile<QuotationStartTiming>(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(option.label),
+                                  value: option,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
+                      if (_startTiming ==
+                          QuotationStartTiming.proposedDate) ...[
+                        OutlinedButton.icon(
+                          onPressed: _selectDate,
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          label: Text(
+                            _proposedDate?.spanishDate ?? 'Seleccionar fecha',
+                          ),
+                        ),
+                        if (_proposedDate == null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              'Selecciona una fecha propuesta.',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                          ),
+                      ],
+                      const SizedBox(height: 30),
+                      const RequestSectionTitle(
+                        label: 'Validez de la cotización',
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [3, 7, 15, 30].map((days) {
+                          return ChoiceChip(
+                            label: Text('$days días'),
+                            selected: _validityDays == days,
+                            onSelected: (_) =>
+                                setState(() => _validityDays = days),
+                          );
+                        }).toList(),
+                      ),
                     ],
-                    const SizedBox(height: 30),
-                    const RequestSectionTitle(
-                      label: 'Validez de la cotización',
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [3, 7, 15, 30].map((days) {
-                        return ChoiceChip(
-                          label: Text('$days días'),
-                          selected: _validityDays == days,
-                          onSelected: (_) =>
-                              setState(() => _validityDays = days),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: SafeArea(

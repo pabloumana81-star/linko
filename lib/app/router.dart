@@ -3,14 +3,20 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/auth/presentation/user_type_screen.dart';
 import 'package:linko/features/auth/presentation/welcome_screen.dart';
+import 'package:linko/app/app_mode.dart';
+import 'package:linko/app/app_mode_provider.dart';
 import 'package:linko/features/home/presentation/data/placeholder_professionals.dart';
-import 'package:linko/features/home/presentation/data/placeholder_incoming_requests.dart';
 import 'package:linko/features/home/presentation/category_placeholder_screen.dart';
 import 'package:linko/features/home/presentation/confirm_request_screen.dart';
+import 'package:linko/features/home/presentation/conversation_screen.dart';
 import 'package:linko/features/home/presentation/create_request_screen.dart';
+import 'package:linko/features/home/presentation/customer_request_detail_screen.dart';
+import 'package:linko/features/home/presentation/customer_quotation_screen.dart';
 import 'package:linko/features/home/presentation/customer_requests_screen.dart';
 import 'package:linko/features/home/presentation/guest_home_screen.dart';
+import 'package:linko/features/home/presentation/mode_profile_screen.dart';
 import 'package:linko/features/home/presentation/models/professional_profile_data.dart';
+import 'package:linko/features/home/presentation/models/customer_service_request.dart';
 import 'package:linko/features/home/presentation/models/incoming_service_request.dart';
 import 'package:linko/features/home/presentation/models/request_draft.dart';
 import 'package:linko/features/home/presentation/models/quotation_draft.dart';
@@ -27,6 +33,14 @@ import 'package:linko/features/home/presentation/request_service_screen.dart';
 import 'package:linko/features/home/presentation/request_success_screen.dart';
 import 'package:linko/features/home/presentation/search_screen.dart';
 import 'package:linko/features/splash/presentation/splash_screen.dart';
+import 'package:linko/features/requests/presentation/adapters/request_view_adapters.dart';
+import 'package:linko/features/requests/presentation/providers/request_providers.dart';
+import 'package:linko/features/requests/domain/models/conversation_message.dart';
+import 'package:linko/features/requests/domain/models/app_user.dart';
+import 'package:linko/features/requests/domain/models/professional_profile.dart';
+import 'package:linko/features/requests/domain/models/request_state.dart';
+import 'package:linko/features/requests/domain/models/service_request.dart';
+import 'package:linko/features/requests/domain/models/service_rating.dart';
 
 abstract final class AppRoutes {
   static const splash = '/';
@@ -43,8 +57,16 @@ abstract final class AppRoutes {
   static const confirmRequest = '/confirm-request';
   static const requestSuccess = '/request-success';
   static const customerRequests = '/customer-requests';
+  static const customerModeProfile = '/customer-profile';
+  static const customerRequestDetail = '/customer-requests/:requestId';
+  static const customerQuotation = '/customer-requests/:requestId/quotation';
+  static const customerConversation =
+      '/customer-requests/:requestId/conversation';
   static const professionalRequests = '/professional/requests';
+  static const professionalModeProfile = '/professional-profile';
   static const professionalRequestDetail = '/professional/requests/:requestId';
+  static const professionalConversation =
+      '/professional/requests/:requestId/conversation';
   static const professionalQuotation =
       '/professional/requests/:requestId/quotation';
   static const professionalQuotationReview =
@@ -62,19 +84,43 @@ abstract final class AppRouteNames {
   static const professionalQuotation = 'professional-quotation';
   static const professionalQuotationReview = 'professional-quotation-review';
   static const professionalQuotationSuccess = 'professional-quotation-success';
+  static const customerRequestDetail = 'customer-request-detail';
+  static const customerQuotation = 'customer-quotation';
+  static const customerConversation = 'customer-conversation';
+  static const professionalConversation = 'professional-conversation';
 }
 
-IncomingServiceRequest _incomingRequestFromState(GoRouterState state) {
+IncomingServiceRequest _incomingRequestFromState(
+  BuildContext context,
+  GoRouterState state,
+) {
   final requestId = state.pathParameters['requestId']!;
 
   final extra = state.extra;
   if (extra is IncomingServiceRequest) {
     return extra;
   }
-  return placeholderIncomingRequests.firstWhere(
-    (request) => request.id == requestId,
-    orElse: () => placeholderIncomingRequests.first,
-  );
+  return ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(requestDetailProvider(requestId))!.toIncomingRequest();
+}
+
+ServiceCategory _serviceCategoryFor(String profession) {
+  final normalized = profession.toLowerCase();
+  if (normalized.contains('electric')) {
+    return ServiceCategory.electrical;
+  }
+  if (normalized.contains('plomer')) {
+    return ServiceCategory.plumbing;
+  }
+  if (normalized.contains('limpieza')) {
+    return ServiceCategory.cleaning;
+  }
+  if (normalized.contains('aire acondicionado')) {
+    return ServiceCategory.airConditioning;
+  }
+  return ServiceCategory.maintenance;
 }
 
 ProfessionalProfileData _professionalFromState(GoRouterState state) {
@@ -85,6 +131,77 @@ ProfessionalProfileData _professionalFromState(GoRouterState state) {
         (item) => item.name == professionalName,
         orElse: () => placeholderProfessionals.first,
       );
+}
+
+CustomerServiceRequest _customerRequestFromState(
+  BuildContext context,
+  GoRouterState state,
+) {
+  final extra = state.extra;
+  if (extra is CustomerServiceRequest) {
+    return extra;
+  }
+  final requestId = state.pathParameters['requestId']!;
+  return ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(requestDetailProvider(requestId))!.toCustomerRequest();
+}
+
+String? _scheduledDateLabel(List<ConversationMessage> messages) {
+  for (final message in messages.reversed) {
+    if (message.type == ConversationMessageType.scheduleProposal &&
+        message.scheduleStatus == ScheduleProposalStatus.confirmed) {
+      return message.scheduleLabel;
+    }
+  }
+  return null;
+}
+
+void _sendConversationMessage(
+  BuildContext context,
+  String requestId,
+  String text,
+  bool asProfessional,
+) {
+  final container = ProviderScope.containerOf(context, listen: false);
+  container
+      .read(requestRepositoryProvider)
+      .sendMessage(
+        ConversationMessage(
+          id: '$requestId-local-${DateTime.now().microsecondsSinceEpoch}',
+          requestId: requestId,
+          author: asProfessional
+              ? MessageAuthor.professional
+              : MessageAuthor.customer,
+          text: text,
+          timeLabel: 'Ahora',
+        ),
+      );
+  container
+    ..invalidate(conversationProvider(requestId))
+    ..invalidate(requestDetailProvider(requestId))
+    ..invalidate(customerRequestsProvider)
+    ..invalidate(professionalRequestsProvider);
+}
+
+void _invalidateScheduleData(ProviderContainer container, String requestId) {
+  container
+    ..invalidate(conversationProvider(requestId))
+    ..invalidate(requestDetailProvider(requestId))
+    ..invalidate(customerRequestsProvider)
+    ..invalidate(professionalRequestsProvider)
+    ..invalidate(timelineProvider(requestId))
+    ..invalidate(professionalRequestFlowProvider);
+}
+
+void _popOrGo(BuildContext context, String fallbackLocation) {
+  final navigator = Navigator.of(context);
+  if (navigator.canPop()) {
+    navigator.pop();
+  } else {
+    context.go(fallbackLocation);
+  }
 }
 
 final GoRouter appRouter = GoRouter(
@@ -110,9 +227,19 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.userType,
       builder: (context, state) {
         return UserTypeScreen(
-          onCustomerSelected: () => context.push(AppRoutes.guestHome),
+          onCustomerSelected: () {
+            ProviderScope.containerOf(
+              context,
+              listen: false,
+            ).read(appModeProvider.notifier).select(AppMode.customer);
+            context.go(AppRoutes.guestHome);
+          },
           onProfessionalSelected: () {
-            context.push(AppRoutes.professionalHome);
+            ProviderScope.containerOf(
+              context,
+              listen: false,
+            ).read(appModeProvider.notifier).select(AppMode.professional);
+            context.go(AppRoutes.professionalHome);
           },
         );
       },
@@ -136,6 +263,9 @@ final GoRouter appRouter = GoRouter(
           },
           onRequestsSelected: () {
             context.go(AppRoutes.customerRequests);
+          },
+          onProfileSelected: () {
+            context.go(AppRoutes.customerModeProfile);
           },
           onProfessionalSelected: (professional) {
             context.pushNamed(
@@ -168,6 +298,9 @@ final GoRouter appRouter = GoRouter(
           },
           onRequestsSelected: () {
             context.go(AppRoutes.customerRequests);
+          },
+          onProfileSelected: () {
+            context.go(AppRoutes.customerModeProfile);
           },
         );
       },
@@ -205,6 +338,9 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalHome,
       builder: (context, state) {
         return ProfessionalHomeScreen(
+          onProfileSelected: () {
+            context.go(AppRoutes.professionalModeProfile);
+          },
           onRequestsSelected: () {
             context.go(AppRoutes.professionalRequests);
           },
@@ -220,16 +356,46 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.professionalRequests,
-      builder: (context, state) {
-        return ProfessionalRequestsScreen(
-          onHomeSelected: () => context.go(AppRoutes.professionalHome),
-          onRequestSelected: (request) {
-            context.pushNamed(
-              AppRouteNames.professionalRequestDetail,
-              pathParameters: {'requestId': request.id},
-              extra: request,
-            );
+      pageBuilder: (context, state) {
+        final quotationSent = state.extra == true;
+        return CustomTransitionPage<void>(
+          key: state.pageKey,
+          transitionDuration: const Duration(milliseconds: 250),
+          child: ProfessionalRequestsScreen(
+            showQuotedInitially: quotationSent,
+            showSentConfirmation: quotationSent,
+            onProfileSelected: () {
+              context.go(AppRoutes.professionalModeProfile);
+            },
+            onHomeSelected: () => context.go(AppRoutes.professionalHome),
+            onRequestSelected: (request) {
+              context.pushNamed(
+                AppRouteNames.professionalRequestDetail,
+                pathParameters: {'requestId': request.id},
+                extra: request,
+              );
+            },
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
           },
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.professionalModeProfile,
+      builder: (context, state) {
+        return ModeProfileScreen(
+          mode: AppMode.professional,
+          onChangeMode: () {
+            ProviderScope.containerOf(
+              context,
+              listen: false,
+            ).read(appModeProvider.notifier).select(AppMode.customer);
+            context.go(AppRoutes.guestHome);
+          },
+          onHomeSelected: () => context.go(AppRoutes.professionalHome),
+          onRequestsSelected: () => context.go(AppRoutes.professionalRequests),
         );
       },
     ),
@@ -237,15 +403,36 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalRequestDetail,
       name: AppRouteNames.professionalRequestDetail,
       builder: (context, state) {
-        final request = _incomingRequestFromState(state);
+        final request = _incomingRequestFromState(context, state);
 
         return ProfessionalRequestDetailScreen(
           request: request,
+          onBack: () => _popOrGo(context, AppRoutes.professionalRequests),
+          onStartJob: (selectedRequest) {
+            final container = ProviderScope.containerOf(context, listen: false);
+            container
+                .read(requestRepositoryProvider)
+                .startJob(selectedRequest.id);
+            _invalidateScheduleData(container, selectedRequest.id);
+          },
+          onMarkJobCompleted: (selectedRequest) {
+            final container = ProviderScope.containerOf(context, listen: false);
+            container
+                .read(requestRepositoryProvider)
+                .markJobCompleted(selectedRequest.id);
+            _invalidateScheduleData(container, selectedRequest.id);
+          },
+          onOpenConversation: (selectedRequest) {
+            context.pushNamed(
+              AppRouteNames.professionalConversation,
+              pathParameters: {'requestId': selectedRequest.id},
+              extra: selectedRequest,
+            );
+          },
           onSendQuotation: (selectedRequest) {
-            final quotation = ProviderScope.containerOf(
-              context,
-              listen: false,
-            ).read(professionalRequestsProvider).quotations[selectedRequest.id];
+            final quotation = ProviderScope.containerOf(context, listen: false)
+                .read(professionalRequestFlowProvider)
+                .quotations[selectedRequest.id];
             if (quotation == null) {
               context.pushNamed(
                 AppRouteNames.professionalQuotation,
@@ -264,10 +451,38 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: AppRoutes.professionalConversation,
+      name: AppRouteNames.professionalConversation,
+      builder: (context, state) {
+        final request = _incomingRequestFromState(context, state);
+        return ConversationScreen(
+          requestId: request.id,
+          counterpartName: request.customerName,
+          serviceName: request.serviceCategory,
+          requestStatus: request.status,
+          perspective: ConversationPerspective.professional,
+          initialMessages: ProviderScope.containerOf(
+            context,
+            listen: false,
+          ).read(conversationProvider(request.id)),
+          onBack: () => _popOrGo(context, AppRoutes.professionalRequests),
+          onSendMessage: (text) =>
+              _sendConversationMessage(context, request.id, text, true),
+          onProposeSchedule: (scheduleLabel) {
+            final container = ProviderScope.containerOf(context, listen: false);
+            container
+                .read(requestRepositoryProvider)
+                .proposeSchedule(request.id, scheduleLabel);
+            _invalidateScheduleData(container, request.id);
+          },
+        );
+      },
+    ),
+    GoRoute(
       path: AppRoutes.professionalQuotation,
       name: AppRouteNames.professionalQuotation,
       builder: (context, state) {
-        final request = _incomingRequestFromState(state);
+        final request = _incomingRequestFromState(context, state);
         return QuotationFormScreen(
           request: request,
           onReview: (draft) {
@@ -284,11 +499,11 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalQuotationReview,
       name: AppRouteNames.professionalQuotationReview,
       builder: (context, state) {
-        final request = _incomingRequestFromState(state);
+        final request = _incomingRequestFromState(context, state);
         final stored = ProviderScope.containerOf(
           context,
           listen: false,
-        ).read(professionalRequestsProvider).quotations[request.id];
+        ).read(professionalRequestFlowProvider).quotations[request.id];
         final draft = state.extra as QuotationDraft? ?? stored;
         if (draft == null) {
           return QuotationFormScreen(
@@ -311,12 +526,13 @@ final GoRouter appRouter = GoRouter(
             }
           },
           onSend: () {
-            final sent = ProviderScope.containerOf(
-              context,
-              listen: false,
-            ).read(professionalRequestsProvider.notifier).sendQuotation(draft);
+            final sent = ProviderScope.containerOf(context, listen: false)
+                .read(professionalRequestFlowProvider.notifier)
+                .sendQuotation(draft);
             if (!sent) {
-              ScaffoldMessenger.of(context).showSnackBar(
+              final messenger = ScaffoldMessenger.of(context);
+              messenger.removeCurrentSnackBar();
+              messenger.showSnackBar(
                 const SnackBar(
                   content: Text('Esta solicitud ya tiene una cotización.'),
                 ),
@@ -336,13 +552,9 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalQuotationSuccess,
       name: AppRouteNames.professionalQuotationSuccess,
       builder: (context, state) {
-        final customerName =
-            state.extra as String? ??
-            _incomingRequestFromState(state).customerName;
         return QuotationSuccessScreen(
-          customerName: customerName,
-          onViewRequests: () => context.go(AppRoutes.professionalRequests),
-          onBackHome: () => context.go(AppRoutes.professionalHome),
+          onViewRequests: () =>
+              context.go(AppRoutes.professionalRequests, extra: true),
         );
       },
     ),
@@ -352,13 +564,25 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final professional = _professionalFromState(state);
 
-        return ProfessionalProfileScreen(
-          professional: professional,
-          onRequestService: () {
-            context.pushNamed(
-              AppRouteNames.requestService,
-              pathParameters: {'professionalName': professional.name},
-              extra: professional,
+        return Consumer(
+          builder: (context, ref, child) {
+            final summary = ref.watch(
+              professionalRatingSummaryProvider(professional.id),
+            );
+            final currentProfessional = professional.copyWith(
+              rating: summary.averageRating,
+              reviewCount: summary.reviewCount,
+            );
+            return ProfessionalProfileScreen(
+              professional: currentProfessional,
+              completedJobsCount: summary.completedJobsCount,
+              onRequestService: () {
+                context.pushNamed(
+                  AppRouteNames.requestService,
+                  pathParameters: {'professionalName': professional.name},
+                  extra: currentProfessional,
+                );
+              },
             );
           },
         );
@@ -385,6 +609,42 @@ final GoRouter appRouter = GoRouter(
           draft: state.extra! as RequestDraft,
           onSubmit: () {
             final draft = state.extra! as RequestDraft;
+            final container = ProviderScope.containerOf(context, listen: false);
+            final now = DateTime.now();
+            final request = ServiceRequest(
+              id: 'request-${now.microsecondsSinceEpoch}',
+              customer: const AppUser(
+                id: currentCustomerId,
+                name: 'Cliente LinkO',
+              ),
+              professional: ProfessionalProfile(
+                id: 'profile-${draft.professional.id}',
+                user: AppUser(
+                  id: draft.professional.id,
+                  name: draft.professional.name,
+                ),
+                profession: draft.professional.profession,
+                rating: draft.professional.rating,
+                reviewCount: draft.professional.reviewCount,
+                location: draft.professional.location,
+              ),
+              serviceName: draft.professional.profession,
+              category: _serviceCategoryFor(draft.professional.profession),
+              description: draft.description,
+              location: draft.location,
+              availabilityLabel:
+                  draft.selectedDate?.spanishDate ?? draft.timing.label,
+              state: RequestState.pending,
+              updatedAt: now,
+              createdAtLabel: 'Ahora',
+              memberSinceLabel: 'Miembro desde 2026',
+              attachedPhotoCount: draft.attachedPhotoCount,
+            );
+            container.read(requestRepositoryProvider).createRequest(request);
+            container
+              ..invalidate(customerRequestsProvider)
+              ..invalidate(professionalRequestsProvider)
+              ..invalidate(professionalRequestFlowProvider);
             context.go(
               AppRoutes.requestSuccess,
               extra: draft.professional.name,
@@ -406,9 +666,218 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.customerRequests,
       builder: (context, state) {
-        return CustomerRequestsScreen(
+        CustomerRequestsScreen buildScreen(
+          List<CustomerServiceRequest> requests,
+        ) {
+          return CustomerRequestsScreen(
+            onHomeSelected: () => context.go(AppRoutes.guestHome),
+            onSearchSelected: () => context.go(AppRoutes.search),
+            requests: requests,
+            onProfileSelected: () {
+              context.go(AppRoutes.customerModeProfile);
+            },
+            onRequestSelected: (request) {
+              context.pushNamed(
+                AppRouteNames.customerRequestDetail,
+                pathParameters: {'requestId': request.id},
+                extra: request,
+              );
+            },
+          );
+        }
+
+        if (state.extra case final List<CustomerServiceRequest> requests) {
+          return buildScreen(requests);
+        }
+        return Consumer(
+          builder: (context, ref, child) {
+            final requests = ref
+                .watch(customerRequestsProvider)
+                .map((request) => request.toCustomerRequest())
+                .toList();
+            return buildScreen(requests);
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.customerModeProfile,
+      builder: (context, state) {
+        return ModeProfileScreen(
+          mode: AppMode.customer,
+          onChangeMode: () {
+            ProviderScope.containerOf(
+              context,
+              listen: false,
+            ).read(appModeProvider.notifier).select(AppMode.professional);
+            context.go(AppRoutes.professionalHome);
+          },
           onHomeSelected: () => context.go(AppRoutes.guestHome),
           onSearchSelected: () => context.go(AppRoutes.search),
+          onRequestsSelected: () => context.go(AppRoutes.customerRequests),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.customerRequestDetail,
+      name: AppRouteNames.customerRequestDetail,
+      builder: (context, state) {
+        final requestId = state.pathParameters['requestId']!;
+        return Consumer(
+          builder: (context, ref, child) {
+            final serviceRequest = ref.watch(requestDetailProvider(requestId))!;
+            final request = serviceRequest.toCustomerRequest();
+            final quotation = ref.watch(quotationProvider(requestId));
+            final messages = ref.watch(conversationProvider(requestId));
+            return CustomerRequestDetailScreen(
+              request: request,
+              onBack: () => _popOrGo(context, AppRoutes.customerRequests),
+              timelineEvents: ref.watch(timelineProvider(requestId)),
+              scheduledDateLabel: _scheduledDateLabel(messages),
+              onSubmitRating: (stars, comment) {
+                final container = ProviderScope.containerOf(
+                  context,
+                  listen: false,
+                );
+                container
+                    .read(requestRepositoryProvider)
+                    .submitRating(
+                      ServiceRating(
+                        requestId: requestId,
+                        professionalId: serviceRequest.professional.user.id,
+                        stars: stars,
+                        comment: comment,
+                      ),
+                    );
+                container
+                  ..invalidate(requestDetailProvider(requestId))
+                  ..invalidate(customerRequestsProvider)
+                  ..invalidate(professionalRequestsProvider)
+                  ..invalidate(conversationProvider(requestId))
+                  ..invalidate(timelineProvider(requestId))
+                  ..invalidate(ratingProvider(requestId))
+                  ..invalidate(
+                    professionalRatingSummaryProvider(
+                      serviceRequest.professional.user.id,
+                    ),
+                  )
+                  ..invalidate(professionalRequestFlowProvider);
+              },
+              onViewQuotation: quotation == null
+                  ? null
+                  : () {
+                      context.pushNamed(
+                        AppRouteNames.customerQuotation,
+                        pathParameters: {'requestId': request.id},
+                      );
+                    },
+              onOpenConversation: () {
+                context.pushNamed(
+                  AppRouteNames.customerConversation,
+                  pathParameters: {'requestId': request.id},
+                  extra: request,
+                );
+              },
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.customerQuotation,
+      name: AppRouteNames.customerQuotation,
+      builder: (context, state) {
+        final requestId = state.pathParameters['requestId']!;
+        final container = ProviderScope.containerOf(context, listen: false);
+        final request = container.read(requestDetailProvider(requestId))!;
+        final quotation = container.read(quotationProvider(requestId))!;
+        return CustomerQuotationScreen(
+          request: request,
+          quotation: quotation,
+          onAccept: () {
+            container
+                .read(requestRepositoryProvider)
+                .acceptQuotation(requestId);
+            container
+              ..invalidate(requestDetailProvider(requestId))
+              ..invalidate(customerRequestsProvider)
+              ..invalidate(professionalRequestsProvider)
+              ..invalidate(conversationProvider(requestId))
+              ..invalidate(timelineProvider(requestId))
+              ..invalidate(professionalRequestFlowProvider);
+            context.goNamed(
+              AppRouteNames.customerRequestDetail,
+              pathParameters: {'requestId': requestId},
+            );
+          },
+          onRequestChanges: () {
+            container
+                .read(requestRepositoryProvider)
+                .sendMessage(
+                  ConversationMessage(
+                    id: '$requestId-changes-${DateTime.now().microsecondsSinceEpoch}',
+                    requestId: requestId,
+                    author: MessageAuthor.system,
+                    text: 'El cliente solicitó cambios en la cotización.',
+                    timeLabel: 'Ahora',
+                  ),
+                );
+            container
+              ..invalidate(conversationProvider(requestId))
+              ..invalidate(requestDetailProvider(requestId))
+              ..invalidate(customerRequestsProvider);
+            context.goNamed(
+              AppRouteNames.customerConversation,
+              pathParameters: {'requestId': requestId},
+            );
+          },
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.customerConversation,
+      name: AppRouteNames.customerConversation,
+      builder: (context, state) {
+        final request = _customerRequestFromState(context, state);
+        return ConversationScreen(
+          requestId: request.id,
+          counterpartName: request.professionalName,
+          serviceName: request.serviceName,
+          requestStatus: request.status,
+          perspective: ConversationPerspective.customer,
+          initialMessages: ProviderScope.containerOf(
+            context,
+            listen: false,
+          ).read(conversationProvider(request.id)),
+          onBack: () => _popOrGo(context, AppRoutes.customerRequests),
+          onSendMessage: (text) =>
+              _sendConversationMessage(context, request.id, text, false),
+          onConfirmSchedule: (messageId) {
+            final container = ProviderScope.containerOf(context, listen: false);
+            container
+                .read(requestRepositoryProvider)
+                .confirmSchedule(request.id, messageId);
+            _invalidateScheduleData(container, request.id);
+          },
+          onRequestScheduleChange: (messageId) {
+            final container = ProviderScope.containerOf(context, listen: false);
+            container
+                .read(requestRepositoryProvider)
+                .requestScheduleChange(request.id, messageId);
+            _invalidateScheduleData(container, request.id);
+          },
+          onConfirmJob: () {
+            final container = ProviderScope.containerOf(context, listen: false);
+            container.read(requestRepositoryProvider).confirmJob(request.id);
+            _invalidateScheduleData(container, request.id);
+          },
+          onReportProblem: () {
+            final container = ProviderScope.containerOf(context, listen: false);
+            container
+                .read(requestRepositoryProvider)
+                .reportCompletedWorkProblem(request.id);
+            _invalidateScheduleData(container, request.id);
+          },
         );
       },
     ),

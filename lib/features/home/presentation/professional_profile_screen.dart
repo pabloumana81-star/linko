@@ -9,11 +9,13 @@ import 'package:linko/features/home/presentation/widgets/work_gallery_item.dart'
 class ProfessionalProfileScreen extends StatelessWidget {
   const ProfessionalProfileScreen({
     required this.professional,
+    required this.completedJobsCount,
     required this.onRequestService,
     super.key,
   });
 
   final ProfessionalProfileData professional;
+  final int completedJobsCount;
   final VoidCallback onRequestService;
 
   static const _services = [
@@ -131,20 +133,20 @@ class ProfessionalProfileScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 28),
-                const Wrap(
+                Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   alignment: WrapAlignment.center,
                   children: [
-                    TrustIndicator(
+                    const TrustIndicator(
                       icon: Icons.workspace_premium_outlined,
                       label: '8 años de experiencia',
                     ),
                     TrustIndicator(
                       icon: Icons.task_alt_rounded,
-                      label: '145 servicios completados',
+                      label: '$completedJobsCount servicios completados',
                     ),
-                    TrustIndicator(
+                    const TrustIndicator(
                       icon: Icons.schedule_rounded,
                       label: 'Responde en menos de 1 hora',
                     ),

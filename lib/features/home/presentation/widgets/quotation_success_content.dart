@@ -1,16 +1,9 @@
 import 'package:flutter/material.dart';
 
 class QuotationSuccessContent extends StatelessWidget {
-  const QuotationSuccessContent({
-    required this.customerName,
-    required this.onViewRequests,
-    required this.onBackHome,
-    super.key,
-  });
+  const QuotationSuccessContent({required this.onViewRequests, super.key});
 
-  final String customerName;
   final VoidCallback onViewRequests;
-  final VoidCallback onBackHome;
 
   @override
   Widget build(BuildContext context) {
@@ -45,13 +38,9 @@ class QuotationSuccessContent extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Tu cotización fue enviada correctamente.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
               Text(
-                '$customerName podrá revisarla y responder desde LinkO.',
+                'Tu cotización fue enviada correctamente.\n\n'
+                'El cliente podrá revisarla y responder desde la conversación.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
@@ -60,12 +49,8 @@ class QuotationSuccessContent extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: onViewRequests,
-                  child: const Text('Ver solicitudes'),
+                  child: const Text('Volver a solicitudes'),
                 ),
-              ),
-              TextButton(
-                onPressed: onBackHome,
-                child: const Text('Volver al inicio'),
               ),
             ],
           ),

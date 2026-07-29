@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/home/presentation/models/incoming_service_request.dart';
-import 'package:linko/features/home/presentation/models/request_status.dart';
+import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/home/presentation/providers/professional_requests_provider.dart';
 import 'package:linko/features/home/presentation/widgets/incoming_request_card.dart';
 import 'package:linko/features/home/presentation/widgets/professional_bottom_navigation_widget.dart';
@@ -11,20 +11,22 @@ class ProfessionalHomeScreen extends ConsumerWidget {
   const ProfessionalHomeScreen({
     required this.onRequestsSelected,
     required this.onRequestSelected,
+    required this.onProfileSelected,
     super.key,
   });
 
   final VoidCallback onRequestsSelected;
   final ValueChanged<IncomingServiceRequest> onRequestSelected;
+  final VoidCallback onProfileSelected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final requests = ref.watch(professionalRequestsProvider).requests;
+    final requests = ref.watch(professionalRequestFlowProvider).requests;
     final newCount = requests
-        .where((request) => request.status == RequestStatus.newRequest)
+        .where((request) => request.status == RequestState.pending)
         .length;
     final quotedCount = requests
-        .where((request) => request.status == RequestStatus.quoted)
+        .where((request) => request.status == RequestState.quoted)
         .length;
     return Scaffold(
       appBar: AppBar(
@@ -103,7 +105,7 @@ class ProfessionalHomeScreen extends ConsumerWidget {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: 3,
+                      itemCount: requests.length.clamp(0, 3),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: requestColumns,
                         crossAxisSpacing: 14,
@@ -130,6 +132,8 @@ class ProfessionalHomeScreen extends ConsumerWidget {
         onDestinationSelected: (index) {
           if (index == 1) {
             onRequestsSelected();
+          } else if (index == 3) {
+            onProfileSelected();
           }
         },
       ),

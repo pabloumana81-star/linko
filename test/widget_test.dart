@@ -76,7 +76,7 @@ void main() {
     expect(find.text('Ver perfil'), findsNWidgets(3));
     expect(find.text('Inicio'), findsOneWidget);
     expect(find.text('Buscar'), findsOneWidget);
-    expect(find.text('Solicitudes'), findsOneWidget);
+    expect(find.text('Mis solicitudes'), findsOneWidget);
     expect(find.text('Perfil'), findsOneWidget);
 
     await tester.ensureVisible(find.text('Ver perfil').first);
@@ -91,7 +91,7 @@ void main() {
     expect(find.text('San José'), findsOneWidget);
     expect(find.text('Profesional verificado'), findsOneWidget);
     expect(find.text('8 años de experiencia'), findsOneWidget);
-    expect(find.text('145 servicios completados'), findsOneWidget);
+    expect(find.text('0 servicios completados'), findsOneWidget);
     expect(find.text('Responde en menos de 1 hora'), findsOneWidget);
     expect(find.text('Acerca de'), findsOneWidget);
     expect(find.text('Servicios'), findsOneWidget);
@@ -193,7 +193,7 @@ void main() {
     await tester.tap(find.text('Ver mis solicitudes'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Solicitudes'), findsNWidgets(2));
+    expect(find.text('Mis solicitudes'), findsNWidgets(2));
     expect(find.byType(BackButton), findsNothing);
     await tester.tap(find.text('Inicio'));
     await tester.pumpAndSettle();

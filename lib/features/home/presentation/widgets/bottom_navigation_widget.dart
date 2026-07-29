@@ -28,7 +28,7 @@ class BottomNavigationWidget extends StatelessWidget {
         NavigationDestination(
           icon: Icon(Icons.assignment_outlined),
           selectedIcon: Icon(Icons.assignment_rounded),
-          label: 'Solicitudes',
+          label: 'Mis solicitudes',
         ),
         NavigationDestination(
           icon: Icon(Icons.person_outline_rounded),

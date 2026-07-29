@@ -7,7 +7,7 @@ abstract final class CurrencyFormatter {
       RegExp(r'\B(?=(\d{3})+(?!\d))'),
       (_) => ' ',
     );
-    return '${amount < 0 ? '-' : ''}₡$formatted';
+    return '${amount < 0 ? '-' : ''}₡ $formatted';
   }
 }
 

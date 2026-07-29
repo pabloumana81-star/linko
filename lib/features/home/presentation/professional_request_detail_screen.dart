@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/home/presentation/models/incoming_service_request.dart';
 import 'package:linko/features/home/presentation/models/request_draft.dart';
-import 'package:linko/features/home/presentation/models/request_status.dart';
+import 'package:linko/features/requests/domain/services/request_state_machine.dart';
 import 'package:linko/features/home/presentation/providers/professional_requests_provider.dart';
 import 'package:linko/features/home/presentation/widgets/customer_summary_card.dart';
 import 'package:linko/features/home/presentation/widgets/request_info_banner.dart';
@@ -13,12 +13,20 @@ import 'package:linko/features/home/presentation/widgets/request_summary_item.da
 class ProfessionalRequestDetailScreen extends ConsumerWidget {
   const ProfessionalRequestDetailScreen({
     required this.request,
+    required this.onBack,
     required this.onSendQuotation,
+    required this.onOpenConversation,
+    required this.onStartJob,
+    required this.onMarkJobCompleted,
     super.key,
   });
 
   final IncomingServiceRequest request;
+  final VoidCallback onBack;
   final ValueChanged<IncomingServiceRequest> onSendQuotation;
+  final ValueChanged<IncomingServiceRequest> onOpenConversation;
+  final ValueChanged<IncomingServiceRequest> onStartJob;
+  final ValueChanged<IncomingServiceRequest> onMarkJobCompleted;
 
   Future<void> _confirmRejection(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
@@ -47,7 +55,7 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
     if (confirmed != true || !context.mounted) {
       return;
     }
-    ref.read(professionalRequestsProvider.notifier).reject(request.id);
+    ref.read(professionalRequestFlowProvider.notifier).reject(request.id);
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Solicitud rechazada.')));
@@ -56,7 +64,7 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentRequest = ref
-        .watch(professionalRequestsProvider)
+        .watch(professionalRequestFlowProvider)
         .requests
         .firstWhere((item) => item.id == request.id, orElse: () => request);
     final photoSummary = switch (currentRequest.attachedPhotoCount) {
@@ -64,12 +72,13 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
       1 => '1 foto adjunta',
       final count => '$count fotos adjuntas',
     };
-    final wasRejected = currentRequest.status == RequestStatus.rejected;
-    final wasQuoted = currentRequest.status == RequestStatus.quoted;
+    final actions = currentRequest.status.definition.professionalActions;
+    final primaryAction =
+        currentRequest.status.definition.professionalPrimaryAction;
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: true,
+        leading: BackButton(onPressed: onBack),
         title: const Text('Detalle de solicitud'),
       ),
       body: SingleChildScrollView(
@@ -127,9 +136,8 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
                   showDivider: false,
                 ),
                 const SizedBox(height: 18),
-                const RequestInfoBanner(
-                  message:
-                      'Revisa los detalles antes de enviar una cotización.',
+                RequestInfoBanner(
+                  message: currentRequest.status.definition.nextStep,
                 ),
               ],
             ),
@@ -147,25 +155,37 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: FilledButton(
-                      onPressed: wasRejected
-                          ? null
-                          : () => onSendQuotation(currentRequest),
-                      child: Text(
-                        wasQuoted ? 'Ver cotización' : 'Enviar cotización',
+                  if (primaryAction != null)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton(
+                        key: ValueKey(
+                          'professional-action-${primaryAction.name}',
+                        ),
+                        onPressed: () =>
+                            _runAction(primaryAction, currentRequest),
+                        child: Text(primaryAction.label),
                       ),
                     ),
-                  ),
+                  if (actions.contains(RequestAction.openConversation) &&
+                      primaryAction != RequestAction.openConversation) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => onOpenConversation(currentRequest),
+                        icon: const Icon(Icons.chat_bubble_outline_rounded),
+                        label: const Text('Abrir conversación'),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
-                  TextButton(
-                    onPressed: wasRejected || wasQuoted
-                        ? null
-                        : () => _confirmRejection(context, ref),
-                    child: const Text('Rechazar solicitud'),
-                  ),
+                  if (actions.contains(RequestAction.rejectRequest))
+                    TextButton(
+                      onPressed: () => _confirmRejection(context, ref),
+                      child: Text(RequestAction.rejectRequest.label),
+                    ),
                 ],
               ),
             ),
@@ -173,5 +193,20 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _runAction(RequestAction action, IncomingServiceRequest currentRequest) {
+    switch (action) {
+      case RequestAction.sendQuotation || RequestAction.viewQuotation:
+        onSendQuotation(currentRequest);
+      case RequestAction.proposeSchedule || RequestAction.openConversation:
+        onOpenConversation(currentRequest);
+      case RequestAction.startJob:
+        onStartJob(currentRequest);
+      case RequestAction.markJobCompleted:
+        onMarkJobCompleted(currentRequest);
+      default:
+        break;
+    }
   }
 }

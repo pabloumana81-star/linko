@@ -19,6 +19,7 @@ class IncomingRequestCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Card(
+      key: ValueKey('professional-request-${request.id}'),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onViewRequest,

@@ -41,7 +41,7 @@ class QuotationReviewScreen extends StatelessWidget {
                   QuotationCostSummary(
                     labor: draft.laborAmount,
                     materials: draft.materialsAmount,
-                    totalLabel: 'Total',
+                    totalLabel: 'Total estimado',
                   ),
                   const SizedBox(height: 30),
                   const RequestSectionTitle(label: 'Detalles de la cotización'),
@@ -88,10 +88,22 @@ class QuotationReviewScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: onSend,
+                      key: const ValueKey('send-quotation'),
+                      onPressed: draft.totalAmount > 0 ? onSend : null,
                       child: const Text('Enviar cotización'),
                     ),
                   ),
+                  if (draft.totalAmount <= 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Ingresa un monto válido antes de enviar.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
                   TextButton(
                     onPressed: onEdit,
                     child: const Text('Editar cotización'),
