@@ -1,17 +1,56 @@
 import 'package:flutter/material.dart';
 
-class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({required this.onContinue, super.key});
+class WelcomeScreen extends StatefulWidget {
+  const WelcomeScreen({
+    required this.onContinueAsGuest,
+    required this.onGoogleSignIn,
+    required this.onAppleSignIn,
+    required this.onSendEmailLink,
+    this.isLoading = false,
+    this.message,
+    this.errorMessage,
+    super.key,
+  });
 
-  final VoidCallback onContinue;
+  final VoidCallback onContinueAsGuest;
+  final VoidCallback onGoogleSignIn;
+  final VoidCallback onAppleSignIn;
+  final ValueChanged<String> onSendEmailLink;
+  final bool isLoading;
+  final String? message;
+  final String? errorMessage;
+
+  @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  final _emailController = TextEditingController();
+  String? _emailError;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _sendEmailLink() {
+    final email = _emailController.text.trim();
+    final valid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+    setState(() {
+      _emailError = valid ? null : 'Ingresa un correo electrónico válido.';
+    });
+    if (valid) {
+      widget.onSendEmailLink(email);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: colors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -19,82 +58,101 @@ class WelcomeScreen extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.handshake_rounded,
-                      size: 52,
-                      color: colorScheme.primary,
-                    ),
+                  Icon(
+                    Icons.handshake_rounded,
+                    size: 72,
+                    color: colors.primary,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 18),
                   Text(
                     'LinkO',
+                    textAlign: TextAlign.center,
                     style: textTheme.displaySmall?.copyWith(
-                      color: colorScheme.onSurface,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 5,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Text(
                     'Encuentra profesionales de confianza para cualquier necesidad.',
                     textAlign: TextAlign.center,
                     style: textTheme.titleMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w400,
+                      color: colors.onSurfaceVariant,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 40),
-                  _WelcomeButton(
+                  const SizedBox(height: 32),
+                  _AuthButton(
+                    key: const ValueKey('auth-guest'),
                     label: 'Continuar como invitado',
                     icon: Icons.person_outline_rounded,
-                    isPrimary: true,
-                    onPressed: onContinue,
+                    primary: true,
+                    onPressed: widget.isLoading
+                        ? null
+                        : widget.onContinueAsGuest,
                   ),
-                  const SizedBox(height: 12),
-                  _WelcomeButton(
+                  const SizedBox(height: 10),
+                  _AuthButton(
+                    key: const ValueKey('auth-google'),
                     label: 'Continuar con Google',
                     leading: Text(
                       'G',
-                      style: TextStyle(
-                        color: colorScheme.primary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                      style: textTheme.titleMedium?.copyWith(
+                        color: colors.primary,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    onPressed: onContinue,
+                    onPressed: widget.isLoading ? null : widget.onGoogleSignIn,
                   ),
-                  const SizedBox(height: 12),
-                  _WelcomeButton(
+                  const SizedBox(height: 10),
+                  _AuthButton(
+                    key: const ValueKey('auth-apple'),
                     label: 'Continuar con Apple',
                     icon: Icons.apple,
-                    onPressed: onContinue,
+                    onPressed: widget.isLoading ? null : widget.onAppleSignIn,
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    key: const ValueKey('auth-email'),
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [AutofillHints.email],
+                    onSubmitted: (_) => _sendEmailLink(),
+                    decoration: InputDecoration(
+                      labelText: 'Correo electrónico',
+                      hintText: 'nombre@correo.com',
+                      errorText: _emailError,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  _WelcomeButton(
-                    label: 'Continuar con correo',
-                    icon: Icons.email_outlined,
-                    onPressed: onContinue,
+                  FilledButton.icon(
+                    key: const ValueKey('auth-email-submit'),
+                    onPressed: widget.isLoading ? null : _sendEmailLink,
+                    icon: const Icon(Icons.email_outlined),
+                    label: const Text('Recibir enlace de acceso'),
                   ),
-                  const SizedBox(height: 28),
-                  TextButton(
-                    onPressed: onContinue,
-                    style: TextButton.styleFrom(
-                      foregroundColor: colorScheme.primary,
-                      textStyle: textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  if (widget.isLoading) ...[
+                    const SizedBox(height: 20),
+                    const Center(child: CircularProgressIndicator()),
+                  ],
+                  if (widget.message != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.message!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: colors.tertiary),
                     ),
-                    child: const Text('Soy profesional'),
-                  ),
+                  ],
+                  if (widget.errorMessage != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: colors.error),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -105,72 +163,37 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-class _WelcomeButton extends StatelessWidget {
-  const _WelcomeButton({
+class _AuthButton extends StatelessWidget {
+  const _AuthButton({
     required this.label,
     required this.onPressed,
     this.icon,
     this.leading,
-    this.isPrimary = false,
+    this.primary = false,
+    super.key,
   });
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final IconData? icon;
   final Widget? leading;
-  final bool isPrimary;
+  final bool primary;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final content = Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         SizedBox(width: 24, child: leading ?? Icon(icon, size: 22)),
         const SizedBox(width: 12),
-        Expanded(
-          child: FittedBox(fit: BoxFit.scaleDown, child: Text(label)),
-        ),
-        const SizedBox(width: 36),
+        Text(label),
       ],
     );
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(18),
-    );
-    final textStyle = Theme.of(
-      context,
-    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600);
-
-    if (isPrimary) {
-      return SizedBox(
-        width: double.infinity,
-        height: 58,
-        child: FilledButton(
-          onPressed: onPressed,
-          style: FilledButton.styleFrom(
-            backgroundColor: colorScheme.primary,
-            foregroundColor: colorScheme.onPrimary,
-            shape: shape,
-            textStyle: textStyle,
-          ),
-          child: content,
-        ),
-      );
-    }
-
     return SizedBox(
-      width: double.infinity,
-      height: 58,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: colorScheme.onSurface,
-          side: BorderSide(color: colorScheme.outline),
-          shape: shape,
-          textStyle: textStyle,
-        ),
-        child: content,
-      ),
+      height: 54,
+      child: primary
+          ? FilledButton(onPressed: onPressed, child: content)
+          : OutlinedButton(onPressed: onPressed, child: content),
     );
   }
 }

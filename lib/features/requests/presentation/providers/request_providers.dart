@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:linko/features/requests/data/mock_request_repository.dart';
+import 'package:linko/core/backend/backend_providers.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/quotation.dart';
@@ -11,7 +11,7 @@ const currentCustomerId = 'customer-current';
 const currentProfessionalId = 'professional-carlos';
 
 final requestRepositoryProvider = Provider<RequestRepository>(
-  (ref) => MockRequestRepository(),
+  (ref) => ref.watch(backendRepositoriesProvider).mvpCompatibilityRequests,
 );
 
 final customerRequestsProvider = Provider<List<ServiceRequest>>((ref) {

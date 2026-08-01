@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/app/app_mode.dart';
+import 'package:linko/features/auth/presentation/auth_controller.dart';
 import 'package:linko/features/home/presentation/widgets/bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/widgets/professional_bottom_navigation_widget.dart';
 
-class ModeProfileScreen extends StatelessWidget {
+class ModeProfileScreen extends ConsumerWidget {
   const ModeProfileScreen({
     required this.mode,
     required this.onChangeMode,
     required this.onHomeSelected,
     required this.onRequestsSelected,
     this.onSearchSelected,
+    this.onSignOut,
     super.key,
   });
 
@@ -18,10 +21,12 @@ class ModeProfileScreen extends StatelessWidget {
   final VoidCallback onHomeSelected;
   final VoidCallback onRequestsSelected;
   final VoidCallback? onSearchSelected;
+  final VoidCallback? onSignOut;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isCustomer = mode == AppMode.customer;
+    final profile = ref.watch(authControllerProvider).user;
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -40,11 +45,21 @@ class ModeProfileScreen extends StatelessWidget {
                   radius: 42,
                   backgroundColor: colors.primaryContainer,
                   foregroundColor: colors.onPrimaryContainer,
-                  child: const Icon(Icons.person_rounded, size: 44),
+                  backgroundImage:
+                      profile?.avatarUrl == null || profile!.avatarUrl!.isEmpty
+                      ? null
+                      : NetworkImage(profile.avatarUrl!),
+                  child:
+                      profile?.avatarUrl == null || profile!.avatarUrl!.isEmpty
+                      ? const Icon(Icons.person_rounded, size: 44)
+                      : null,
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  isCustomer ? 'Perfil del cliente' : 'Perfil profesional',
+                  profile?.displayName ??
+                      (isCustomer
+                          ? 'Perfil del cliente'
+                          : 'Perfil profesional'),
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
@@ -99,6 +114,15 @@ class ModeProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (onSignOut != null) ...[
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    key: const ValueKey('auth-sign-out'),
+                    onPressed: onSignOut,
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('Cerrar sesión'),
+                  ),
+                ],
               ],
             ),
           ),

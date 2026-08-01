@@ -35,8 +35,8 @@ void main() {
     expect(find.text('Continuar como invitado'), findsOneWidget);
     expect(find.text('Continuar con Google'), findsOneWidget);
     expect(find.text('Continuar con Apple'), findsOneWidget);
-    expect(find.text('Continuar con correo'), findsOneWidget);
-    expect(find.text('Soy profesional'), findsOneWidget);
+    expect(find.text('Correo electrónico'), findsOneWidget);
+    expect(find.text('Recibir enlace de acceso'), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
 
     await tester.tap(find.text('Continuar como invitado'));

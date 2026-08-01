@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/auth/presentation/user_type_screen.dart';
 import 'package:linko/features/auth/presentation/welcome_screen.dart';
+import 'package:linko/features/auth/presentation/auth_controller.dart';
 import 'package:linko/app/app_mode.dart';
 import 'package:linko/app/app_mode_provider.dart';
 import 'package:linko/features/home/presentation/data/placeholder_professionals.dart';
@@ -204,22 +205,98 @@ void _popOrGo(BuildContext context, String fallbackLocation) {
   }
 }
 
+void _goToAuthenticatedHome(
+  BuildContext context,
+  ProviderContainer container,
+  AuthState auth,
+) {
+  final AppMode mode =
+      auth.user?.activeMode ??
+      container.read(appModeProvider) ??
+      AppMode.customer;
+  container.read(appModeProvider.notifier).select(mode);
+  context.go(
+    mode == AppMode.customer ? AppRoutes.guestHome : AppRoutes.professionalHome,
+  );
+}
+
+Future<void> _signOut(BuildContext context) async {
+  final container = ProviderScope.containerOf(context, listen: false);
+  await container.read(authControllerProvider.notifier).signOut();
+  if (context.mounted) {
+    context.go(AppRoutes.welcome);
+  }
+}
+
 final GoRouter appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
   routes: [
     GoRoute(
       path: AppRoutes.splash,
       builder: (context, state) {
-        return LinkoSplashScreen(
-          onComplete: () => context.go(AppRoutes.welcome),
+        return Consumer(
+          builder: (context, ref, child) {
+            ref.watch(authControllerProvider);
+            return LinkoSplashScreen(
+              onComplete: () async {
+                final notifier = ref.read(authControllerProvider.notifier);
+                await notifier.restoreSession();
+                if (!context.mounted) {
+                  return;
+                }
+                final auth = ref.read(authControllerProvider);
+                if (auth.status == AuthStatus.authenticated) {
+                  _goToAuthenticatedHome(
+                    context,
+                    ProviderScope.containerOf(context, listen: false),
+                    auth,
+                  );
+                } else {
+                  context.go(AppRoutes.welcome);
+                }
+              },
+            );
+          },
         );
       },
     ),
     GoRoute(
       path: AppRoutes.welcome,
       builder: (context, state) {
-        return WelcomeScreen(
-          onContinue: () => context.push(AppRoutes.userType),
+        return Consumer(
+          builder: (context, ref, child) {
+            final auth = ref.watch(authControllerProvider);
+            final notifier = ref.read(authControllerProvider.notifier);
+            Future<void> authenticate(Future<void> Function() action) async {
+              await action();
+              if (!context.mounted) {
+                return;
+              }
+              final updated = ref.read(authControllerProvider);
+              if (updated.status == AuthStatus.authenticated) {
+                _goToAuthenticatedHome(
+                  context,
+                  ProviderScope.containerOf(context, listen: false),
+                  updated,
+                );
+              }
+            }
+
+            return WelcomeScreen(
+              isLoading: auth.status == AuthStatus.loading,
+              message: auth.message,
+              errorMessage: auth.error == null
+                  ? null
+                  : 'No fue posible iniciar sesión. Intenta nuevamente.',
+              onContinueAsGuest: () {
+                notifier.continueAsGuest();
+                context.push(AppRoutes.userType);
+              },
+              onGoogleSignIn: () => authenticate(notifier.signInWithGoogle),
+              onAppleSignIn: () => authenticate(notifier.signInWithApple),
+              onSendEmailLink: notifier.sendEmailLink,
+            );
+          },
         );
       },
     ),
@@ -232,6 +309,9 @@ final GoRouter appRouter = GoRouter(
               context,
               listen: false,
             ).read(appModeProvider.notifier).select(AppMode.customer);
+            ProviderScope.containerOf(context, listen: false)
+                .read(authControllerProvider.notifier)
+                .updateActiveMode(AppMode.customer);
             context.go(AppRoutes.guestHome);
           },
           onProfessionalSelected: () {
@@ -239,6 +319,9 @@ final GoRouter appRouter = GoRouter(
               context,
               listen: false,
             ).read(appModeProvider.notifier).select(AppMode.professional);
+            ProviderScope.containerOf(context, listen: false)
+                .read(authControllerProvider.notifier)
+                .updateActiveMode(AppMode.professional);
             context.go(AppRoutes.professionalHome);
           },
         );
@@ -392,8 +475,12 @@ final GoRouter appRouter = GoRouter(
               context,
               listen: false,
             ).read(appModeProvider.notifier).select(AppMode.customer);
+            ProviderScope.containerOf(context, listen: false)
+                .read(authControllerProvider.notifier)
+                .updateActiveMode(AppMode.customer);
             context.go(AppRoutes.guestHome);
           },
+          onSignOut: () => _signOut(context),
           onHomeSelected: () => context.go(AppRoutes.professionalHome),
           onRequestsSelected: () => context.go(AppRoutes.professionalRequests),
         );
@@ -710,8 +797,12 @@ final GoRouter appRouter = GoRouter(
               context,
               listen: false,
             ).read(appModeProvider.notifier).select(AppMode.professional);
+            ProviderScope.containerOf(context, listen: false)
+                .read(authControllerProvider.notifier)
+                .updateActiveMode(AppMode.professional);
             context.go(AppRoutes.professionalHome);
           },
+          onSignOut: () => _signOut(context),
           onHomeSelected: () => context.go(AppRoutes.guestHome),
           onSearchSelected: () => context.go(AppRoutes.search),
           onRequestsSelected: () => context.go(AppRoutes.customerRequests),
