@@ -10,6 +10,7 @@ import 'package:linko/core/backend/repositories/ratings_repository.dart';
 import 'package:linko/core/backend/repositories/service_requests_repository.dart';
 import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
+import 'package:linko/features/requests/domain/models/conversation.dart';
 import 'package:linko/features/requests/domain/models/professional_profile.dart';
 import 'package:linko/features/requests/domain/models/quotation.dart';
 import 'package:linko/features/requests/domain/models/request_state.dart';
@@ -194,6 +195,137 @@ class MockConversationsRepository implements ConversationsRepository {
   MockConversationsRepository(this._requests);
 
   final RequestRepository _requests;
+  final Map<String, StreamController<List<ConversationMessage>>> _watchers = {};
+
+  @override
+  Future<Conversation> getOrCreateConversation({
+    required String serviceRequestId,
+    required String customerId,
+    required String professionalId,
+  }) async {
+    final now = DateTime.now().toUtc();
+    return Conversation(
+      id: 'mock-conversation-$serviceRequestId',
+      serviceRequestId: serviceRequestId,
+      customerId: customerId,
+      professionalId: professionalId,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  @override
+  Future<List<ConversationMessage>> listMessages(String conversationId) async {
+    const prefix = 'mock-conversation-';
+    if (!conversationId.startsWith(prefix)) return const [];
+    return _requests.getMessages(conversationId.substring(prefix.length));
+  }
+
+  @override
+  Future<ConversationMessage> sendTextMessage({
+    required String conversationId,
+    required String serviceRequestId,
+    required String senderId,
+    required MessageAuthor author,
+    required String body,
+  }) async => _send(
+    ConversationMessage(
+      id: '$conversationId-${DateTime.now().microsecondsSinceEpoch}',
+      requestId: serviceRequestId,
+      conversationId: conversationId,
+      senderId: senderId,
+      author: author,
+      text: body,
+      timeLabel: 'Ahora',
+      createdAt: DateTime.now().toUtc(),
+    ),
+  );
+
+  @override
+  Future<ConversationMessage> sendSystemMessage({
+    required String conversationId,
+    required String serviceRequestId,
+    required String body,
+    Map<String, dynamic>? metadata,
+  }) async => _send(
+    ConversationMessage(
+      id: '$conversationId-${DateTime.now().microsecondsSinceEpoch}',
+      requestId: serviceRequestId,
+      conversationId: conversationId,
+      author: MessageAuthor.system,
+      text: body,
+      timeLabel: 'Ahora',
+      type: ConversationMessageType.system,
+      metadata: metadata,
+      createdAt: DateTime.now().toUtc(),
+    ),
+  );
+
+  @override
+  Future<ConversationMessage> sendActionCard({
+    required String conversationId,
+    required String serviceRequestId,
+    required String senderId,
+    required MessageAuthor author,
+    required ConversationMessageType actionType,
+    required String body,
+    required Map<String, dynamic> metadata,
+  }) async => _send(
+    ConversationMessage(
+      id: '$conversationId-${DateTime.now().microsecondsSinceEpoch}',
+      requestId: serviceRequestId,
+      conversationId: conversationId,
+      senderId: senderId,
+      author: author,
+      text: body,
+      timeLabel: 'Ahora',
+      type: actionType,
+      metadata: metadata,
+      createdAt: DateTime.now().toUtc(),
+    ),
+  );
+
+  ConversationMessage _send(ConversationMessage message) {
+    _requests.sendMessage(message);
+    final conversationId = message.conversationId;
+    if (conversationId != null) {
+      final watcher = _watchers[conversationId];
+      if (watcher != null && !watcher.isClosed) {
+        unawaited(listMessages(conversationId).then(watcher.add));
+      }
+    }
+    return message;
+  }
+
+  @override
+  Stream<List<ConversationMessage>> watchMessages(String conversationId) {
+    final controller = _watchers.putIfAbsent(
+      conversationId,
+      StreamController<List<ConversationMessage>>.broadcast,
+    );
+    scheduleMicrotask(() async {
+      if (!controller.isClosed) {
+        controller.add(await listMessages(conversationId));
+      }
+    });
+    return controller.stream;
+  }
+
+  @override
+  Stream<ConversationConnectionStatus> watchConnection(String conversationId) =>
+      Stream.value(ConversationConnectionStatus.connected);
+
+  @override
+  Future<void> disposeConversation(String conversationId) async {
+    await _watchers.remove(conversationId)?.close();
+  }
+
+  @override
+  Future<void> dispose() async {
+    for (final id in _watchers.keys.toList()) {
+      await disposeConversation(id);
+    }
+  }
 
   @override
   Future<List<ConversationMessage>> getMessages(String requestId) async =>

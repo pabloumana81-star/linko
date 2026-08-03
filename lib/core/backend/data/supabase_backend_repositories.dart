@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:linko/app/app_mode.dart';
 import 'package:linko/core/backend/repositories/authentication_repository.dart';
 import 'package:linko/core/backend/repositories/conversations_repository.dart';
@@ -16,6 +18,8 @@ import 'package:linko/features/requests/domain/models/service_rating.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/timeline_event.dart';
 import 'package:linko/features/requests/data/service_request_supabase_mapper.dart';
+import 'package:linko/features/requests/data/conversation_supabase_mapper.dart';
+import 'package:linko/features/requests/domain/models/conversation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAuthenticationRepository implements AuthenticationRepository {
@@ -280,32 +284,299 @@ class ServiceRequestsRepositorySupabase implements ServiceRequestsRepository {
 
 typedef SupabaseServiceRequestsRepository = ServiceRequestsRepositorySupabase;
 
-class SupabaseConversationsRepository implements ConversationsRepository {
-  SupabaseConversationsRepository(this._client);
+class ConversationsRepositorySupabase implements ConversationsRepository {
+  ConversationsRepositorySupabase(
+    this._client, [
+    this._mapper = const ConversationSupabaseMapper(),
+  ]);
 
   final SupabaseClient _client;
+  final ConversationSupabaseMapper _mapper;
+  final Map<String, Conversation> _conversations = {};
+  final Map<String, _RealtimeConversation> _subscriptions = {};
+
+  @override
+  Future<Conversation> getOrCreateConversation({
+    required String serviceRequestId,
+    required String customerId,
+    required String professionalId,
+  }) async {
+    var row = await _client
+        .from('conversations')
+        .select()
+        .eq('service_request_id', serviceRequestId)
+        .maybeSingle();
+    if (row == null) {
+      try {
+        row = await _client
+            .from('conversations')
+            .insert({
+              'service_request_id': serviceRequestId,
+              'customer_id': customerId,
+              'professional_id': professionalId,
+            })
+            .select()
+            .single();
+      } on PostgrestException catch (error) {
+        if (error.code != '23505') rethrow;
+        row = await _client
+            .from('conversations')
+            .select()
+            .eq('service_request_id', serviceRequestId)
+            .single();
+      }
+    }
+    final conversation = _mapper.conversationFromRow(row);
+    _conversations[conversation.id] = conversation;
+    return conversation;
+  }
+
+  @override
+  Future<List<ConversationMessage>> listMessages(String conversationId) async {
+    final conversation = _requireConversation(conversationId);
+    final rows = await _client
+        .from('messages')
+        .select()
+        .eq('conversation_id', conversationId)
+        .order('created_at')
+        .order('id');
+    return rows
+        .map((row) => _message(row, conversation))
+        .toList(growable: false);
+  }
+
+  @override
+  Future<ConversationMessage> sendTextMessage({
+    required String conversationId,
+    required String serviceRequestId,
+    required String senderId,
+    required MessageAuthor author,
+    required String body,
+  }) => _insertMessage(
+    conversationId: conversationId,
+    senderId: senderId,
+    type: 'text',
+    body: body,
+  );
+
+  @override
+  Future<ConversationMessage> sendSystemMessage({
+    required String conversationId,
+    required String serviceRequestId,
+    required String body,
+    Map<String, dynamic>? metadata,
+  }) => _insertMessage(
+    conversationId: conversationId,
+    senderId: null,
+    type: 'system',
+    body: body,
+    metadata: metadata,
+  );
+
+  @override
+  Future<ConversationMessage> sendActionCard({
+    required String conversationId,
+    required String serviceRequestId,
+    required String senderId,
+    required MessageAuthor author,
+    required ConversationMessageType actionType,
+    required String body,
+    required Map<String, dynamic> metadata,
+  }) => _insertMessage(
+    conversationId: conversationId,
+    senderId: senderId,
+    type: 'actionCard',
+    body: body,
+    metadata: {...metadata, 'action_type': _mapper.actionType(actionType)},
+  );
+
+  Future<ConversationMessage> _insertMessage({
+    required String conversationId,
+    required String? senderId,
+    required String type,
+    required String? body,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final conversation = _requireConversation(conversationId);
+    final row = await _client
+        .from('messages')
+        .insert(
+          _mapper.messageToInsert(
+            conversationId: conversationId,
+            senderId: senderId,
+            type: type,
+            body: body,
+            metadata: metadata,
+          ),
+        )
+        .select()
+        .single();
+    final message = _message(row, conversation);
+    _subscriptions[conversationId]?.add(message);
+    return message;
+  }
+
+  @override
+  Stream<List<ConversationMessage>> watchMessages(String conversationId) {
+    final existing = _subscriptions[conversationId];
+    if (existing != null) return existing.messages.stream;
+    final conversation = _requireConversation(conversationId);
+    final realtime = _RealtimeConversation();
+    _subscriptions[conversationId] = realtime;
+    realtime.connection.add(ConversationConnectionStatus.connecting);
+    () async {
+      try {
+        final channel = _client
+            .channel('messages:$conversationId')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.insert,
+              schema: 'public',
+              table: 'messages',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'conversation_id',
+                value: conversationId,
+              ),
+              callback: (payload) {
+                if (!realtime.disposed) {
+                  realtime.add(_message(payload.newRecord, conversation));
+                }
+              },
+            )
+            .subscribe((status, error) {
+              if (realtime.disposed) return;
+              if (status == RealtimeSubscribeStatus.subscribed) {
+                realtime.connection.add(ConversationConnectionStatus.connected);
+                unawaited(
+                  listMessages(conversationId).then(realtime.addAll).catchError(
+                    (Object error, StackTrace stackTrace) {
+                      if (!realtime.disposed) {
+                        realtime.messages.addError(error, stackTrace);
+                      }
+                    },
+                  ),
+                );
+              } else {
+                realtime.connection.add(
+                  ConversationConnectionStatus.disconnected,
+                );
+              }
+            });
+        realtime.channel = channel;
+        realtime.addAll(await listMessages(conversationId));
+      } catch (error, stackTrace) {
+        if (!realtime.disposed) {
+          realtime.messages.addError(error, stackTrace);
+          realtime.connection.add(ConversationConnectionStatus.disconnected);
+        }
+      }
+    }();
+    return realtime.messages.stream;
+  }
+
+  @override
+  Stream<ConversationConnectionStatus> watchConnection(String conversationId) {
+    watchMessages(conversationId);
+    return _subscriptions[conversationId]!.connection.stream;
+  }
+
+  @override
+  Future<void> disposeConversation(String conversationId) async {
+    final realtime = _subscriptions.remove(conversationId);
+    if (realtime == null) return;
+    realtime.disposed = true;
+    final channel = realtime.channel;
+    if (channel != null) await _client.removeChannel(channel);
+    await realtime.messages.close();
+    await realtime.connection.close();
+  }
+
+  @override
+  Future<void> dispose() async {
+    for (final id in _subscriptions.keys.toList()) {
+      await disposeConversation(id);
+    }
+  }
 
   @override
   Future<List<ConversationMessage>> getMessages(String requestId) async {
-    final rows = await _client
-        .from('conversation_messages')
+    final row = await _client
+        .from('conversations')
         .select()
-        .eq('request_id', requestId)
-        .order('created_at');
-    return rows.map(_conversationMessage).toList(growable: false);
+        .eq('service_request_id', requestId)
+        .maybeSingle();
+    if (row == null) return const [];
+    final conversation = _mapper.conversationFromRow(row);
+    _conversations[conversation.id] = conversation;
+    return listMessages(conversation.id);
   }
 
   @override
   Future<void> sendMessage(ConversationMessage message) async {
-    await _client.from('conversation_messages').insert({
-      'id': message.id,
-      'request_id': message.requestId,
-      'author': message.author.name,
-      'body': message.text,
-      'type': message.type.name,
-      'schedule_label': message.scheduleLabel,
-      'schedule_status': message.scheduleStatus?.name,
-    });
+    final conversationId = message.conversationId;
+    if (conversationId == null) {
+      throw StateError('La conversación no está disponible.');
+    }
+    if (message.type == ConversationMessageType.text) {
+      await sendTextMessage(
+        conversationId: conversationId,
+        serviceRequestId: message.requestId,
+        senderId: message.senderId!,
+        author: message.author,
+        body: message.text,
+      );
+    } else if (message.type == ConversationMessageType.system) {
+      await sendSystemMessage(
+        conversationId: conversationId,
+        serviceRequestId: message.requestId,
+        body: message.text,
+        metadata: message.metadata,
+      );
+    } else {
+      await sendActionCard(
+        conversationId: conversationId,
+        serviceRequestId: message.requestId,
+        senderId: message.senderId!,
+        author: message.author,
+        actionType: message.type,
+        body: message.text,
+        metadata: message.metadata ?? const {},
+      );
+    }
+  }
+
+  Conversation _requireConversation(String id) {
+    final conversation = _conversations[id];
+    if (conversation == null) {
+      throw StateError('La conversación no está disponible.');
+    }
+    return conversation;
+  }
+
+  ConversationMessage _message(
+    Map<String, dynamic> row,
+    Conversation conversation,
+  ) => _mapper.messageFromRow(
+    row,
+    serviceRequestId: conversation.serviceRequestId,
+    customerId: conversation.customerId,
+    professionalId: conversation.professionalId,
+  );
+}
+
+typedef SupabaseConversationsRepository = ConversationsRepositorySupabase;
+
+class _RealtimeConversation {
+  final messages = StreamController<List<ConversationMessage>>.broadcast();
+  final connection = StreamController<ConversationConnectionStatus>.broadcast();
+  final buffer = ConversationMessageBuffer();
+  RealtimeChannel? channel;
+  bool disposed = false;
+
+  void add(ConversationMessage message) => addAll([message]);
+
+  void addAll(Iterable<ConversationMessage> values) {
+    if (!disposed) messages.add(buffer.merge(values));
   }
 }
 
@@ -413,25 +684,6 @@ ProfessionalProfile _professional(Map<String, dynamic> row) {
   );
 }
 
-ConversationMessage _conversationMessage(Map<String, dynamic> row) {
-  final scheduleStatus = row['schedule_status'] as String?;
-  return ConversationMessage(
-    id: row['id'] as String,
-    requestId: row['request_id'] as String,
-    author: _enumByName(MessageAuthor.values, row['author'] as String),
-    text: row['body'] as String,
-    timeLabel: row['time_label'] as String? ?? 'Ahora',
-    type: _enumByName(
-      ConversationMessageType.values,
-      row['type'] as String? ?? 'text',
-    ),
-    scheduleLabel: row['schedule_label'] as String?,
-    scheduleStatus: scheduleStatus == null
-        ? null
-        : _enumByName(ScheduleProposalStatus.values, scheduleStatus),
-  );
-}
-
 Quotation _quotation(Map<String, dynamic> row) => Quotation(
   requestId: row['request_id'] as String,
   laborAmount: (row['labor_amount'] as num).toInt(),
@@ -450,10 +702,3 @@ ServiceRating _rating(Map<String, dynamic> row) => ServiceRating(
   stars: (row['stars'] as num).toInt(),
   comment: row['comment'] as String?,
 );
-
-T _enumByName<T extends Enum>(List<T> values, String name) {
-  return values.firstWhere(
-    (value) => value.name == name,
-    orElse: () => throw FormatException('Valor de enum desconocido: $name'),
-  );
-}

@@ -76,7 +76,7 @@ class BackendRepositoryFactory {
       professionals: SupabaseProfessionalsRepository(supabaseClient),
       profile: ProfileRepositorySupabase(supabaseClient),
       serviceRequests: ServiceRequestsRepositorySupabase(supabaseClient),
-      conversations: SupabaseConversationsRepository(supabaseClient),
+      conversations: ConversationsRepositorySupabase(supabaseClient),
       quotations: SupabaseQuotationsRepository(supabaseClient),
       ratings: SupabaseRatingsRepository(supabaseClient),
       mvpCompatibilityRequests: compatibility,

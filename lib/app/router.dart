@@ -544,25 +544,63 @@ final GoRouter appRouter = GoRouter(
       name: AppRouteNames.professionalConversation,
       builder: (context, state) {
         final request = _incomingRequestFromState(context, state);
-        return ConversationScreen(
-          requestId: request.id,
-          counterpartName: request.customerName,
-          serviceName: request.serviceCategory,
-          requestStatus: request.status,
-          perspective: ConversationPerspective.professional,
-          initialMessages: ProviderScope.containerOf(
-            context,
-            listen: false,
-          ).read(conversationProvider(request.id)),
-          onBack: () => _popOrGo(context, AppRoutes.professionalRequests),
-          onSendMessage: (text) =>
-              _sendConversationMessage(context, request.id, text, true),
-          onProposeSchedule: (scheduleLabel) {
-            final container = ProviderScope.containerOf(context, listen: false);
-            container
-                .read(requestRepositoryProvider)
-                .proposeSchedule(request.id, scheduleLabel);
-            _invalidateScheduleData(container, request.id);
+        return Consumer(
+          builder: (context, ref, child) {
+            final isMock =
+                ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
+            final persisted = isMock
+                ? null
+                : ref.watch(persistedRequestDetailProvider(request.id));
+            if (persisted?.isLoading ?? false) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (persisted?.hasError ?? false) {
+              return const Scaffold(
+                body: Center(child: Text('No pudimos cargar la conversación.')),
+              );
+            }
+            final serviceRequest = persisted?.value;
+            return ConversationScreen(
+              requestId: request.id,
+              counterpartName: request.customerName,
+              serviceName: request.serviceCategory,
+              requestStatus: request.status,
+              perspective: ConversationPerspective.professional,
+              initialMessages: isMock
+                  ? ref.watch(conversationProvider(request.id))
+                  : const [],
+              realtime: serviceRequest == null
+                  ? null
+                  : ConversationRealtimeConfig(
+                      repository: ref.watch(conversationsRepositoryProvider),
+                      customerId: serviceRequest.customer.id,
+                      professionalId: serviceRequest.professional.id,
+                      senderId: serviceRequest.professional.id,
+                    ),
+              onBack: () => _popOrGo(context, AppRoutes.professionalRequests),
+              onSendMessage: isMock
+                  ? (text) => _sendConversationMessage(
+                      context,
+                      request.id,
+                      text,
+                      true,
+                    )
+                  : null,
+              onProposeSchedule: isMock
+                  ? (scheduleLabel) {
+                      final container = ProviderScope.containerOf(
+                        context,
+                        listen: false,
+                      );
+                      container
+                          .read(requestRepositoryProvider)
+                          .proposeSchedule(request.id, scheduleLabel);
+                      _invalidateScheduleData(container, request.id);
+                    }
+                  : null,
+            );
           },
         );
       },
@@ -1007,44 +1045,91 @@ final GoRouter appRouter = GoRouter(
       name: AppRouteNames.customerConversation,
       builder: (context, state) {
         final request = _customerRequestFromState(context, state);
-        return ConversationScreen(
-          requestId: request.id,
-          counterpartName: request.professionalName,
-          serviceName: request.serviceName,
-          requestStatus: request.status,
-          perspective: ConversationPerspective.customer,
-          initialMessages: ProviderScope.containerOf(
-            context,
-            listen: false,
-          ).read(conversationProvider(request.id)),
-          onBack: () => _popOrGo(context, AppRoutes.customerRequests),
-          onSendMessage: (text) =>
-              _sendConversationMessage(context, request.id, text, false),
-          onConfirmSchedule: (messageId) {
-            final container = ProviderScope.containerOf(context, listen: false);
-            container
-                .read(requestRepositoryProvider)
-                .confirmSchedule(request.id, messageId);
-            _invalidateScheduleData(container, request.id);
-          },
-          onRequestScheduleChange: (messageId) {
-            final container = ProviderScope.containerOf(context, listen: false);
-            container
-                .read(requestRepositoryProvider)
-                .requestScheduleChange(request.id, messageId);
-            _invalidateScheduleData(container, request.id);
-          },
-          onConfirmJob: () {
-            final container = ProviderScope.containerOf(context, listen: false);
-            container.read(requestRepositoryProvider).confirmJob(request.id);
-            _invalidateScheduleData(container, request.id);
-          },
-          onReportProblem: () {
-            final container = ProviderScope.containerOf(context, listen: false);
-            container
-                .read(requestRepositoryProvider)
-                .reportCompletedWorkProblem(request.id);
-            _invalidateScheduleData(container, request.id);
+        return Consumer(
+          builder: (context, ref, child) {
+            final isMock =
+                ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
+            final persisted = isMock
+                ? null
+                : ref.watch(persistedRequestDetailProvider(request.id));
+            if (persisted?.isLoading ?? false) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (persisted?.hasError ?? false) {
+              return const Scaffold(
+                body: Center(child: Text('No pudimos cargar la conversación.')),
+              );
+            }
+            final serviceRequest = persisted?.value;
+            return ConversationScreen(
+              requestId: request.id,
+              counterpartName: request.professionalName,
+              serviceName: request.serviceName,
+              requestStatus: request.status,
+              perspective: ConversationPerspective.customer,
+              initialMessages: isMock
+                  ? ref.watch(conversationProvider(request.id))
+                  : const [],
+              realtime: serviceRequest == null
+                  ? null
+                  : ConversationRealtimeConfig(
+                      repository: ref.watch(conversationsRepositoryProvider),
+                      customerId: serviceRequest.customer.id,
+                      professionalId: serviceRequest.professional.id,
+                      senderId: serviceRequest.customer.id,
+                    ),
+              onBack: () => _popOrGo(context, AppRoutes.customerRequests),
+              onSendMessage: isMock
+                  ? (text) => _sendConversationMessage(
+                      context,
+                      request.id,
+                      text,
+                      false,
+                    )
+                  : null,
+              onConfirmSchedule: (messageId) {
+                final container = ProviderScope.containerOf(
+                  context,
+                  listen: false,
+                );
+                container
+                    .read(requestRepositoryProvider)
+                    .confirmSchedule(request.id, messageId);
+                _invalidateScheduleData(container, request.id);
+              },
+              onRequestScheduleChange: (messageId) {
+                final container = ProviderScope.containerOf(
+                  context,
+                  listen: false,
+                );
+                container
+                    .read(requestRepositoryProvider)
+                    .requestScheduleChange(request.id, messageId);
+                _invalidateScheduleData(container, request.id);
+              },
+              onConfirmJob: () {
+                final container = ProviderScope.containerOf(
+                  context,
+                  listen: false,
+                );
+                container
+                    .read(requestRepositoryProvider)
+                    .confirmJob(request.id);
+                _invalidateScheduleData(container, request.id);
+              },
+              onReportProblem: () {
+                final container = ProviderScope.containerOf(
+                  context,
+                  listen: false,
+                );
+                container
+                    .read(requestRepositoryProvider)
+                    .reportCompletedWorkProblem(request.id);
+                _invalidateScheduleData(container, request.id);
+              },
+            );
           },
         );
       },

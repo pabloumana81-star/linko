@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:linko/core/backend/repositories/conversations_repository.dart';
 import 'package:linko/core/utils/schedule_date_formatter.dart';
 import 'package:linko/features/home/presentation/widgets/conversation_widgets.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
@@ -6,6 +9,20 @@ import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/requests/domain/services/request_state_machine.dart';
 
 enum ConversationPerspective { customer, professional }
+
+class ConversationRealtimeConfig {
+  const ConversationRealtimeConfig({
+    required this.repository,
+    required this.customerId,
+    required this.professionalId,
+    required this.senderId,
+  });
+
+  final ConversationsRepository repository;
+  final String customerId;
+  final String professionalId;
+  final String senderId;
+}
 
 class ConversationScreen extends StatefulWidget {
   const ConversationScreen({
@@ -22,6 +39,7 @@ class ConversationScreen extends StatefulWidget {
     this.onConfirmJob,
     this.onReportProblem,
     this.onBack,
+    this.realtime,
     super.key,
   });
 
@@ -38,6 +56,7 @@ class ConversationScreen extends StatefulWidget {
   final VoidCallback? onConfirmJob;
   final VoidCallback? onReportProblem;
   final VoidCallback? onBack;
+  final ConversationRealtimeConfig? realtime;
 
   @override
   State<ConversationScreen> createState() => _ConversationScreenState();
@@ -48,6 +67,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
   final _scrollController = ScrollController();
   late final List<ConversationMessage> _messages;
   late RequestStatus _requestStatus;
+  StreamSubscription<List<ConversationMessage>>? _messageSubscription;
+  StreamSubscription<ConversationConnectionStatus>? _connectionSubscription;
+  String? _conversationId;
+  bool _loading = false;
+  bool _sending = false;
+  Object? _loadError;
+  ConversationConnectionStatus _connectionStatus =
+      ConversationConnectionStatus.connecting;
 
   @override
   void initState() {
@@ -58,6 +85,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
       ),
     );
     _requestStatus = widget.requestStatus;
+    if (widget.realtime != null) {
+      _loading = true;
+      unawaited(_initializeRealtime());
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
@@ -71,6 +102,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   @override
   void dispose() {
+    final conversationId = _conversationId;
+    unawaited(_messageSubscription?.cancel());
+    unawaited(_connectionSubscription?.cancel());
+    if (conversationId != null) {
+      unawaited(
+        widget.realtime?.repository.disposeConversation(conversationId),
+      );
+    }
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -92,9 +131,86 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  void _sendMessage() {
+  Future<void> _initializeRealtime() async {
+    final config = widget.realtime!;
+    try {
+      final previousConversationId = _conversationId;
+      if (previousConversationId != null) {
+        await _messageSubscription?.cancel();
+        await _connectionSubscription?.cancel();
+        await config.repository.disposeConversation(previousConversationId);
+        _conversationId = null;
+      }
+      final conversation = await config.repository.getOrCreateConversation(
+        serviceRequestId: widget.requestId,
+        customerId: config.customerId,
+        professionalId: config.professionalId,
+      );
+      if (!mounted) return;
+      _conversationId = conversation.id;
+      _messageSubscription = config.repository
+          .watchMessages(conversation.id)
+          .listen(
+            (messages) {
+              if (!mounted) return;
+              setState(() {
+                _messages
+                  ..clear()
+                  ..addAll(messages);
+                _loading = false;
+                _loadError = null;
+              });
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _scrollToBottom(animated: true),
+              );
+            },
+            onError: (Object error) {
+              if (mounted) setState(() => _loadError = error);
+            },
+          );
+      _connectionSubscription = config.repository
+          .watchConnection(conversation.id)
+          .listen((status) {
+            if (mounted) setState(() => _connectionStatus = status);
+          });
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadError = error;
+        });
+      }
+    }
+  }
+
+  Future<void> _sendMessage() async {
     final text = _inputController.text.trim();
-    if (text.isEmpty) {
+    if (text.isEmpty || _sending) return;
+    final realtime = widget.realtime;
+    if (realtime != null) {
+      final conversationId = _conversationId;
+      if (conversationId == null) return;
+      setState(() => _sending = true);
+      try {
+        await realtime.repository.sendTextMessage(
+          conversationId: conversationId,
+          serviceRequestId: widget.requestId,
+          senderId: realtime.senderId,
+          author: widget.perspective == ConversationPerspective.customer
+              ? MessageAuthor.customer
+              : MessageAuthor.professional,
+          body: text,
+        );
+        if (mounted) _inputController.clear();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No pudimos enviar el mensaje.')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _sending = false);
+      }
       return;
     }
     widget.onSendMessage?.call(text);
@@ -145,6 +261,31 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
     final presentation = ScheduleDateFormatter.format(scheduledAt);
     final label = '${presentation.dateLabel}\n${presentation.timeLabel}';
+    final realtime = widget.realtime;
+    if (realtime != null) {
+      final conversationId = _conversationId;
+      if (conversationId == null) return;
+      try {
+        await realtime.repository.sendActionCard(
+          conversationId: conversationId,
+          serviceRequestId: widget.requestId,
+          senderId: realtime.senderId,
+          author: MessageAuthor.professional,
+          actionType: ConversationMessageType.scheduleProposal,
+          body: 'El profesional propuso una fecha para el trabajo.',
+          metadata: {'schedule_label': label, 'schedule_status': 'pending'},
+        );
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No pudimos enviar la propuesta de fecha.'),
+            ),
+          );
+        }
+      }
+      return;
+    }
     widget.onProposeSchedule?.call(label);
     setState(() {
       _messages.add(
@@ -308,7 +449,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                'En línea',
+                                widget.realtime != null &&
+                                        _connectionStatus !=
+                                            ConversationConnectionStatus
+                                                .connected
+                                    ? 'Reconectando'
+                                    : 'En línea',
                                 style: Theme.of(context).textTheme.labelSmall
                                     ?.copyWith(color: colors.tertiary),
                               ),
@@ -323,64 +469,107 @@ class _ConversationScreenState extends State<ConversationScreen> {
             ),
           ),
           const Divider(),
+          if (widget.realtime != null &&
+              _connectionStatus != ConversationConnectionStatus.connected)
+            MaterialBanner(
+              content: Text(
+                _connectionStatus == ConversationConnectionStatus.connecting
+                    ? 'Conectando con la conversación…'
+                    : 'Sin conexión. Reconectando…',
+              ),
+              actions: const [SizedBox.shrink()],
+            ),
           Expanded(
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 760),
-                child: ListView.builder(
-                  key: const ValueKey('conversation-message-list'),
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                  itemCount: _messages.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return const DateDivider(label: 'Hoy');
-                    }
-                    final message = _messages[index - 1];
-                    final child =
-                        message.type == ConversationMessageType.jobCompleted
-                        ? JobCompletedActionCard(
-                            message: message,
-                            requestStatus: _requestStatus,
-                            isCustomer:
-                                widget.perspective ==
-                                ConversationPerspective.customer,
-                            onConfirm: _confirmJob,
-                            onReportProblem: _reportProblem,
-                          )
-                        : message.type == ConversationMessageType.workStarted
-                        ? WorkStartedActionCard(message: message)
-                        : message.type ==
-                              ConversationMessageType.scheduleProposal
-                        ? ActionCard(
-                            message: message,
-                            requestStatus: _requestStatus,
-                            isCustomer:
-                                widget.perspective ==
-                                ConversationPerspective.customer,
-                            onConfirm: () => _updateSchedule(
-                              message,
-                              ScheduleProposalStatus.confirmed,
+                child: _loading
+                    ? const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 12),
+                            Text('Cargando conversación…'),
+                          ],
+                        ),
+                      )
+                    : _loadError != null
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('No pudimos cargar la conversación.'),
+                            const SizedBox(height: 12),
+                            OutlinedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _loading = true;
+                                  _loadError = null;
+                                });
+                                unawaited(_initializeRealtime());
+                              },
+                              child: const Text('Reintentar'),
                             ),
-                            onRequestChange: () => _updateSchedule(
-                              message,
-                              ScheduleProposalStatus.changeRequested,
-                            ),
-                          )
-                        : message.author == MessageAuthor.system
-                        ? SystemMessage(message: message)
-                        : MessageBubble(
-                            message: message,
-                            isCurrentUser: _isCurrentUser(message),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        key: const ValueKey('conversation-message-list'),
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                        itemCount: _messages.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return const DateDivider(label: 'Hoy');
+                          }
+                          final message = _messages[index - 1];
+                          final child =
+                              message.type ==
+                                  ConversationMessageType.jobCompleted
+                              ? JobCompletedActionCard(
+                                  message: message,
+                                  requestStatus: _requestStatus,
+                                  isCustomer:
+                                      widget.perspective ==
+                                      ConversationPerspective.customer,
+                                  onConfirm: _confirmJob,
+                                  onReportProblem: _reportProblem,
+                                )
+                              : message.type ==
+                                    ConversationMessageType.workStarted
+                              ? WorkStartedActionCard(message: message)
+                              : message.type ==
+                                    ConversationMessageType.scheduleProposal
+                              ? ActionCard(
+                                  message: message,
+                                  requestStatus: _requestStatus,
+                                  isCustomer:
+                                      widget.perspective ==
+                                      ConversationPerspective.customer,
+                                  onConfirm: () => _updateSchedule(
+                                    message,
+                                    ScheduleProposalStatus.confirmed,
+                                  ),
+                                  onRequestChange: () => _updateSchedule(
+                                    message,
+                                    ScheduleProposalStatus.changeRequested,
+                                  ),
+                                )
+                              : message.author == MessageAuthor.system
+                              ? SystemMessage(message: message)
+                              : MessageBubble(
+                                  message: message,
+                                  isCurrentUser: _isCurrentUser(message),
+                                );
+                          return KeyedSubtree(
+                            key: index == _messages.length
+                                ? const ValueKey('conversation-last-message')
+                                : ValueKey(message.id),
+                            child: child,
                           );
-                    return KeyedSubtree(
-                      key: index == _messages.length
-                          ? const ValueKey('conversation-last-message')
-                          : ValueKey(message.id),
-                      child: child,
-                    );
-                  },
-                ),
+                        },
+                      ),
               ),
             ),
           ),
@@ -391,7 +580,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 RequestAction.proposeSchedule,
               ))
             ScheduleComposerCard(onPropose: _proposeSchedule),
-          ChatInput(controller: _inputController, onSend: _sendMessage),
+          ChatInput(
+            controller: _inputController,
+            onSend: _sending ? () {} : _sendMessage,
+          ),
         ],
       ),
     );
