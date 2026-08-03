@@ -3,7 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/home/presentation/models/incoming_service_request.dart';
 import 'package:linko/features/home/presentation/models/request_draft.dart';
 import 'package:linko/features/requests/domain/services/request_state_machine.dart';
+import 'package:linko/core/backend/backend_providers.dart';
+import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/features/home/presentation/providers/professional_requests_provider.dart';
+import 'package:linko/features/requests/domain/models/request_state.dart';
+import 'package:linko/features/requests/presentation/adapters/request_view_adapters.dart';
+import 'package:linko/features/requests/presentation/providers/request_providers.dart';
 import 'package:linko/features/home/presentation/widgets/customer_summary_card.dart';
 import 'package:linko/features/home/presentation/widgets/request_info_banner.dart';
 import 'package:linko/features/home/presentation/widgets/request_section_title.dart';
@@ -55,18 +60,46 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
     if (confirmed != true || !context.mounted) {
       return;
     }
-    ref.read(professionalRequestFlowProvider.notifier).reject(request.id);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Solicitud rechazada.')));
+    try {
+      await ref
+          .read(activeServiceRequestsRepositoryProvider)
+          .updateStatus(request.id, RequestState.cancelled);
+      ref
+        ..invalidate(persistedProfessionalRequestsProvider)
+        ..invalidate(persistedCustomerRequestsProvider)
+        ..invalidate(persistedRequestDetailProvider(request.id));
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Solicitud rechazada.')));
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No pudimos actualizar el estado de la solicitud.'),
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentRequest = ref
-        .watch(professionalRequestFlowProvider)
-        .requests
-        .firstWhere((item) => item.id == request.id, orElse: () => request);
+    final currentRequest =
+        ref.watch(backendRepositoriesProvider).mode == BackendMode.mock
+        ? ref
+              .watch(professionalRequestFlowProvider)
+              .requests
+              .firstWhere(
+                (item) => item.id == request.id,
+                orElse: () => request,
+              )
+        : ref
+                  .watch(persistedRequestDetailProvider(request.id))
+                  .value
+                  ?.toIncomingRequest() ??
+              request;
     final photoSummary = switch (currentRequest.attachedPhotoCount) {
       0 => 'No se agregaron fotos',
       1 => '1 foto adjunta',

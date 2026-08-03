@@ -42,6 +42,8 @@ import 'package:linko/features/requests/domain/models/professional_profile.dart'
 import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/service_rating.dart';
+import 'package:linko/core/backend/backend_providers.dart';
+import 'package:linko/core/backend/backend_config.dart';
 
 abstract final class AppRoutes {
   static const splash = '/';
@@ -694,7 +696,7 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         return ConfirmRequestScreen(
           draft: state.extra! as RequestDraft,
-          onSubmit: () {
+          onSubmit: () async {
             final draft = state.extra! as RequestDraft;
             final container = ProviderScope.containerOf(context, listen: false);
             final now = DateTime.now();
@@ -726,16 +728,26 @@ final GoRouter appRouter = GoRouter(
               createdAtLabel: 'Ahora',
               memberSinceLabel: 'Miembro desde 2026',
               attachedPhotoCount: draft.attachedPhotoCount,
+              scheduledAt: draft.selectedDate,
+              createdAt: now.toUtc(),
             );
-            container.read(requestRepositoryProvider).createRequest(request);
+            await container
+                .read(activeServiceRequestsRepositoryProvider)
+                .createRequest(request);
             container
+              ..invalidate(persistedCustomerRequestsProvider)
+              ..invalidate(persistedProfessionalRequestsProvider)
+              ..invalidate(persistedRequestDetailProvider(request.id))
               ..invalidate(customerRequestsProvider)
               ..invalidate(professionalRequestsProvider)
+              ..invalidate(requestDetailProvider(request.id))
               ..invalidate(professionalRequestFlowProvider);
-            context.go(
-              AppRoutes.requestSuccess,
-              extra: draft.professional.name,
-            );
+            if (context.mounted) {
+              context.go(
+                AppRoutes.requestSuccess,
+                extra: draft.professional.name,
+              );
+            }
           },
         );
       },
@@ -778,11 +790,42 @@ final GoRouter appRouter = GoRouter(
         }
         return Consumer(
           builder: (context, ref, child) {
-            final requests = ref
-                .watch(customerRequestsProvider)
-                .map((request) => request.toCustomerRequest())
-                .toList();
-            return buildScreen(requests);
+            if (ref.watch(backendRepositoriesProvider).mode ==
+                BackendMode.mock) {
+              return buildScreen(
+                ref
+                    .watch(customerRequestsProvider)
+                    .map((item) => item.toCustomerRequest())
+                    .toList(),
+              );
+            }
+            return ref
+                .watch(persistedCustomerRequestsProvider)
+                .when(
+                  loading: () => const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (error, stackTrace) => Scaffold(
+                    body: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('No pudimos cargar las solicitudes.'),
+                          const SizedBox(height: 12),
+                          OutlinedButton(
+                            onPressed: () => ref.invalidate(
+                              persistedCustomerRequestsProvider,
+                            ),
+                            child: const Text('Reintentar'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  data: (items) => buildScreen(
+                    items.map((item) => item.toCustomerRequest()).toList(),
+                  ),
+                );
           },
         );
       },
@@ -816,8 +859,42 @@ final GoRouter appRouter = GoRouter(
         final requestId = state.pathParameters['requestId']!;
         return Consumer(
           builder: (context, ref, child) {
-            final serviceRequest = ref.watch(requestDetailProvider(requestId))!;
-            final request = serviceRequest.toCustomerRequest();
+            ServiceRequest? serviceRequest;
+            if (ref.watch(backendRepositoriesProvider).mode ==
+                BackendMode.mock) {
+              serviceRequest = ref.watch(requestDetailProvider(requestId));
+            } else {
+              final requestState = ref.watch(
+                persistedRequestDetailProvider(requestId),
+              );
+              if (requestState.isLoading) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (requestState.hasError) {
+                return Scaffold(
+                  body: Center(
+                    child: TextButton(
+                      onPressed: () => ref.invalidate(
+                        persistedRequestDetailProvider(requestId),
+                      ),
+                      child: const Text(
+                        'No pudimos cargar la solicitud. Reintentar',
+                      ),
+                    ),
+                  ),
+                );
+              }
+              serviceRequest = requestState.value;
+            }
+            if (serviceRequest == null) {
+              return const Scaffold(
+                body: Center(child: Text('No se encontró la solicitud.')),
+              );
+            }
+            final resolvedRequest = serviceRequest;
+            final request = resolvedRequest.toCustomerRequest();
             final quotation = ref.watch(quotationProvider(requestId));
             final messages = ref.watch(conversationProvider(requestId));
             return CustomerRequestDetailScreen(
@@ -835,7 +912,7 @@ final GoRouter appRouter = GoRouter(
                     .submitRating(
                       ServiceRating(
                         requestId: requestId,
-                        professionalId: serviceRequest.professional.user.id,
+                        professionalId: resolvedRequest.professional.user.id,
                         stars: stars,
                         comment: comment,
                       ),
@@ -849,7 +926,7 @@ final GoRouter appRouter = GoRouter(
                   ..invalidate(ratingProvider(requestId))
                   ..invalidate(
                     professionalRatingSummaryProvider(
-                      serviceRequest.professional.user.id,
+                      resolvedRequest.professional.user.id,
                     ),
                   )
                   ..invalidate(professionalRequestFlowProvider);

@@ -1,5 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/core/backend/backend_providers.dart';
+import 'package:linko/core/backend/backend_config.dart';
+import 'package:linko/core/backend/data/mock_backend_repositories.dart';
+import 'package:linko/core/backend/repositories/service_requests_repository.dart';
+import 'package:linko/features/auth/presentation/auth_controller.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/quotation.dart';
@@ -13,6 +17,53 @@ const currentProfessionalId = 'professional-carlos';
 final requestRepositoryProvider = Provider<RequestRepository>(
   (ref) => ref.watch(backendRepositoriesProvider).mvpCompatibilityRequests,
 );
+
+final activeServiceRequestsRepositoryProvider =
+    Provider<ServiceRequestsRepository>((ref) {
+      if (ref.watch(backendRepositoriesProvider).mode == BackendMode.mock) {
+        return MockServiceRequestsRepository(
+          ref.watch(requestRepositoryProvider),
+        );
+      }
+      return ref.watch(serviceRequestsRepositoryProvider);
+    });
+
+String _requestActorId(Ref ref, String mockId) {
+  final backendMode = ref.watch(backendRepositoriesProvider).mode;
+  if (backendMode == BackendMode.mock) return mockId;
+  return ref.watch(authControllerProvider).user?.id ?? mockId;
+}
+
+final persistedCustomerRequestsProvider = FutureProvider<List<ServiceRequest>>((
+  ref,
+) {
+  return ref
+      .watch(activeServiceRequestsRepositoryProvider)
+      .listCustomerRequests(_requestActorId(ref, currentCustomerId));
+});
+
+final persistedProfessionalRequestsProvider =
+    FutureProvider<List<ServiceRequest>>((ref) {
+      return ref
+          .watch(activeServiceRequestsRepositoryProvider)
+          .listProfessionalRequests(
+            _requestActorId(ref, currentProfessionalId),
+          );
+    });
+
+final persistedRequestDetailProvider =
+    FutureProvider.family<ServiceRequest?, String>((ref, requestId) {
+      return ref
+          .watch(activeServiceRequestsRepositoryProvider)
+          .getRequestById(requestId);
+    });
+
+void invalidatePersistedRequests(Ref ref, String requestId) {
+  ref
+    ..invalidate(persistedCustomerRequestsProvider)
+    ..invalidate(persistedProfessionalRequestsProvider)
+    ..invalidate(persistedRequestDetailProvider(requestId));
+}
 
 final customerRequestsProvider = Provider<List<ServiceRequest>>((ref) {
   return ref

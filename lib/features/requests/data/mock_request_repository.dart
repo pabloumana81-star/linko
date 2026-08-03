@@ -30,6 +30,13 @@ class MockRequestRepository implements RequestRepository {
     _timeline[request.id] = _initialTimeline(request);
   }
 
+  void replaceRequest(ServiceRequest request) {
+    if (!_requests.containsKey(request.id)) {
+      throw StateError('No se encontró la solicitud.');
+    }
+    _requests[request.id] = request;
+  }
+
   @override
   List<ServiceRequest> getCustomerRequests(String customerId) {
     return List.unmodifiable(_requests.values);

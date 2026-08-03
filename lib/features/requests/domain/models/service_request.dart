@@ -25,6 +25,8 @@ class ServiceRequest {
     required this.createdAtLabel,
     required this.memberSinceLabel,
     required this.attachedPhotoCount,
+    this.scheduledAt,
+    this.createdAt,
   });
 
   final String id;
@@ -40,8 +42,15 @@ class ServiceRequest {
   final String createdAtLabel;
   final String memberSinceLabel;
   final int attachedPhotoCount;
+  final DateTime? scheduledAt;
+  final DateTime? createdAt;
 
-  ServiceRequest copyWith({RequestState? state, DateTime? updatedAt}) {
+  ServiceRequest copyWith({
+    RequestState? state,
+    DateTime? updatedAt,
+    DateTime? scheduledAt,
+    bool clearSchedule = false,
+  }) {
     return ServiceRequest(
       id: id,
       customer: customer,
@@ -56,6 +65,8 @@ class ServiceRequest {
       createdAtLabel: createdAtLabel,
       memberSinceLabel: memberSinceLabel,
       attachedPhotoCount: attachedPhotoCount,
+      scheduledAt: clearSchedule ? null : scheduledAt ?? this.scheduledAt,
+      createdAt: createdAt,
     );
   }
 }

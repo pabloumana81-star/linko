@@ -17,6 +17,7 @@ import 'package:linko/features/requests/domain/models/service_rating.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/timeline_event.dart';
 import 'package:linko/features/requests/domain/repositories/request_repository.dart';
+import 'package:linko/features/requests/data/mock_request_repository.dart';
 
 class MockAuthenticationRepository implements AuthenticationRepository {
   MockAuthenticationRepository({AppUserProfile? initialUser})
@@ -146,13 +147,21 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
   }
 
   @override
-  Future<List<ServiceRequest>> getCustomerRequests(String customerId) async =>
+  Future<List<ServiceRequest>> listCustomerRequests(String customerId) async =>
       _requests.getCustomerRequests(customerId);
 
   @override
-  Future<List<ServiceRequest>> getProfessionalRequests(
+  Future<List<ServiceRequest>> getCustomerRequests(String customerId) =>
+      listCustomerRequests(customerId);
+
+  @override
+  Future<List<ServiceRequest>> listProfessionalRequests(
     String professionalId,
   ) async => _requests.getProfessionalRequests(professionalId);
+
+  @override
+  Future<List<ServiceRequest>> getProfessionalRequests(String professionalId) =>
+      listProfessionalRequests(professionalId);
 
   @override
   Future<ServiceRequest?> getRequestById(String requestId) async =>
@@ -165,6 +174,19 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
   @override
   Future<void> updateStatus(String requestId, RequestState state) async {
     _requests.updateStatus(requestId, state);
+  }
+
+  @override
+  Future<void> updateSchedule(String requestId, DateTime? scheduledAt) async {
+    final request = _requests.getRequestById(requestId);
+    if (request == null) throw StateError('No se encontró la solicitud.');
+    (_requests as MockRequestRepository).replaceRequest(
+      request.copyWith(
+        scheduledAt: scheduledAt,
+        clearSchedule: scheduledAt == null,
+        updatedAt: DateTime.now().toUtc(),
+      ),
+    );
   }
 }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:linko/features/home/presentation/models/request_draft.dart';
 import 'package:linko/features/home/presentation/widgets/professional_summary_card.dart';
@@ -5,7 +7,7 @@ import 'package:linko/features/home/presentation/widgets/request_info_banner.dar
 import 'package:linko/features/home/presentation/widgets/request_section_title.dart';
 import 'package:linko/features/home/presentation/widgets/request_summary_item.dart';
 
-class ConfirmRequestScreen extends StatelessWidget {
+class ConfirmRequestScreen extends StatefulWidget {
   const ConfirmRequestScreen({
     required this.draft,
     required this.onSubmit,
@@ -13,11 +15,31 @@ class ConfirmRequestScreen extends StatelessWidget {
   });
 
   final RequestDraft draft;
-  final VoidCallback onSubmit;
+  final FutureOr<void> Function() onSubmit;
+
+  @override
+  State<ConfirmRequestScreen> createState() => _ConfirmRequestScreenState();
+}
+
+class _ConfirmRequestScreenState extends State<ConfirmRequestScreen> {
+  bool _submitting = false;
+
+  Future<void> _submit() async {
+    setState(() => _submitting = true);
+    try {
+      await widget.onSubmit();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos crear la solicitud.')),
+      );
+      setState(() => _submitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final photoSummary = switch (draft.attachedPhotoCount) {
+    final photoSummary = switch (widget.draft.attachedPhotoCount) {
       0 => 'No se agregaron fotos',
       1 => '1 foto adjunta',
       final count => '$count fotos adjuntas',
@@ -40,7 +62,9 @@ class ConfirmRequestScreen extends StatelessWidget {
                   children: [
                     const RequestSectionTitle(label: 'Profesional'),
                     const SizedBox(height: 10),
-                    ProfessionalSummaryCard(professional: draft.professional),
+                    ProfessionalSummaryCard(
+                      professional: widget.draft.professional,
+                    ),
                   ],
                 ),
               ),
@@ -55,23 +79,23 @@ class ConfirmRequestScreen extends StatelessWidget {
                       RequestSummaryItem(
                         icon: Icons.description_outlined,
                         label: 'Descripción',
-                        value: draft.description,
+                        value: widget.draft.description,
                       ),
                       RequestSummaryItem(
                         icon: Icons.location_on_outlined,
                         label: 'Ubicación',
-                        value: draft.location,
+                        value: widget.draft.location,
                       ),
                       RequestSummaryItem(
                         icon: Icons.schedule_outlined,
                         label: 'Cuándo',
-                        value: draft.timing.label,
+                        value: widget.draft.timing.label,
                       ),
-                      if (draft.selectedDate != null)
+                      if (widget.draft.selectedDate != null)
                         RequestSummaryItem(
                           icon: Icons.calendar_month_outlined,
                           label: 'Fecha',
-                          value: draft.selectedDate!.spanishDate,
+                          value: widget.draft.selectedDate!.spanishDate,
                         ),
                       RequestSummaryItem(
                         icon: Icons.photo_library_outlined,
@@ -105,8 +129,8 @@ class ConfirmRequestScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 child: FilledButton(
-                  onPressed: onSubmit,
-                  child: const Text('Enviar solicitud'),
+                  onPressed: _submitting ? null : _submit,
+                  child: Text(_submitting ? 'Enviando…' : 'Enviar solicitud'),
                 ),
               ),
             ),

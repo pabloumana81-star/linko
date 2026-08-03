@@ -15,6 +15,7 @@ import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/requests/domain/models/service_rating.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/timeline_event.dart';
+import 'package:linko/features/requests/data/service_request_supabase_mapper.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAuthenticationRepository implements AuthenticationRepository {
@@ -197,44 +198,40 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
   }
 }
 
-class SupabaseServiceRequestsRepository implements ServiceRequestsRepository {
-  SupabaseServiceRequestsRepository(this._client);
+class ServiceRequestsRepositorySupabase implements ServiceRequestsRepository {
+  ServiceRequestsRepositorySupabase(
+    this._client, [
+    this._mapper = const ServiceRequestSupabaseMapper(),
+  ]);
 
   final SupabaseClient _client;
+  final ServiceRequestSupabaseMapper _mapper;
 
   static const _selection =
-      '*,customer:profiles!customer_id(id,display_name,member_since_label),'
-      'professional:professional_profiles!professional_id('
-      'id,user_id,display_name,profession,rating,review_count,location)';
+      '*,customer:profiles!customer_id(id,display_name),'
+      'professional:profiles!professional_id(id,display_name)';
 
   @override
   Future<void> createRequest(ServiceRequest request) async {
-    await _client.from('service_requests').insert({
-      'id': request.id,
-      'customer_id': request.customer.id,
-      'professional_id': request.professional.id,
-      'service_name': request.serviceName,
-      'category': request.category.name,
-      'description': request.description,
-      'location': request.location,
-      'availability_label': request.availabilityLabel,
-      'status': request.state.name,
-      'attached_photo_count': request.attachedPhotoCount,
-    });
+    await _client.from('service_requests').insert(_mapper.toInsert(request));
   }
 
   @override
-  Future<List<ServiceRequest>> getCustomerRequests(String customerId) async {
+  Future<List<ServiceRequest>> listCustomerRequests(String customerId) async {
     final rows = await _client
         .from('service_requests')
         .select(_selection)
         .eq('customer_id', customerId)
         .order('updated_at', ascending: false);
-    return rows.map(_serviceRequest).toList(growable: false);
+    return rows.map(_mapper.fromRow).toList(growable: false);
   }
 
   @override
-  Future<List<ServiceRequest>> getProfessionalRequests(
+  Future<List<ServiceRequest>> getCustomerRequests(String customerId) =>
+      listCustomerRequests(customerId);
+
+  @override
+  Future<List<ServiceRequest>> listProfessionalRequests(
     String professionalId,
   ) async {
     final rows = await _client
@@ -242,8 +239,12 @@ class SupabaseServiceRequestsRepository implements ServiceRequestsRepository {
         .select(_selection)
         .eq('professional_id', professionalId)
         .order('updated_at', ascending: false);
-    return rows.map(_serviceRequest).toList(growable: false);
+    return rows.map(_mapper.fromRow).toList(growable: false);
   }
+
+  @override
+  Future<List<ServiceRequest>> getProfessionalRequests(String professionalId) =>
+      listProfessionalRequests(professionalId);
 
   @override
   Future<ServiceRequest?> getRequestById(String requestId) async {
@@ -252,27 +253,32 @@ class SupabaseServiceRequestsRepository implements ServiceRequestsRepository {
         .select(_selection)
         .eq('id', requestId)
         .maybeSingle();
-    return row == null ? null : _serviceRequest(row);
+    return row == null ? null : _mapper.fromRow(row);
   }
 
   @override
   Future<List<TimelineEvent>> getTimeline(String requestId) async {
-    final rows = await _client
-        .from('timeline_events')
-        .select()
-        .eq('request_id', requestId)
-        .order('created_at');
-    return rows.map(_timelineEvent).toList(growable: false);
+    return const [];
   }
 
   @override
   Future<void> updateStatus(String requestId, RequestState state) async {
-    await _client.rpc(
-      'update_request_status',
-      params: {'p_request_id': requestId, 'p_status': state.name},
-    );
+    await _client
+        .from('service_requests')
+        .update({'status': RequestStatusMapper.toDatabase(state)})
+        .eq('id', requestId);
+  }
+
+  @override
+  Future<void> updateSchedule(String requestId, DateTime? scheduledAt) async {
+    await _client
+        .from('service_requests')
+        .update({'scheduled_at': scheduledAt?.toUtc().toIso8601String()})
+        .eq('id', requestId);
   }
 }
+
+typedef SupabaseServiceRequestsRepository = ServiceRequestsRepositorySupabase;
 
 class SupabaseConversationsRepository implements ConversationsRepository {
   SupabaseConversationsRepository(this._client);
@@ -407,30 +413,6 @@ ProfessionalProfile _professional(Map<String, dynamic> row) {
   );
 }
 
-ServiceRequest _serviceRequest(Map<String, dynamic> row) {
-  final customer = row['customer'] as Map<String, dynamic>;
-  final professional = row['professional'] as Map<String, dynamic>;
-  return ServiceRequest(
-    id: row['id'] as String,
-    customer: AppUser(
-      id: customer['id'] as String,
-      name: customer['display_name'] as String,
-    ),
-    professional: _professional(professional),
-    serviceName: row['service_name'] as String,
-    category: _enumByName(ServiceCategory.values, row['category'] as String),
-    description: row['description'] as String,
-    location: row['location'] as String,
-    availabilityLabel: row['availability_label'] as String,
-    state: _enumByName(RequestState.values, row['status'] as String),
-    updatedAt: DateTime.parse(row['updated_at'] as String),
-    createdAtLabel: row['created_at_label'] as String? ?? 'Recientemente',
-    memberSinceLabel:
-        customer['member_since_label'] as String? ?? 'Miembro de LinkO',
-    attachedPhotoCount: (row['attached_photo_count'] as num?)?.toInt() ?? 0,
-  );
-}
-
 ConversationMessage _conversationMessage(Map<String, dynamic> row) {
   final scheduleStatus = row['schedule_status'] as String?;
   return ConversationMessage(
@@ -467,15 +449,6 @@ ServiceRating _rating(Map<String, dynamic> row) => ServiceRating(
   professionalId: row['professional_id'] as String,
   stars: (row['stars'] as num).toInt(),
   comment: row['comment'] as String?,
-);
-
-TimelineEvent _timelineEvent(Map<String, dynamic> row) => TimelineEvent(
-  id: row['id'] as String,
-  requestId: row['request_id'] as String,
-  stage: _enumByName(TimelineStage.values, row['stage'] as String),
-  title: row['title'] as String,
-  description: row['description'] as String,
-  dateLabel: row['date_label'] as String?,
 );
 
 T _enumByName<T extends Enum>(List<T> values, String name) {
