@@ -144,10 +144,12 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
   final Map<String, StreamController<RequestStatus>> _statusWatchers = {};
   final Map<String, StreamController<List<TimelineEvent>>> _timelineWatchers =
       {};
+  final _requestsChanged = StreamController<void>.broadcast();
 
   @override
   Future<void> createRequest(ServiceRequest request) async {
     _requests.createRequest(request);
+    _requestsChanged.add(null);
   }
 
   @override
@@ -168,6 +170,24 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
       listProfessionalRequests(professionalId);
 
   @override
+  Stream<List<ServiceRequest>> watchCustomerRequests(String customerId) async* {
+    yield await listCustomerRequests(customerId);
+    await for (final _ in _requestsChanged.stream) {
+      yield await listCustomerRequests(customerId);
+    }
+  }
+
+  @override
+  Stream<List<ServiceRequest>> watchProfessionalRequests(
+    String professionalId,
+  ) async* {
+    yield await listProfessionalRequests(professionalId);
+    await for (final _ in _requestsChanged.stream) {
+      yield await listProfessionalRequests(professionalId);
+    }
+  }
+
+  @override
   Future<ServiceRequest?> getRequestById(String requestId) async =>
       _requests.getRequestById(requestId);
 
@@ -179,6 +199,7 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
   Future<void> updateStatus(String requestId, RequestState state) async {
     _requests.updateStatus(requestId, state);
     _emitWorkflow(requestId);
+    _requestsChanged.add(null);
   }
 
   @override
@@ -192,6 +213,7 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
         updatedAt: DateTime.now().toUtc(),
       ),
     );
+    _requestsChanged.add(null);
   }
 
   @override
@@ -231,6 +253,7 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
   }) async {
     _requests.updateStatus(requestId, nextStatus);
     _emitWorkflow(requestId);
+    _requestsChanged.add(null);
   }
 
   @override

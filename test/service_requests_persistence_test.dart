@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:linko/core/backend/data/mock_backend_repositories.dart';
@@ -77,6 +79,38 @@ void main() {
         )).singleWhere((item) => item.id == request.id).state,
         RequestState.underReview,
       );
+    });
+
+    test('collection streams refresh both request lists', () async {
+      final source = sharedStore
+          .getProfessionalRequests(currentProfessionalId)
+          .first;
+      final request = ServiceRequest(
+        id: 'realtime-shared-request',
+        customer: source.customer,
+        professional: source.professional,
+        serviceName: source.serviceName,
+        category: source.category,
+        description: 'Solicitud recibida sin recargar',
+        location: source.location,
+        availabilityLabel: source.availabilityLabel,
+        state: RequestState.pending,
+        updatedAt: DateTime.utc(2026, 8, 3),
+        createdAtLabel: 'Ahora',
+        memberSinceLabel: source.memberSinceLabel,
+        attachedPhotoCount: 0,
+      );
+      final customerReceived = repository
+          .watchCustomerRequests(request.customer.id)
+          .firstWhere((rows) => rows.any((item) => item.id == request.id));
+      final professionalReceived = repository
+          .watchProfessionalRequests(request.professional.user.id)
+          .firstWhere((rows) => rows.any((item) => item.id == request.id));
+
+      await repository.createRequest(request);
+
+      expect(await customerReceived, contains(request));
+      expect(await professionalReceived, contains(request));
     });
   });
 
@@ -173,10 +207,15 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await expectLater(
-      container.read(persistedCustomerRequestsProvider.future),
-      throwsA(isA<StateError>()),
-    );
+    final failed = Completer<void>();
+    final subscription = container.listen(persistedCustomerRequestsProvider, (
+      previous,
+      next,
+    ) {
+      if (next.hasError && !failed.isCompleted) failed.complete();
+    }, fireImmediately: true);
+    addTearDown(subscription.close);
+    await failed.future;
     expect(
       container.read(persistedCustomerRequestsProvider),
       isA<AsyncError<List<ServiceRequest>>>(),
@@ -203,6 +242,15 @@ class _FailingServiceRequestsRepository implements ServiceRequestsRepository {
   Future<List<ServiceRequest>> listProfessionalRequests(
     String professionalId,
   ) async => _fail();
+
+  @override
+  Stream<List<ServiceRequest>> watchCustomerRequests(String customerId) =>
+      Stream.error(StateError('Backend no disponible'));
+
+  @override
+  Stream<List<ServiceRequest>> watchProfessionalRequests(
+    String professionalId,
+  ) => Stream.error(StateError('Backend no disponible'));
 
   @override
   Future<List<ServiceRequest>> getCustomerRequests(String customerId) =>

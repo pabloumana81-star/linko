@@ -64,19 +64,19 @@ String _requestActorId(Ref ref, String mockId) {
   return ref.watch(authControllerProvider).user?.id ?? mockId;
 }
 
-final persistedCustomerRequestsProvider = FutureProvider<List<ServiceRequest>>((
+final persistedCustomerRequestsProvider = StreamProvider<List<ServiceRequest>>((
   ref,
 ) {
   return ref
       .watch(activeServiceRequestsRepositoryProvider)
-      .listCustomerRequests(_requestActorId(ref, currentCustomerId));
+      .watchCustomerRequests(_requestActorId(ref, currentCustomerId));
 });
 
 final persistedProfessionalRequestsProvider =
-    FutureProvider<List<ServiceRequest>>((ref) {
+    StreamProvider<List<ServiceRequest>>((ref) {
       return ref
           .watch(activeServiceRequestsRepositoryProvider)
-          .listProfessionalRequests(
+          .watchProfessionalRequests(
             _requestActorId(ref, currentProfessionalId),
           );
     });

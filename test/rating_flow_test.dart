@@ -60,6 +60,8 @@ void main() {
 
     appRouter.go(AppRoutes.customerRequests);
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Archivadas'));
+    await tester.pumpAndSettle();
     await tester.drag(find.byType(ListView), const Offset(0, -600));
     await tester.pumpAndSettle();
     expect(find.text('Servicio calificado'), findsOneWidget);

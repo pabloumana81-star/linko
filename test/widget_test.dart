@@ -266,8 +266,16 @@ void main() {
     appRouter.push(AppRoutes.createRequest);
     await tester.pumpAndSettle();
 
-    expect(find.byType(BackButton), findsOneWidget);
-    expect(find.text('Crear solicitud'), findsNWidgets(2));
+    expect(find.text('¿Qué servicio necesitas?'), findsOneWidget);
+    expect(find.text('Crear solicitud'), findsNothing);
+
+    appRouter.go('/category/Plomería');
+    await tester.pumpAndSettle();
+    expect(find.text('Resultados'), findsOneWidget);
+    expect(
+      find.text('Esta función estará disponible próximamente.'),
+      findsNothing,
+    );
 
     appRouter.go(AppRoutes.userType);
     await tester.pumpAndSettle();

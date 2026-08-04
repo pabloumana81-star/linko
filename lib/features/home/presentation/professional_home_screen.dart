@@ -6,6 +6,10 @@ import 'package:linko/features/home/presentation/providers/professional_requests
 import 'package:linko/features/home/presentation/widgets/incoming_request_card.dart';
 import 'package:linko/features/home/presentation/widgets/professional_bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/widgets/professional_dashboard_metric_card.dart';
+import 'package:linko/core/backend/backend_config.dart';
+import 'package:linko/core/backend/backend_providers.dart';
+import 'package:linko/features/requests/presentation/adapters/request_view_adapters.dart';
+import 'package:linko/features/requests/presentation/providers/request_providers.dart';
 
 class ProfessionalHomeScreen extends ConsumerWidget {
   const ProfessionalHomeScreen({
@@ -21,7 +25,45 @@ class ProfessionalHomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final requests = ref.watch(professionalRequestFlowProvider).requests;
+    if (ref.watch(backendRepositoriesProvider).mode == BackendMode.supabase) {
+      return ref
+          .watch(persistedProfessionalRequestsProvider)
+          .when(
+            loading: () => const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+            error: (_, _) => Scaffold(
+              body: Center(
+                child: OutlinedButton(
+                  onPressed: () =>
+                      ref.invalidate(persistedProfessionalRequestsProvider),
+                  child: const Text('Reintentar'),
+                ),
+              ),
+            ),
+            data: (requests) => _buildDashboard(
+              context,
+              requests
+                  .where((request) => !request.state.isArchived)
+                  .map((request) => request.toIncomingRequest())
+                  .toList(),
+            ),
+          );
+    }
+    return _buildDashboard(
+      context,
+      ref
+          .watch(professionalRequestFlowProvider)
+          .requests
+          .where((request) => !request.status.isArchived)
+          .toList(),
+    );
+  }
+
+  Widget _buildDashboard(
+    BuildContext context,
+    List<IncomingServiceRequest> requests,
+  ) {
     final newCount = requests
         .where((request) => request.status == RequestState.pending)
         .length;
@@ -131,6 +173,8 @@ class ProfessionalHomeScreen extends ConsumerWidget {
         selectedIndex: 0,
         onDestinationSelected: (index) {
           if (index == 1) {
+            onRequestsSelected();
+          } else if (index == 2) {
             onRequestsSelected();
           } else if (index == 3) {
             onProfileSelected();

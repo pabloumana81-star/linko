@@ -6,6 +6,16 @@ abstract interface class ServiceRequestsRepository {
   Future<void> createRequest(ServiceRequest request);
   Future<List<ServiceRequest>> listCustomerRequests(String customerId);
   Future<List<ServiceRequest>> listProfessionalRequests(String professionalId);
+  Stream<List<ServiceRequest>> watchCustomerRequests(String customerId) async* {
+    yield await listCustomerRequests(customerId);
+  }
+
+  Stream<List<ServiceRequest>> watchProfessionalRequests(
+    String professionalId,
+  ) async* {
+    yield await listProfessionalRequests(professionalId);
+  }
+
   Future<List<ServiceRequest>> getCustomerRequests(String customerId) =>
       listCustomerRequests(customerId);
   Future<List<ServiceRequest>> getProfessionalRequests(String professionalId) =>

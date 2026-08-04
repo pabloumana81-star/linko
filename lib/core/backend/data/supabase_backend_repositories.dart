@@ -255,6 +255,23 @@ class ServiceRequestsRepositorySupabase implements ServiceRequestsRepository {
       listProfessionalRequests(professionalId);
 
   @override
+  Stream<List<ServiceRequest>> watchCustomerRequests(String customerId) =>
+      _client
+          .from('service_requests')
+          .stream(primaryKey: ['id'])
+          .eq('customer_id', customerId)
+          .asyncMap((_) => listCustomerRequests(customerId));
+
+  @override
+  Stream<List<ServiceRequest>> watchProfessionalRequests(
+    String professionalId,
+  ) => _client
+      .from('service_requests')
+      .stream(primaryKey: ['id'])
+      .eq('professional_id', professionalId)
+      .asyncMap((_) => listProfessionalRequests(professionalId));
+
+  @override
   Future<ServiceRequest?> getRequestById(String requestId) async {
     final row = await _client
         .from('service_requests')

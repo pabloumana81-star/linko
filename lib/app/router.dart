@@ -7,10 +7,8 @@ import 'package:linko/features/auth/presentation/auth_controller.dart';
 import 'package:linko/app/app_mode.dart';
 import 'package:linko/app/app_mode_provider.dart';
 import 'package:linko/features/home/presentation/data/placeholder_professionals.dart';
-import 'package:linko/features/home/presentation/category_placeholder_screen.dart';
 import 'package:linko/features/home/presentation/confirm_request_screen.dart';
 import 'package:linko/features/home/presentation/conversation_screen.dart';
-import 'package:linko/features/home/presentation/create_request_screen.dart';
 import 'package:linko/features/home/presentation/customer_request_detail_screen.dart';
 import 'package:linko/features/home/presentation/customer_quotation_screen.dart';
 import 'package:linko/features/home/presentation/customer_requests_screen.dart';
@@ -457,15 +455,13 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.category,
       name: AppRouteNames.category,
-      builder: (context, state) {
-        return CategoryPlaceholderScreen(
-          categoryName: state.pathParameters['categoryName']!,
-        );
-      },
+      redirect: (context, state) => Uri(
+        path: '/results/${state.pathParameters['categoryName']!}',
+      ).toString(),
     ),
     GoRoute(
       path: AppRoutes.createRequest,
-      builder: (context, state) => const CreateRequestScreen(),
+      redirect: (context, state) => AppRoutes.search,
     ),
     GoRoute(
       path: AppRoutes.professionalHome,

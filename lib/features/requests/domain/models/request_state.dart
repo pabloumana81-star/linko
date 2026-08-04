@@ -12,3 +12,8 @@ enum RequestState {
 }
 
 typedef RequestStatus = RequestState;
+
+extension RequestArchiveState on RequestStatus {
+  bool get isArchived =>
+      this == RequestStatus.reviewed || this == RequestStatus.cancelled;
+}

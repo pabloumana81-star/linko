@@ -13,22 +13,38 @@ class RequestWorkflowController {
   bool get _isMock =>
       ref.read(backendRepositoriesProvider).mode == BackendMode.mock;
 
+  void _refresh(String requestId) {
+    ref
+      ..invalidate(persistedCustomerRequestsProvider)
+      ..invalidate(persistedProfessionalRequestsProvider)
+      ..invalidate(persistedRequestDetailProvider(requestId))
+      ..invalidate(customerRequestsProvider)
+      ..invalidate(professionalRequestsProvider)
+      ..invalidate(requestDetailProvider(requestId))
+      ..invalidate(conversationProvider(requestId))
+      ..invalidate(timelineProvider(requestId));
+  }
+
   Future<void> createQuotation(Quotation quotation) async {
     if (_isMock) {
       ref.read(requestRepositoryProvider).sendQuotation(quotation);
+      _refresh(quotation.requestId);
       return;
     }
     await ref.read(activeQuotationsRepositoryProvider).sendQuotation(quotation);
+    _refresh(quotation.requestId);
   }
 
   Future<void> acceptQuotation(String requestId) async {
     if (_isMock) {
       ref.read(requestRepositoryProvider).acceptQuotation(requestId);
+      _refresh(requestId);
       return;
     }
     await ref
         .read(activeQuotationsRepositoryProvider)
         .acceptQuotation(requestId);
+    _refresh(requestId);
   }
 
   Future<void> rejectQuotation(String requestId) async {
@@ -36,11 +52,13 @@ class RequestWorkflowController {
       await ref
           .read(activeQuotationsRepositoryProvider)
           .rejectQuotation(requestId);
+      _refresh(requestId);
       return;
     }
     await ref
         .read(activeQuotationsRepositoryProvider)
         .rejectQuotation(requestId);
+    _refresh(requestId);
   }
 
   Future<void> rejectRequest(String requestId) async {
@@ -48,11 +66,13 @@ class RequestWorkflowController {
       ref
           .read(requestRepositoryProvider)
           .updateStatus(requestId, RequestState.cancelled);
+      _refresh(requestId);
       return;
     }
     await ref
         .read(activeServiceRequestsRepositoryProvider)
         .updateStatus(requestId, RequestState.cancelled);
+    _refresh(requestId);
   }
 
   Future<void> proposeSchedule(String requestId, String scheduleLabel) async {
@@ -60,6 +80,7 @@ class RequestWorkflowController {
       ref
           .read(requestRepositoryProvider)
           .proposeSchedule(requestId, scheduleLabel);
+      _refresh(requestId);
       return;
     }
     await ref
@@ -69,11 +90,13 @@ class RequestWorkflowController {
           eventType: 'schedule_proposed',
           payload: {'schedule_label': scheduleLabel},
         );
+    _refresh(requestId);
   }
 
   Future<void> acceptSchedule(String requestId, String messageId) async {
     if (_isMock) {
       ref.read(requestRepositoryProvider).confirmSchedule(requestId, messageId);
+      _refresh(requestId);
       return;
     }
     await ref
@@ -83,11 +106,13 @@ class RequestWorkflowController {
           nextStatus: RequestState.scheduled,
           eventType: 'schedule_accepted',
         );
+    _refresh(requestId);
   }
 
   Future<void> startWork(String requestId) async {
     if (_isMock) {
       ref.read(requestRepositoryProvider).startJob(requestId);
+      _refresh(requestId);
       return;
     }
     await ref
@@ -97,11 +122,13 @@ class RequestWorkflowController {
           nextStatus: RequestState.inProgress,
           eventType: 'work_started',
         );
+    _refresh(requestId);
   }
 
   Future<void> completeWork(String requestId) async {
     if (_isMock) {
       ref.read(requestRepositoryProvider).markJobCompleted(requestId);
+      _refresh(requestId);
       return;
     }
     await ref
@@ -111,11 +138,13 @@ class RequestWorkflowController {
           nextStatus: RequestState.pendingCustomerConfirmation,
           eventType: 'work_completed',
         );
+    _refresh(requestId);
   }
 
   Future<void> requestRating(String requestId) async {
     if (_isMock) {
       ref.read(requestRepositoryProvider).confirmJob(requestId);
+      _refresh(requestId);
       return;
     }
     await ref
@@ -125,6 +154,7 @@ class RequestWorkflowController {
           nextStatus: RequestState.completed,
           eventType: 'rating_requested',
         );
+    _refresh(requestId);
   }
 }
 

@@ -58,10 +58,7 @@ class _ProfessionalRequestsScreenState
   List<IncomingServiceRequest> _visibleRequests(
     List<IncomingServiceRequest> requests,
   ) {
-    final status = _selectedFilter.status;
-    if (status == null) return requests;
-
-    return requests.where((request) => request.status == status).toList();
+    return requests.where(_selectedFilter.matches).toList();
   }
 
   @override
@@ -165,6 +162,8 @@ class _ProfessionalRequestsScreenState
         onDestinationSelected: (index) {
           if (index == 0) {
             widget.onHomeSelected();
+          } else if (index == 2) {
+            setState(() => _selectedFilter = _ProfessionalRequestsFilter.all);
           } else if (index == 3) {
             widget.onProfileSelected();
           }
@@ -197,10 +196,17 @@ enum _ProfessionalRequestsFilter {
   underReview('En revisión', RequestState.underReview),
   quoted('Cotizadas', RequestState.quoted),
   accepted('Aceptadas', RequestState.accepted),
-  all('Todas', null);
+  all('Todas', null),
+  archived('Archivadas', null);
 
   const _ProfessionalRequestsFilter(this.label, this.status);
 
   final String label;
   final RequestState? status;
+
+  bool matches(IncomingServiceRequest request) {
+    if (this == archived) return request.status.isArchived;
+    if (request.status.isArchived) return false;
+    return status == null || request.status == status;
+  }
 }

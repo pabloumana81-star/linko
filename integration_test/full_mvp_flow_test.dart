@@ -382,7 +382,7 @@ void main() {
     await _backToRequests(tester);
     await _switchToProfessional(tester);
     await _openProfessionalRequests(tester);
-    await _selectProfessionalFilter(tester, 'Todas');
+    await _selectProfessionalFilter(tester, 'Archivadas');
     await _expectRequestCard(
       tester,
       key: 'professional-request-$requestId',
@@ -411,7 +411,7 @@ void main() {
 
     appRouter.go(AppRoutes.professionalRequests);
     await tester.pumpAndSettle();
-    await _selectProfessionalFilter(tester, 'Todas');
+    await _selectProfessionalFilter(tester, 'Archivadas');
     await _expectRequestCard(
       tester,
       key: 'professional-request-$requestId',
@@ -419,6 +419,8 @@ void main() {
     );
     await _switchToCustomer(tester);
     await _openCustomerRequests(tester);
+    await _tapVisible(tester, find.text('Archivadas'));
+    await tester.pumpAndSettle();
     await _tapVisible(
       tester,
       find.byKey(ValueKey('customer-request-$requestId')),
