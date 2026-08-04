@@ -8,7 +8,11 @@ abstract interface class AdminProfessionalsRepository {
   Future<AdminProfessionalDetail?> getProfessional(String professionalId);
 
   Future<void> approveVerification(String professionalId);
-  Future<void> rejectVerification(String professionalId);
+  Future<void> rejectVerification(String professionalId, String reason);
+  Future<void> requestAdditionalInformation(
+    String professionalId,
+    String reason,
+  );
   Future<void> suspendProfessional(String professionalId);
   Future<void> reactivateProfessional(String professionalId);
   Future<List<ProfessionalAuditEntry>> getAuditLog(String professionalId);

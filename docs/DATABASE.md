@@ -13,16 +13,30 @@ Las migraciones se aplican en orden lexicográfico:
 9. `202608030008_create_admin_professional_management.sql`
 10. `202608030009_sync_professional_availability.sql`
 11. `202608030010_admin_request_corrections.sql`
+12. `202608040001_harden_admin_users.sql`
+13. `202608040002_harden_admin_professionals.sql`
 
 Tablas principales: `profiles`, `professional_profiles`, `service_requests`,
 `conversations`, `messages`, `quotations`, `request_events`, `ratings`,
-`reports`, `admin_audit_log`, `admin_professional_audit_log` y
+`reports`, `admin_audit_logs`, `admin_professional_audit_log` y
 `admin_request_audit_log`.
 
 Los repositorios admin consultan las mismas tablas mediante RPCs. Suspender una
 cuenta actualiza `profiles`; verificar un profesional actualiza
 `professional_profiles`; dashboard y detalle agregan solicitudes, ratings,
 reportes y auditoría persistidos.
+
+La gestión profesional persiste categorías, cobertura, experiencia, portafolio
+y documentos de verificación en `professional_profiles`. Aprobaciones,
+rechazos, solicitudes de información y cambios de suspensión se ejecutan con
+`perform_admin_professional_action`; el RPC valida el rol admin y registra tanto
+la auditoría profesional detallada como la entrada global en
+`admin_audit_logs`. Rechazar o pedir información requiere un motivo.
+
+El descubrimiento de la aplicación principal usa
+`list_available_professionals`, que solo devuelve profesionales verificados y
+con cuenta activa. El historial de solicitudes no depende de ese listado y
+permanece disponible para sus participantes.
 
 Realtime debe publicar `profiles` y `professional_profiles`; la última
 migración lo configura de forma idempotente. Nunca edites una migración ya

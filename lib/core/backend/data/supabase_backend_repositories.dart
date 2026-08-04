@@ -885,6 +885,9 @@ ProfessionalProfile _professional(Map<String, dynamic> row) {
     rating: (row['rating'] as num?)?.toDouble() ?? 0,
     reviewCount: (row['review_count'] as num?)?.toInt() ?? 0,
     location: row['location'] as String? ?? '',
+    isVerified: row['verification_status'] == null
+        ? true
+        : row['verification_status'] == 'verified',
   );
 }
 

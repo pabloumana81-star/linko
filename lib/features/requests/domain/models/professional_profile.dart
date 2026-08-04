@@ -8,6 +8,7 @@ class ProfessionalProfile {
     required this.rating,
     required this.reviewCount,
     required this.location,
+    this.isVerified = false,
   });
 
   final String id;
@@ -16,4 +17,5 @@ class ProfessionalProfile {
   final double rating;
   final int reviewCount;
   final String location;
+  final bool isVerified;
 }

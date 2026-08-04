@@ -98,9 +98,17 @@ class AdminProfessionalActions {
     () =>
         ref.read(adminProfessionalsRepositoryProvider).approveVerification(id),
   );
-  Future<void> reject(String id) => _run(
+  Future<void> reject(String id, String reason) => _run(
     id,
-    () => ref.read(adminProfessionalsRepositoryProvider).rejectVerification(id),
+    () => ref
+        .read(adminProfessionalsRepositoryProvider)
+        .rejectVerification(id, reason),
+  );
+  Future<void> requestInformation(String id, String reason) => _run(
+    id,
+    () => ref
+        .read(adminProfessionalsRepositoryProvider)
+        .requestAdditionalInformation(id, reason),
   );
   Future<void> suspend(String id) => _run(
     id,

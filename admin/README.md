@@ -41,6 +41,12 @@ se ejecutan mediante RPCs protegidos por rol y RLS sobre las mismas tablas
 `profiles`, `professional_profiles`, `service_requests` y `ratings` que consume
 la aplicación principal.
 
+El módulo Profesionales lee categorías, cobertura, experiencia, portafolio y
+documentos desde `professional_profiles`. Aprobar, rechazar, solicitar más
+información, suspender y reactivar se ejecuta mediante RPC; rechazo y solicitud
+de información exigen motivo y todas las acciones generan auditoría global y
+profesional.
+
 ## QA
 
 ```sh

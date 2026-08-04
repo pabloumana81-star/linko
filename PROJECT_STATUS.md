@@ -2,7 +2,7 @@
 
 ## Fase actual
 
-Endurecimiento de producción del Backoffice, con foco en administración de usuarios y sincronización compartida con la aplicación principal.
+Endurecimiento de producción del Backoffice, con gestión de usuarios y profesionales sincronizada con la aplicación principal.
 
 ## Módulos completados
 
@@ -10,10 +10,11 @@ Endurecimiento de producción del Backoffice, con foco en administración de usu
 - Backoffice web independiente con acceso exclusivo para administradores.
 - Dashboard administrativo.
 - Gestión de usuarios: listado, búsqueda, filtros, detalle, suspensión, reactivación y auditoría.
-- Gestión de profesionales.
+- Gestión de profesionales: datos operativos, filtros, detalle, documentos, aprobación, rechazo motivado, solicitud de información, suspensión, reactivación y auditoría.
 - Solicitudes, reportes y configuración base del Backoffice.
 - Repositorios seleccionables para los modos mock y Supabase.
 - Sincronización del estado de cuenta mediante `profiles.account_status`.
+- Sincronización de visibilidad y distintivo profesional mediante `professional_profiles.verification_status` y Realtime.
 
 ## Estado de QA
 

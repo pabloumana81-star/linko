@@ -32,6 +32,7 @@ class AdminProfessional {
     required this.name,
     required this.email,
     required this.photoUrl,
+    required this.categories,
     required this.verification,
     required this.averageRating,
     required this.completedJobs,
@@ -44,6 +45,7 @@ class AdminProfessional {
   final String name;
   final String? email;
   final String? photoUrl;
+  final List<String> categories;
   final ProfessionalVerificationStatus verification;
   final double averageRating;
   final int completedJobs;
@@ -57,8 +59,11 @@ class AdminProfessionalDetail {
     required this.professional,
     required this.profession,
     required this.location,
+    required this.coverageArea,
+    required this.experienceYears,
     required this.skills,
     required this.portfolio,
+    required this.verificationDocuments,
     required this.reviewCount,
     required this.reviews,
     required this.cancelledJobs,
@@ -70,8 +75,11 @@ class AdminProfessionalDetail {
   final AdminProfessional professional;
   final String profession;
   final String location;
+  final String coverageArea;
+  final int experienceYears;
   final List<String> skills;
   final List<String> portfolio;
+  final List<String> verificationDocuments;
   final int reviewCount;
   final List<String> reviews;
   final int cancelledJobs;
@@ -83,6 +91,7 @@ class AdminProfessionalDetail {
 enum ProfessionalAuditAction {
   verificationApproved,
   verificationRejected,
+  additionalInformationRequested,
   accountSuspended,
   accountReactivated,
 }
@@ -91,6 +100,8 @@ extension ProfessionalAuditActionLabel on ProfessionalAuditAction {
   String get label => switch (this) {
     ProfessionalAuditAction.verificationApproved => 'Verificación aprobada',
     ProfessionalAuditAction.verificationRejected => 'Verificación rechazada',
+    ProfessionalAuditAction.additionalInformationRequested =>
+      'Información adicional solicitada',
     ProfessionalAuditAction.accountSuspended => 'Cuenta suspendida',
     ProfessionalAuditAction.accountReactivated => 'Cuenta reactivada',
   };

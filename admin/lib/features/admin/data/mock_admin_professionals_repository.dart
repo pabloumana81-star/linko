@@ -61,8 +61,11 @@ class MockAdminProfessionalsRepository implements AdminProfessionalsRepository {
       professional: professional,
       profession: profile.profession,
       location: profile.location,
+      coverageArea: 'Gran Área Metropolitana',
+      experienceYears: 5,
       skills: [profile.profession],
       portfolio: const [],
+      verificationDocuments: const ['Documento de identidad'],
       reviewCount: profile.reviewCount + ratings.length,
       reviews: ratings
           .map((rating) => rating.comment)
@@ -90,11 +93,30 @@ class MockAdminProfessionalsRepository implements AdminProfessionalsRepository {
   );
 
   @override
-  Future<void> rejectVerification(String professionalId) async => _verify(
-    professionalId,
-    ProfessionalVerificationStatus.rejected,
-    ProfessionalAuditAction.verificationRejected,
-  );
+  Future<void> rejectVerification(String professionalId, String reason) async {
+    _requireReason(reason);
+    _verify(
+      professionalId,
+      ProfessionalVerificationStatus.rejected,
+      ProfessionalAuditAction.verificationRejected,
+      reason: reason,
+    );
+  }
+
+  @override
+  Future<void> requestAdditionalInformation(
+    String professionalId,
+    String reason,
+  ) async {
+    _requireReason(reason);
+    _verify(
+      professionalId,
+      ProfessionalVerificationStatus.pending,
+      ProfessionalAuditAction.additionalInformationRequested,
+      reason: reason,
+      recordWhenUnchanged: true,
+    );
+  }
 
   @override
   Future<void> suspendProfessional(String professionalId) async => _status(
@@ -131,6 +153,7 @@ class MockAdminProfessionalsRepository implements AdminProfessionalsRepository {
         name: profile.user.name,
         email: '$id@mock.linko',
         photoUrl: null,
+        categories: [profile.profession],
         verification:
             _state.verification[id] ?? ProfessionalVerificationStatus.pending,
         averageRating: profile.rating,
@@ -159,14 +182,31 @@ class MockAdminProfessionalsRepository implements AdminProfessionalsRepository {
   void _verify(
     String id,
     ProfessionalVerificationStatus next,
-    ProfessionalAuditAction action,
-  ) {
+    ProfessionalAuditAction action, {
+    String? reason,
+    bool recordWhenUnchanged = false,
+  }) {
     _require(id);
     final previous =
         _state.verification[id] ?? ProfessionalVerificationStatus.pending;
-    if (previous == next) return;
+    if (previous == next && !recordWhenUnchanged) return;
     _state.verification[id] = next;
-    _record(id, action, previous.name, next.name);
+    _state.availability.setVerified(
+      id,
+      verified: next == ProfessionalVerificationStatus.verified,
+    );
+    _record(
+      id,
+      action,
+      previous.name,
+      reason == null ? next.name : '${next.name}: $reason',
+    );
+  }
+
+  void _requireReason(String reason) {
+    if (reason.trim().isEmpty) {
+      throw ArgumentError('Debes indicar un motivo.');
+    }
   }
 
   void _status(

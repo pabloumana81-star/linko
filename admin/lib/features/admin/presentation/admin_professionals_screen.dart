@@ -66,6 +66,15 @@ class AdminProfessionalsScreen extends ConsumerWidget {
                       ),
                     ),
                     _Filter(
+                      label: 'Rechazados',
+                      selected:
+                          query.verification ==
+                          ProfessionalVerificationStatus.rejected,
+                      onSelected: (value) => controller.verification(
+                        value ? ProfessionalVerificationStatus.rejected : null,
+                      ),
+                    ),
+                    _Filter(
                       label: 'Suspendidos',
                       selected:
                           query.accountStatus == AdminAccountStatus.suspended,
@@ -162,6 +171,7 @@ class _ProfessionalsTable extends StatelessWidget {
         columns: const [
           DataColumn(label: Text('Profesional')),
           DataColumn(label: Text('Correo')),
+          DataColumn(label: Text('Categorías')),
           DataColumn(label: Text('Verificación')),
           DataColumn(label: Text('Calificación')),
           DataColumn(label: Text('Completados')),
@@ -191,7 +201,8 @@ class _ProfessionalsTable extends StatelessWidget {
                   ),
                 ),
                 DataCell(Text(item.email ?? 'Sin correo')),
-                DataCell(Text(item.verification.label)),
+                DataCell(Text(item.categories.join(', '))),
+                DataCell(_VerificationBadge(status: item.verification)),
                 DataCell(Text(item.averageRating.toStringAsFixed(1))),
                 DataCell(Text('${item.completedJobs}')),
                 DataCell(Text('${item.activeJobs}')),
@@ -214,15 +225,43 @@ class _ProfessionalCards extends StatelessWidget {
       for (final item in items)
         Card(
           child: ListTile(
+            leading: CircleAvatar(
+              backgroundImage: item.photoUrl == null
+                  ? null
+                  : NetworkImage(item.photoUrl!),
+              child: item.photoUrl == null
+                  ? Text(item.name.substring(0, 1))
+                  : null,
+            ),
             title: Text(item.name),
             subtitle: Text(
-              '${item.verification.label} · ${item.averageRating.toStringAsFixed(1)}',
+              '${item.email ?? 'Sin correo'}\n'
+              '${item.categories.join(', ')}\n'
+              '${item.accountStatus.label} · '
+              '${item.averageRating.toStringAsFixed(1)} · '
+              '${item.completedJobs} completados · ${item.activeJobs} activos\n'
+              'Registro: ${_date(item.registeredAt)}',
             ),
-            trailing: Text(item.accountStatus.label),
+            trailing: _VerificationBadge(status: item.verification),
             onTap: () => context.go('/professionals/${item.id}'),
           ),
         ),
     ],
+  );
+}
+
+class _VerificationBadge extends StatelessWidget {
+  const _VerificationBadge({required this.status});
+  final ProfessionalVerificationStatus status;
+
+  @override
+  Widget build(BuildContext context) => Chip(
+    avatar: Icon(switch (status) {
+      ProfessionalVerificationStatus.pending => Icons.schedule,
+      ProfessionalVerificationStatus.verified => Icons.verified,
+      ProfessionalVerificationStatus.rejected => Icons.cancel,
+    }, size: 16),
+    label: Text(status.label),
   );
 }
 

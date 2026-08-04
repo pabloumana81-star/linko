@@ -64,6 +64,7 @@ class _Content extends ConsumerWidget {
                       () => ref
                           .read(adminProfessionalActionsProvider)
                           .approve(item.id),
+                      successMessage: 'La verificación fue aprobada.',
                     ),
                     icon: const Icon(Icons.verified_outlined),
                     label: const Text('Aprobar verificación'),
@@ -71,22 +72,47 @@ class _Content extends ConsumerWidget {
                 if (item.verification !=
                     ProfessionalVerificationStatus.rejected)
                   OutlinedButton.icon(
-                    onPressed: () => _run(
+                    key: const ValueKey('reject-professional'),
+                    onPressed: () => _reasonAction(
                       context,
                       ref,
-                      () => ref
+                      title: 'Rechazar verificación',
+                      actionLabel: 'Rechazar',
+                      successMessage: 'La verificación fue rechazada.',
+                      action: (reason) => ref
                           .read(adminProfessionalActionsProvider)
-                          .reject(item.id),
+                          .reject(item.id, reason),
                     ),
                     icon: const Icon(Icons.cancel_outlined),
                     label: const Text('Rechazar verificación'),
                   ),
+                OutlinedButton.icon(
+                  key: const ValueKey('request-professional-information'),
+                  onPressed: () => _reasonAction(
+                    context,
+                    ref,
+                    title: 'Solicitar información adicional',
+                    actionLabel: 'Solicitar',
+                    successMessage: 'Se solicitó información adicional.',
+                    action: (reason) => ref
+                        .read(adminProfessionalActionsProvider)
+                        .requestInformation(item.id, reason),
+                  ),
+                  icon: const Icon(Icons.contact_support_outlined),
+                  label: const Text('Solicitar información'),
+                ),
                 if (item.accountStatus == AdminAccountStatus.active)
                   FilledButton.tonalIcon(
-                    onPressed: () => _run(
+                    key: const ValueKey('suspend-professional'),
+                    onPressed: () => _confirmAction(
                       context,
                       ref,
-                      () => ref
+                      title: 'Suspender cuenta',
+                      message:
+                          'El profesional dejará de aparecer en el descubrimiento. Su historial permanecerá disponible.',
+                      actionLabel: 'Suspender',
+                      successMessage: 'La cuenta fue suspendida.',
+                      action: () => ref
                           .read(adminProfessionalActionsProvider)
                           .suspend(item.id),
                     ),
@@ -101,6 +127,7 @@ class _Content extends ConsumerWidget {
                       () => ref
                           .read(adminProfessionalActionsProvider)
                           .reactivate(item.id),
+                      successMessage: 'La cuenta fue reactivada.',
                     ),
                     icon: const Icon(Icons.check_circle_outline),
                     label: const Text('Reactivar cuenta'),
@@ -145,6 +172,8 @@ class _Content extends ConsumerWidget {
                   children: [
                     _Value('Profesión', detail.profession),
                     _Value('Ubicación', detail.location),
+                    _Value('Área de cobertura', detail.coverageArea),
+                    _Value('Experiencia', '${detail.experienceYears} años'),
                     _Value('Verificación', item.verification.label),
                     _Value('Estado', item.accountStatus.label),
                     _Value(
@@ -167,10 +196,70 @@ class _Content extends ConsumerWidget {
                           ? 'Sin elementos'
                           : '${detail.portfolio.length} elementos',
                     ),
+                    _Value(
+                      'Documentos de verificación',
+                      detail.verificationDocuments.isEmpty
+                          ? 'Sin documentos'
+                          : '${detail.verificationDocuments.length} documentos',
+                    ),
                   ],
                 ),
               ),
             ),
+            if (detail.portfolio.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                'Portafolio',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 10),
+              Card(
+                child: Column(
+                  children: [
+                    for (final item in detail.portfolio)
+                      ListTile(
+                        leading: const Icon(Icons.photo_library_outlined),
+                        title: Text(item),
+                        trailing: const Icon(Icons.visibility_outlined),
+                        onTap: () => _dialog(
+                          context,
+                          'Vista previa del portafolio',
+                          item,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            if (detail.verificationDocuments.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                'Documentos de verificación',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 10),
+              Card(
+                child: Column(
+                  children: [
+                    for (final document in detail.verificationDocuments)
+                      ListTile(
+                        leading: const Icon(Icons.description_outlined),
+                        title: Text(document),
+                        trailing: const Icon(Icons.visibility_outlined),
+                        onTap: () => _dialog(
+                          context,
+                          'Vista previa del documento',
+                          document,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             Text(
               'Actividad de la cuenta',
@@ -205,10 +294,16 @@ class _Content extends ConsumerWidget {
   Future<void> _run(
     BuildContext context,
     WidgetRef ref,
-    Future<void> Function() action,
-  ) async {
+    Future<void> Function() action, {
+    required String successMessage,
+  }) async {
     try {
       await action();
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
+      }
     } catch (error, stackTrace) {
       ref
           .read(diagnosticsServiceProvider)
@@ -222,6 +317,95 @@ class _Content extends ConsumerWidget {
           const SnackBar(content: Text('No pudimos actualizar la cuenta.')),
         );
       }
+    }
+  }
+
+  Future<void> _confirmAction(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required String message,
+    required String actionLabel,
+    required String successMessage,
+    required Future<void> Function() action,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            key: const ValueKey('confirm-professional-destructive-action'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(actionLabel),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await _run(context, ref, action, successMessage: successMessage);
+    }
+  }
+
+  Future<void> _reasonAction(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required String actionLabel,
+    required String successMessage,
+    required Future<void> Function(String reason) action,
+  }) async {
+    final formKey = GlobalKey<FormState>();
+    var reasonText = '';
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            key: const ValueKey('professional-action-reason'),
+            autofocus: true,
+            maxLines: 3,
+            onChanged: (value) => reasonText = value,
+            decoration: const InputDecoration(
+              labelText: 'Motivo',
+              border: OutlineInputBorder(),
+            ),
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'Debes indicar un motivo.'
+                : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            key: const ValueKey('confirm-professional-reason-action'),
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.of(dialogContext).pop(reasonText.trim());
+              }
+            },
+            child: Text(actionLabel),
+          ),
+        ],
+      ),
+    );
+    if (reason != null && context.mounted) {
+      await _run(
+        context,
+        ref,
+        () => action(reason),
+        successMessage: successMessage,
+      );
     }
   }
 

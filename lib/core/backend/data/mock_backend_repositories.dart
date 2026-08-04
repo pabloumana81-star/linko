@@ -157,9 +157,19 @@ class MockProfessionalsRepository implements ProfessionalsRepository {
       profiles[request.professional.user.id] = request.professional;
     }
     return List.unmodifiable(
-      profiles.values.where(
-        (profile) => _availability.isAvailable(profile.user.id),
-      ),
+      profiles.values
+          .where((profile) => _availability.isAvailable(profile.user.id))
+          .map(
+            (profile) => ProfessionalProfile(
+              id: profile.id,
+              user: profile.user,
+              profession: profile.profession,
+              rating: profile.rating,
+              reviewCount: profile.reviewCount,
+              location: profile.location,
+              isVerified: _availability.isVerified(profile.user.id),
+            ),
+          ),
     );
   }
 
