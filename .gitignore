@@ -46,3 +46,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Admin Flutter generated files
+admin/build/
+admin/.dart_tool/
+admin/.flutter-plugins
+admin/.flutter-plugins-dependencies
