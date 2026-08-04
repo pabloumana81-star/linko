@@ -16,6 +16,9 @@ class TimelineEvent {
     required this.title,
     required this.description,
     this.dateLabel,
+    this.type,
+    this.payload = const {},
+    this.createdAt,
   });
 
   final String id;
@@ -24,4 +27,7 @@ class TimelineEvent {
   final String title;
   final String description;
   final String? dateLabel;
+  final String? type;
+  final Map<String, dynamic> payload;
+  final DateTime? createdAt;
 }

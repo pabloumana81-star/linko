@@ -4,4 +4,6 @@ abstract interface class QuotationsRepository {
   Future<Quotation?> getQuotation(String requestId);
   Future<void> sendQuotation(Quotation quotation);
   Future<void> acceptQuotation(String requestId);
+  Future<void> rejectQuotation(String requestId);
+  Stream<Quotation?> watchQuotation(String requestId);
 }

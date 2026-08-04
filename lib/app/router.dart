@@ -42,8 +42,11 @@ import 'package:linko/features/requests/domain/models/professional_profile.dart'
 import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/service_rating.dart';
+import 'package:linko/features/requests/domain/models/quotation.dart';
 import 'package:linko/core/backend/backend_providers.dart';
 import 'package:linko/core/backend/backend_config.dart';
+import 'package:linko/features/requests/presentation/providers/request_workflow_controller.dart';
+import 'package:uuid/uuid.dart';
 
 abstract final class AppRoutes {
   static const splash = '/';
@@ -93,20 +96,38 @@ abstract final class AppRouteNames {
   static const professionalConversation = 'professional-conversation';
 }
 
-IncomingServiceRequest _incomingRequestFromState(
-  BuildContext context,
+Widget _incomingRequestRoute(
   GoRouterState state,
+  Widget Function(IncomingServiceRequest request) builder,
 ) {
   final requestId = state.pathParameters['requestId']!;
-
   final extra = state.extra;
-  if (extra is IncomingServiceRequest) {
-    return extra;
-  }
-  return ProviderScope.containerOf(
-    context,
-    listen: false,
-  ).read(requestDetailProvider(requestId))!.toIncomingRequest();
+  return Consumer(
+    builder: (context, ref, child) {
+      if (extra is IncomingServiceRequest) return builder(extra);
+      final isMock =
+          ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
+      if (isMock) {
+        final request = ref.watch(requestDetailProvider(requestId));
+        return request == null
+            ? const _MissingRequestScreen()
+            : builder(request.toIncomingRequest());
+      }
+      return ref
+          .watch(persistedRequestDetailProvider(requestId))
+          .when(
+            loading: () => const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+            error: (_, _) => const Scaffold(
+              body: Center(child: Text('No pudimos cargar la solicitud.')),
+            ),
+            data: (request) => request == null
+                ? const _MissingRequestScreen()
+                : builder(request.toIncomingRequest()),
+          );
+    },
+  );
 }
 
 ServiceCategory _serviceCategoryFor(String profession) {
@@ -136,19 +157,46 @@ ProfessionalProfileData _professionalFromState(GoRouterState state) {
       );
 }
 
-CustomerServiceRequest _customerRequestFromState(
-  BuildContext context,
+Widget _customerRequestRoute(
   GoRouterState state,
+  Widget Function(CustomerServiceRequest request) builder,
 ) {
   final extra = state.extra;
-  if (extra is CustomerServiceRequest) {
-    return extra;
-  }
   final requestId = state.pathParameters['requestId']!;
-  return ProviderScope.containerOf(
-    context,
-    listen: false,
-  ).read(requestDetailProvider(requestId))!.toCustomerRequest();
+  return Consumer(
+    builder: (context, ref, child) {
+      if (extra is CustomerServiceRequest) return builder(extra);
+      final isMock =
+          ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
+      if (isMock) {
+        final request = ref.watch(requestDetailProvider(requestId));
+        return request == null
+            ? const _MissingRequestScreen()
+            : builder(request.toCustomerRequest());
+      }
+      return ref
+          .watch(persistedRequestDetailProvider(requestId))
+          .when(
+            loading: () => const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+            error: (_, _) => const Scaffold(
+              body: Center(child: Text('No pudimos cargar la solicitud.')),
+            ),
+            data: (request) => request == null
+                ? const _MissingRequestScreen()
+                : builder(request.toCustomerRequest()),
+          );
+    },
+  );
+}
+
+class _MissingRequestScreen extends StatelessWidget {
+  const _MissingRequestScreen();
+
+  @override
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: Text('No se encontró la solicitud.')));
 }
 
 String? _scheduledDateLabel(List<ConversationMessage> messages) {
@@ -492,50 +540,64 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalRequestDetail,
       name: AppRouteNames.professionalRequestDetail,
       builder: (context, state) {
-        final request = _incomingRequestFromState(context, state);
-
-        return ProfessionalRequestDetailScreen(
-          request: request,
-          onBack: () => _popOrGo(context, AppRoutes.professionalRequests),
-          onStartJob: (selectedRequest) {
-            final container = ProviderScope.containerOf(context, listen: false);
-            container
-                .read(requestRepositoryProvider)
-                .startJob(selectedRequest.id);
-            _invalidateScheduleData(container, selectedRequest.id);
-          },
-          onMarkJobCompleted: (selectedRequest) {
-            final container = ProviderScope.containerOf(context, listen: false);
-            container
-                .read(requestRepositoryProvider)
-                .markJobCompleted(selectedRequest.id);
-            _invalidateScheduleData(container, selectedRequest.id);
-          },
-          onOpenConversation: (selectedRequest) {
-            context.pushNamed(
-              AppRouteNames.professionalConversation,
-              pathParameters: {'requestId': selectedRequest.id},
-              extra: selectedRequest,
-            );
-          },
-          onSendQuotation: (selectedRequest) {
-            final quotation = ProviderScope.containerOf(context, listen: false)
-                .read(professionalRequestFlowProvider)
-                .quotations[selectedRequest.id];
-            if (quotation == null) {
+        return _incomingRequestRoute(
+          state,
+          (request) => ProfessionalRequestDetailScreen(
+            request: request,
+            onBack: () => _popOrGo(context, AppRoutes.professionalRequests),
+            onStartJob: (selectedRequest) {
+              final container = ProviderScope.containerOf(
+                context,
+                listen: false,
+              );
+              container
+                  .read(requestWorkflowControllerProvider)
+                  .startWork(selectedRequest.id)
+                  .then(
+                    (_) =>
+                        _invalidateScheduleData(container, selectedRequest.id),
+                  );
+            },
+            onMarkJobCompleted: (selectedRequest) {
+              final container = ProviderScope.containerOf(
+                context,
+                listen: false,
+              );
+              container
+                  .read(requestWorkflowControllerProvider)
+                  .completeWork(selectedRequest.id)
+                  .then(
+                    (_) =>
+                        _invalidateScheduleData(container, selectedRequest.id),
+                  );
+            },
+            onOpenConversation: (selectedRequest) {
               context.pushNamed(
-                AppRouteNames.professionalQuotation,
+                AppRouteNames.professionalConversation,
                 pathParameters: {'requestId': selectedRequest.id},
                 extra: selectedRequest,
               );
-            } else {
-              context.pushNamed(
-                AppRouteNames.professionalQuotationReview,
-                pathParameters: {'requestId': selectedRequest.id},
-                extra: quotation,
-              );
-            }
-          },
+            },
+            onSendQuotation: (selectedRequest) {
+              final quotation =
+                  ProviderScope.containerOf(context, listen: false)
+                      .read(professionalRequestFlowProvider)
+                      .quotations[selectedRequest.id];
+              if (quotation == null) {
+                context.pushNamed(
+                  AppRouteNames.professionalQuotation,
+                  pathParameters: {'requestId': selectedRequest.id},
+                  extra: selectedRequest,
+                );
+              } else {
+                context.pushNamed(
+                  AppRouteNames.professionalQuotationReview,
+                  pathParameters: {'requestId': selectedRequest.id},
+                  extra: quotation,
+                );
+              }
+            },
+          ),
         );
       },
     ),
@@ -543,65 +605,70 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalConversation,
       name: AppRouteNames.professionalConversation,
       builder: (context, state) {
-        final request = _incomingRequestFromState(context, state);
-        return Consumer(
-          builder: (context, ref, child) {
-            final isMock =
-                ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
-            final persisted = isMock
-                ? null
-                : ref.watch(persistedRequestDetailProvider(request.id));
-            if (persisted?.isLoading ?? false) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-            if (persisted?.hasError ?? false) {
-              return const Scaffold(
-                body: Center(child: Text('No pudimos cargar la conversación.')),
-              );
-            }
-            final serviceRequest = persisted?.value;
-            return ConversationScreen(
-              requestId: request.id,
-              counterpartName: request.customerName,
-              serviceName: request.serviceCategory,
-              requestStatus: request.status,
-              perspective: ConversationPerspective.professional,
-              initialMessages: isMock
-                  ? ref.watch(conversationProvider(request.id))
-                  : const [],
-              realtime: serviceRequest == null
+        return _incomingRequestRoute(
+          state,
+          (request) => Consumer(
+            builder: (context, ref, child) {
+              final isMock =
+                  ref.watch(backendRepositoriesProvider).mode ==
+                  BackendMode.mock;
+              final persisted = isMock
                   ? null
-                  : ConversationRealtimeConfig(
-                      repository: ref.watch(conversationsRepositoryProvider),
-                      customerId: serviceRequest.customer.id,
-                      professionalId: serviceRequest.professional.id,
-                      senderId: serviceRequest.professional.id,
-                    ),
-              onBack: () => _popOrGo(context, AppRoutes.professionalRequests),
-              onSendMessage: isMock
-                  ? (text) => _sendConversationMessage(
-                      context,
-                      request.id,
-                      text,
-                      true,
-                    )
-                  : null,
-              onProposeSchedule: isMock
-                  ? (scheduleLabel) {
-                      final container = ProviderScope.containerOf(
+                  : ref.watch(persistedRequestDetailProvider(request.id));
+              if (persisted?.isLoading ?? false) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (persisted?.hasError ?? false) {
+                return const Scaffold(
+                  body: Center(
+                    child: Text('No pudimos cargar la conversación.'),
+                  ),
+                );
+              }
+              final serviceRequest = persisted?.value;
+              return ConversationScreen(
+                requestId: request.id,
+                counterpartName: request.customerName,
+                serviceName: request.serviceCategory,
+                requestStatus: request.status,
+                perspective: ConversationPerspective.professional,
+                initialMessages: isMock
+                    ? ref.watch(conversationProvider(request.id))
+                    : const [],
+                realtime: serviceRequest == null
+                    ? null
+                    : ConversationRealtimeConfig(
+                        repository: ref.watch(conversationsRepositoryProvider),
+                        customerId: serviceRequest.customer.id,
+                        professionalId: serviceRequest.professional.id,
+                        senderId: serviceRequest.professional.id,
+                      ),
+                onBack: () => _popOrGo(context, AppRoutes.professionalRequests),
+                onSendMessage: isMock
+                    ? (text) => _sendConversationMessage(
                         context,
-                        listen: false,
+                        request.id,
+                        text,
+                        true,
+                      )
+                    : null,
+                onProposeSchedule: (scheduleLabel) {
+                  final container = ProviderScope.containerOf(
+                    context,
+                    listen: false,
+                  );
+                  container
+                      .read(requestWorkflowControllerProvider)
+                      .proposeSchedule(request.id, scheduleLabel)
+                      .then(
+                        (_) => _invalidateScheduleData(container, request.id),
                       );
-                      container
-                          .read(requestRepositoryProvider)
-                          .proposeSchedule(request.id, scheduleLabel);
-                      _invalidateScheduleData(container, request.id);
-                    }
-                  : null,
-            );
-          },
+                },
+              );
+            },
+          ),
         );
       },
     ),
@@ -609,16 +676,18 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalQuotation,
       name: AppRouteNames.professionalQuotation,
       builder: (context, state) {
-        final request = _incomingRequestFromState(context, state);
-        return QuotationFormScreen(
-          request: request,
-          onReview: (draft) {
-            context.pushNamed(
-              AppRouteNames.professionalQuotationReview,
-              pathParameters: {'requestId': request.id},
-              extra: draft,
-            );
-          },
+        return _incomingRequestRoute(
+          state,
+          (request) => QuotationFormScreen(
+            request: request,
+            onReview: (draft) {
+              context.pushNamed(
+                AppRouteNames.professionalQuotationReview,
+                pathParameters: {'requestId': request.id},
+                extra: draft,
+              );
+            },
+          ),
         );
       },
     ),
@@ -626,53 +695,88 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalQuotationReview,
       name: AppRouteNames.professionalQuotationReview,
       builder: (context, state) {
-        final request = _incomingRequestFromState(context, state);
-        final stored = ProviderScope.containerOf(
-          context,
-          listen: false,
-        ).read(professionalRequestFlowProvider).quotations[request.id];
-        final draft = state.extra as QuotationDraft? ?? stored;
-        if (draft == null) {
-          return QuotationFormScreen(
+        return _incomingRequestRoute(state, (request) {
+          final stored = ProviderScope.containerOf(
+            context,
+            listen: false,
+          ).read(professionalRequestFlowProvider).quotations[request.id];
+          final draft = state.extra as QuotationDraft? ?? stored;
+          if (draft == null) {
+            return QuotationFormScreen(
+              request: request,
+              onReview: (newDraft) {
+                context.pushNamed(
+                  AppRouteNames.professionalQuotationReview,
+                  pathParameters: {'requestId': request.id},
+                  extra: newDraft,
+                );
+              },
+            );
+          }
+          return QuotationReviewScreen(
             request: request,
-            onReview: (newDraft) {
-              context.pushNamed(
-                AppRouteNames.professionalQuotationReview,
+            draft: draft,
+            onEdit: () {
+              if (stored == null) {
+                context.pop();
+              }
+            },
+            onSend: () async {
+              final container = ProviderScope.containerOf(
+                context,
+                listen: false,
+              );
+              if (container.read(backendRepositoriesProvider).mode ==
+                  BackendMode.mock) {
+                final sent = container
+                    .read(professionalRequestFlowProvider.notifier)
+                    .sendQuotation(draft);
+                if (!sent) {
+                  final messenger = ScaffoldMessenger.of(context);
+                  messenger.removeCurrentSnackBar();
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Esta solicitud ya tiene una cotización.'),
+                    ),
+                  );
+                  return;
+                }
+              } else {
+                try {
+                  await container
+                      .read(requestWorkflowControllerProvider)
+                      .createQuotation(
+                        Quotation(
+                          requestId: request.id,
+                          laborAmount: draft.laborAmount,
+                          materialsAmount: draft.materialsAmount,
+                          workDescription: draft.workDescription,
+                          estimatedDuration: draft.estimatedDuration.label,
+                          startTiming: draft.startTiming.label,
+                          validityDays: draft.validityDays,
+                        ),
+                      );
+                } catch (_) {
+                  if (!context.mounted) return;
+                  final messenger = ScaffoldMessenger.of(context);
+                  messenger.removeCurrentSnackBar();
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('No pudimos enviar la cotización.'),
+                    ),
+                  );
+                  return;
+                }
+              }
+              if (!context.mounted) return;
+              context.goNamed(
+                AppRouteNames.professionalQuotationSuccess,
                 pathParameters: {'requestId': request.id},
-                extra: newDraft,
+                extra: request.customerName,
               );
             },
           );
-        }
-        return QuotationReviewScreen(
-          request: request,
-          draft: draft,
-          onEdit: () {
-            if (stored == null) {
-              context.pop();
-            }
-          },
-          onSend: () {
-            final sent = ProviderScope.containerOf(context, listen: false)
-                .read(professionalRequestFlowProvider.notifier)
-                .sendQuotation(draft);
-            if (!sent) {
-              final messenger = ScaffoldMessenger.of(context);
-              messenger.removeCurrentSnackBar();
-              messenger.showSnackBar(
-                const SnackBar(
-                  content: Text('Esta solicitud ya tiene una cotización.'),
-                ),
-              );
-              return;
-            }
-            context.goNamed(
-              AppRouteNames.professionalQuotationSuccess,
-              pathParameters: {'requestId': request.id},
-              extra: request.customerName,
-            );
-          },
-        );
+        });
       },
     ),
     GoRoute(
@@ -732,29 +836,63 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.confirmRequest,
       builder: (context, state) {
+        final draft = state.extra as RequestDraft?;
+        if (draft == null) {
+          return const Scaffold(
+            body: Center(
+              child: Text('No se encontraron los datos de la solicitud.'),
+            ),
+          );
+        }
         return ConfirmRequestScreen(
-          draft: state.extra! as RequestDraft,
+          draft: draft,
           onSubmit: () async {
-            final draft = state.extra! as RequestDraft;
             final container = ProviderScope.containerOf(context, listen: false);
+            final isMock =
+                container.read(backendRepositoriesProvider).mode ==
+                BackendMode.mock;
+            final authenticatedUser = container
+                .read(authControllerProvider)
+                .user;
+            if (!isMock && authenticatedUser == null) {
+              throw StateError(
+                'Debes iniciar sesión para crear una solicitud.',
+              );
+            }
+            final persistedProfessional = isMock
+                ? null
+                : (await container
+                          .read(professionalsRepositoryProvider)
+                          .getProfessionals())
+                      .where(
+                        (item) => item.user.name == draft.professional.name,
+                      )
+                      .firstOrNull;
+            if (!isMock && persistedProfessional == null) {
+              throw StateError('No se encontró el profesional seleccionado.');
+            }
             final now = DateTime.now();
             final request = ServiceRequest(
-              id: 'request-${now.microsecondsSinceEpoch}',
-              customer: const AppUser(
-                id: currentCustomerId,
+              id: isMock
+                  ? 'request-${now.microsecondsSinceEpoch}'
+                  : const Uuid().v4(),
+              customer: AppUser(
+                id: isMock ? currentCustomerId : authenticatedUser!.id,
                 name: 'Cliente LinkO',
               ),
-              professional: ProfessionalProfile(
-                id: 'profile-${draft.professional.id}',
-                user: AppUser(
-                  id: draft.professional.id,
-                  name: draft.professional.name,
-                ),
-                profession: draft.professional.profession,
-                rating: draft.professional.rating,
-                reviewCount: draft.professional.reviewCount,
-                location: draft.professional.location,
-              ),
+              professional:
+                  persistedProfessional ??
+                  ProfessionalProfile(
+                    id: draft.professional.id,
+                    user: AppUser(
+                      id: draft.professional.id,
+                      name: draft.professional.name,
+                    ),
+                    profession: draft.professional.profession,
+                    rating: draft.professional.rating,
+                    reviewCount: draft.professional.reviewCount,
+                    location: draft.professional.location,
+                  ),
               serviceName: draft.professional.profession,
               category: _serviceCategoryFor(draft.professional.profession),
               description: draft.description,
@@ -793,8 +931,12 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.requestSuccess,
       builder: (context, state) {
+        final professionalName = state.extra as String?;
+        if (professionalName == null) {
+          return const _MissingRequestScreen();
+        }
         return RequestSuccessScreen(
-          professionalName: state.extra! as String,
+          professionalName: professionalName,
           onViewRequests: () => context.go(AppRoutes.customerRequests),
           onBackHome: () => context.go(AppRoutes.guestHome),
         );
@@ -861,7 +1003,12 @@ final GoRouter appRouter = GoRouter(
                     ),
                   ),
                   data: (items) => buildScreen(
-                    items.map((item) => item.toCustomerRequest()).toList(),
+                    items.map((item) {
+                      final status = ref
+                          .watch(realtimeRequestStatusProvider(item.id))
+                          .value;
+                      return item.copyWith(state: status).toCustomerRequest();
+                    }).toList(),
                   ),
                 );
           },
@@ -931,43 +1078,79 @@ final GoRouter appRouter = GoRouter(
                 body: Center(child: Text('No se encontró la solicitud.')),
               );
             }
-            final resolvedRequest = serviceRequest;
+            var resolvedRequest = serviceRequest;
+            final isMock =
+                ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
+            if (!isMock) {
+              final realtimeStatus = ref
+                  .watch(realtimeRequestStatusProvider(requestId))
+                  .value;
+              if (realtimeStatus != null) {
+                resolvedRequest = resolvedRequest.copyWith(
+                  state: realtimeStatus,
+                );
+              }
+            }
             final request = resolvedRequest.toCustomerRequest();
-            final quotation = ref.watch(quotationProvider(requestId));
+            final quotation = isMock
+                ? ref.watch(quotationProvider(requestId))
+                : ref.watch(realtimeQuotationProvider(requestId)).value;
             final messages = ref.watch(conversationProvider(requestId));
             return CustomerRequestDetailScreen(
               request: request,
               onBack: () => _popOrGo(context, AppRoutes.customerRequests),
-              timelineEvents: ref.watch(timelineProvider(requestId)),
+              timelineEvents: isMock
+                  ? ref.watch(timelineProvider(requestId))
+                  : ref.watch(realtimeTimelineProvider(requestId)).value ??
+                        const [],
               scheduledDateLabel: _scheduledDateLabel(messages),
               onSubmitRating: (stars, comment) {
                 final container = ProviderScope.containerOf(
                   context,
                   listen: false,
                 );
-                container
-                    .read(requestRepositoryProvider)
-                    .submitRating(
-                      ServiceRating(
-                        requestId: requestId,
-                        professionalId: resolvedRequest.professional.user.id,
-                        stars: stars,
-                        comment: comment,
+                final rating = ServiceRating(
+                  requestId: requestId,
+                  professionalId: resolvedRequest.professional.user.id,
+                  stars: stars,
+                  comment: comment,
+                );
+                void invalidateRatingData() {
+                  container
+                    ..invalidate(requestDetailProvider(requestId))
+                    ..invalidate(customerRequestsProvider)
+                    ..invalidate(professionalRequestsProvider)
+                    ..invalidate(conversationProvider(requestId))
+                    ..invalidate(timelineProvider(requestId))
+                    ..invalidate(ratingProvider(requestId))
+                    ..invalidate(
+                      professionalRatingSummaryProvider(
+                        resolvedRequest.professional.user.id,
                       ),
-                    );
+                    )
+                    ..invalidate(professionalRequestFlowProvider);
+                }
+
+                if (isMock) {
+                  container
+                      .read(requestRepositoryProvider)
+                      .submitRating(rating);
+                  invalidateRatingData();
+                  return;
+                }
                 container
-                  ..invalidate(requestDetailProvider(requestId))
-                  ..invalidate(customerRequestsProvider)
-                  ..invalidate(professionalRequestsProvider)
-                  ..invalidate(conversationProvider(requestId))
-                  ..invalidate(timelineProvider(requestId))
-                  ..invalidate(ratingProvider(requestId))
-                  ..invalidate(
-                    professionalRatingSummaryProvider(
-                      resolvedRequest.professional.user.id,
-                    ),
-                  )
-                  ..invalidate(professionalRequestFlowProvider);
+                    .read(ratingsRepositoryProvider)
+                    .submitRating(rating)
+                    .then((_) => invalidateRatingData())
+                    .catchError((Object _) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No pudimos enviar la calificación.'),
+                          ),
+                        );
+                      }
+                    });
               },
               onViewQuotation: quotation == null
                   ? null
@@ -994,47 +1177,87 @@ final GoRouter appRouter = GoRouter(
       name: AppRouteNames.customerQuotation,
       builder: (context, state) {
         final requestId = state.pathParameters['requestId']!;
-        final container = ProviderScope.containerOf(context, listen: false);
-        final request = container.read(requestDetailProvider(requestId))!;
-        final quotation = container.read(quotationProvider(requestId))!;
-        return CustomerQuotationScreen(
-          request: request,
-          quotation: quotation,
-          onAccept: () {
-            container
-                .read(requestRepositoryProvider)
-                .acceptQuotation(requestId);
-            container
-              ..invalidate(requestDetailProvider(requestId))
-              ..invalidate(customerRequestsProvider)
-              ..invalidate(professionalRequestsProvider)
-              ..invalidate(conversationProvider(requestId))
-              ..invalidate(timelineProvider(requestId))
-              ..invalidate(professionalRequestFlowProvider);
-            context.goNamed(
-              AppRouteNames.customerRequestDetail,
-              pathParameters: {'requestId': requestId},
-            );
-          },
-          onRequestChanges: () {
-            container
-                .read(requestRepositoryProvider)
-                .sendMessage(
-                  ConversationMessage(
-                    id: '$requestId-changes-${DateTime.now().microsecondsSinceEpoch}',
-                    requestId: requestId,
-                    author: MessageAuthor.system,
-                    text: 'El cliente solicitó cambios en la cotización.',
-                    timeLabel: 'Ahora',
-                  ),
+        return Consumer(
+          builder: (context, ref, child) {
+            final isMock =
+                ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
+            final request = isMock
+                ? ref.watch(requestDetailProvider(requestId))
+                : ref.watch(persistedRequestDetailProvider(requestId)).value;
+            final quotation = isMock
+                ? ref.watch(quotationProvider(requestId))
+                : ref.watch(realtimeQuotationProvider(requestId)).value;
+            if (request == null || quotation == null) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return CustomerQuotationScreen(
+              request: request,
+              quotation: quotation,
+              onAccept: () async {
+                try {
+                  await ref
+                      .read(requestWorkflowControllerProvider)
+                      .acceptQuotation(requestId);
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No pudimos aceptar la cotización.'),
+                      ),
+                    );
+                  }
+                  return;
+                }
+                if (!context.mounted) return;
+                ref
+                  ..invalidate(requestDetailProvider(requestId))
+                  ..invalidate(customerRequestsProvider)
+                  ..invalidate(professionalRequestsProvider)
+                  ..invalidate(conversationProvider(requestId))
+                  ..invalidate(timelineProvider(requestId))
+                  ..invalidate(professionalRequestFlowProvider);
+                context.goNamed(
+                  AppRouteNames.customerRequestDetail,
+                  pathParameters: {'requestId': requestId},
                 );
-            container
-              ..invalidate(conversationProvider(requestId))
-              ..invalidate(requestDetailProvider(requestId))
-              ..invalidate(customerRequestsProvider);
-            context.goNamed(
-              AppRouteNames.customerConversation,
-              pathParameters: {'requestId': requestId},
+              },
+              onRequestChanges: () async {
+                if (!isMock) {
+                  await ref
+                      .read(requestWorkflowControllerProvider)
+                      .rejectQuotation(requestId);
+                  if (context.mounted) {
+                    context.goNamed(
+                      AppRouteNames.customerRequestDetail,
+                      pathParameters: {'requestId': requestId},
+                    );
+                  }
+                  return;
+                }
+                ref
+                    .read(requestRepositoryProvider)
+                    .sendMessage(
+                      ConversationMessage(
+                        id: '$requestId-changes-${DateTime.now().microsecondsSinceEpoch}',
+                        requestId: requestId,
+                        author: MessageAuthor.system,
+                        text: 'El cliente solicitó cambios en la cotización.',
+                        timeLabel: 'Ahora',
+                      ),
+                    );
+                ref
+                  ..invalidate(conversationProvider(requestId))
+                  ..invalidate(requestDetailProvider(requestId))
+                  ..invalidate(customerRequestsProvider);
+                if (context.mounted) {
+                  context.goNamed(
+                    AppRouteNames.customerConversation,
+                    pathParameters: {'requestId': requestId},
+                  );
+                }
+              },
             );
           },
         );
@@ -1044,93 +1267,102 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.customerConversation,
       name: AppRouteNames.customerConversation,
       builder: (context, state) {
-        final request = _customerRequestFromState(context, state);
-        return Consumer(
-          builder: (context, ref, child) {
-            final isMock =
-                ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
-            final persisted = isMock
-                ? null
-                : ref.watch(persistedRequestDetailProvider(request.id));
-            if (persisted?.isLoading ?? false) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-            if (persisted?.hasError ?? false) {
-              return const Scaffold(
-                body: Center(child: Text('No pudimos cargar la conversación.')),
-              );
-            }
-            final serviceRequest = persisted?.value;
-            return ConversationScreen(
-              requestId: request.id,
-              counterpartName: request.professionalName,
-              serviceName: request.serviceName,
-              requestStatus: request.status,
-              perspective: ConversationPerspective.customer,
-              initialMessages: isMock
-                  ? ref.watch(conversationProvider(request.id))
-                  : const [],
-              realtime: serviceRequest == null
+        return _customerRequestRoute(
+          state,
+          (request) => Consumer(
+            builder: (context, ref, child) {
+              final isMock =
+                  ref.watch(backendRepositoriesProvider).mode ==
+                  BackendMode.mock;
+              final persisted = isMock
                   ? null
-                  : ConversationRealtimeConfig(
-                      repository: ref.watch(conversationsRepositoryProvider),
-                      customerId: serviceRequest.customer.id,
-                      professionalId: serviceRequest.professional.id,
-                      senderId: serviceRequest.customer.id,
-                    ),
-              onBack: () => _popOrGo(context, AppRoutes.customerRequests),
-              onSendMessage: isMock
-                  ? (text) => _sendConversationMessage(
-                      context,
-                      request.id,
-                      text,
-                      false,
-                    )
-                  : null,
-              onConfirmSchedule: (messageId) {
-                final container = ProviderScope.containerOf(
-                  context,
-                  listen: false,
+                  : ref.watch(persistedRequestDetailProvider(request.id));
+              if (persisted?.isLoading ?? false) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
                 );
-                container
-                    .read(requestRepositoryProvider)
-                    .confirmSchedule(request.id, messageId);
-                _invalidateScheduleData(container, request.id);
-              },
-              onRequestScheduleChange: (messageId) {
-                final container = ProviderScope.containerOf(
-                  context,
-                  listen: false,
+              }
+              if (persisted?.hasError ?? false) {
+                return const Scaffold(
+                  body: Center(
+                    child: Text('No pudimos cargar la conversación.'),
+                  ),
                 );
-                container
-                    .read(requestRepositoryProvider)
-                    .requestScheduleChange(request.id, messageId);
-                _invalidateScheduleData(container, request.id);
-              },
-              onConfirmJob: () {
-                final container = ProviderScope.containerOf(
-                  context,
-                  listen: false,
-                );
-                container
-                    .read(requestRepositoryProvider)
-                    .confirmJob(request.id);
-                _invalidateScheduleData(container, request.id);
-              },
-              onReportProblem: () {
-                final container = ProviderScope.containerOf(
-                  context,
-                  listen: false,
-                );
-                container
-                    .read(requestRepositoryProvider)
-                    .reportCompletedWorkProblem(request.id);
-                _invalidateScheduleData(container, request.id);
-              },
-            );
-          },
+              }
+              final serviceRequest = persisted?.value;
+              return ConversationScreen(
+                requestId: request.id,
+                counterpartName: request.professionalName,
+                serviceName: request.serviceName,
+                requestStatus: request.status,
+                perspective: ConversationPerspective.customer,
+                initialMessages: isMock
+                    ? ref.watch(conversationProvider(request.id))
+                    : const [],
+                realtime: serviceRequest == null
+                    ? null
+                    : ConversationRealtimeConfig(
+                        repository: ref.watch(conversationsRepositoryProvider),
+                        customerId: serviceRequest.customer.id,
+                        professionalId: serviceRequest.professional.id,
+                        senderId: serviceRequest.customer.id,
+                      ),
+                onBack: () => _popOrGo(context, AppRoutes.customerRequests),
+                onSendMessage: isMock
+                    ? (text) => _sendConversationMessage(
+                        context,
+                        request.id,
+                        text,
+                        false,
+                      )
+                    : null,
+                onConfirmSchedule: (messageId) {
+                  final container = ProviderScope.containerOf(
+                    context,
+                    listen: false,
+                  );
+                  container
+                      .read(requestWorkflowControllerProvider)
+                      .acceptSchedule(request.id, messageId)
+                      .then(
+                        (_) => _invalidateScheduleData(container, request.id),
+                      );
+                },
+                onRequestScheduleChange: (messageId) {
+                  final container = ProviderScope.containerOf(
+                    context,
+                    listen: false,
+                  );
+                  container
+                      .read(requestRepositoryProvider)
+                      .requestScheduleChange(request.id, messageId);
+                  _invalidateScheduleData(container, request.id);
+                },
+                onConfirmJob: () {
+                  final container = ProviderScope.containerOf(
+                    context,
+                    listen: false,
+                  );
+                  container
+                      .read(requestWorkflowControllerProvider)
+                      .requestRating(request.id)
+                      .then(
+                        (_) => _invalidateScheduleData(container, request.id),
+                      );
+                },
+                onReportProblem: () {
+                  final container = ProviderScope.containerOf(
+                    context,
+                    listen: false,
+                  );
+                  container
+                      .read(requestRepositoryProvider)
+                      .reportCompletedWorkProblem(request.id);
+                  _invalidateScheduleData(container, request.id);
+                },
+              );
+            },
+          ),
         );
       },
     ),

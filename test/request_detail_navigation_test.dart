@@ -69,4 +69,33 @@ void main() {
     expect(find.text('Solicitudes'), findsWidgets);
     expect(find.text('Nuevas'), findsOneWidget);
   });
+
+  testWidgets('missing request route renders a controlled state', (
+    tester,
+  ) async {
+    appRouter.go('/professional/requests/request-that-does-not-exist');
+    await tester.pumpWidget(const ProviderScope(child: LinkoApp()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No se encontró la solicitud.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('transient routes do not crash when extra is absent', (
+    tester,
+  ) async {
+    appRouter.go(AppRoutes.confirmRequest);
+    await tester.pumpWidget(const ProviderScope(child: LinkoApp()));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('No se encontraron los datos de la solicitud.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+
+    appRouter.go(AppRoutes.requestSuccess);
+    await tester.pumpAndSettle();
+    expect(find.text('No se encontró la solicitud.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

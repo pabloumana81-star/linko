@@ -5,6 +5,8 @@ import 'package:linko/core/backend/repositories/service_requests_repository.dart
 import 'package:linko/features/requests/data/mock_request_repository.dart';
 import 'package:linko/features/requests/data/service_request_supabase_mapper.dart';
 import 'package:linko/features/requests/domain/models/request_state.dart';
+import 'package:linko/features/requests/domain/models/app_user.dart';
+import 'package:linko/features/requests/domain/models/professional_profile.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/timeline_event.dart';
 import 'package:linko/features/requests/presentation/providers/request_providers.dart';
@@ -79,6 +81,63 @@ void main() {
   });
 
   group('Supabase mapping', () {
+    test('accepts only UUID identifiers for persisted requests', () {
+      const mapper = ServiceRequestSupabaseMapper();
+      final request = ServiceRequest(
+        id: '018f47a6-7200-4d31-8f6c-1bc183202111',
+        customer: const AppUser(
+          id: '018f47a6-7200-4d31-8f6c-1bc183202222',
+          name: 'Cliente',
+        ),
+        professional: const ProfessionalProfile(
+          id: '018f47a6-7200-4d31-8f6c-1bc183202333',
+          user: AppUser(
+            id: '018f47a6-7200-4d31-8f6c-1bc183202333',
+            name: 'Profesional',
+          ),
+          profession: 'Electricista',
+          rating: 5,
+          reviewCount: 1,
+          location: 'San José',
+        ),
+        serviceName: 'Electricista',
+        category: ServiceCategory.electrical,
+        description: 'Revisión',
+        location: 'San José',
+        availabilityLabel: 'Flexible',
+        state: RequestState.pending,
+        updatedAt: DateTime.utc(2026, 8, 3),
+        createdAtLabel: 'Ahora',
+        memberSinceLabel: 'Miembro',
+        attachedPhotoCount: 0,
+      );
+
+      expect(
+        mapper.toInsert(request)['professional_id'],
+        request.professional.id,
+      );
+      expect(
+        () => mapper.toInsert(
+          ServiceRequest(
+            id: 'request-temporal',
+            customer: request.customer,
+            professional: request.professional,
+            serviceName: request.serviceName,
+            category: request.category,
+            description: request.description,
+            location: request.location,
+            availabilityLabel: request.availabilityLabel,
+            state: request.state,
+            updatedAt: request.updatedAt,
+            createdAtLabel: request.createdAtLabel,
+            memberSinceLabel: request.memberSinceLabel,
+            attachedPhotoCount: request.attachedPhotoCount,
+          ),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
     test('maps every status explicitly in both directions', () {
       for (final status in RequestStatus.values) {
         final stored = RequestStatusMapper.toDatabase(status);
@@ -163,4 +222,26 @@ class _FailingServiceRequestsRepository implements ServiceRequestsRepository {
   @override
   Future<void> updateStatus(String requestId, RequestState state) async =>
       _fail();
+
+  @override
+  Stream<RequestStatus> watchStatus(String requestId) => Stream.error(_fail());
+
+  @override
+  Stream<List<TimelineEvent>> watchTimeline(String requestId) =>
+      Stream.error(_fail());
+
+  @override
+  Future<void> transitionStatus({
+    required String requestId,
+    required RequestStatus nextStatus,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+  }) async => _fail();
+
+  @override
+  Future<void> appendEvent({
+    required String requestId,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+  }) async => _fail();
 }

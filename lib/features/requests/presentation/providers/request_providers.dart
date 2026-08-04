@@ -3,12 +3,14 @@ import 'package:linko/core/backend/backend_providers.dart';
 import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/core/backend/data/mock_backend_repositories.dart';
 import 'package:linko/core/backend/repositories/service_requests_repository.dart';
+import 'package:linko/core/backend/repositories/quotations_repository.dart';
 import 'package:linko/features/auth/presentation/auth_controller.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/quotation.dart';
 import 'package:linko/features/requests/domain/models/timeline_event.dart';
 import 'package:linko/features/requests/domain/models/service_rating.dart';
+import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/requests/domain/repositories/request_repository.dart';
 
 const currentCustomerId = 'customer-current';
@@ -27,6 +29,34 @@ final activeServiceRequestsRepositoryProvider =
       }
       return ref.watch(serviceRequestsRepositoryProvider);
     });
+
+final activeQuotationsRepositoryProvider = Provider<QuotationsRepository>((
+  ref,
+) {
+  if (ref.watch(backendRepositoriesProvider).mode == BackendMode.mock) {
+    return MockQuotationsRepository(ref.watch(requestRepositoryProvider));
+  }
+  return ref.watch(quotationsRepositoryProvider);
+});
+
+final realtimeRequestStatusProvider =
+    StreamProvider.family<RequestStatus, String>(
+      (ref, requestId) => ref
+          .watch(activeServiceRequestsRepositoryProvider)
+          .watchStatus(requestId),
+    );
+
+final realtimeTimelineProvider =
+    StreamProvider.family<List<TimelineEvent>, String>(
+      (ref, requestId) => ref
+          .watch(activeServiceRequestsRepositoryProvider)
+          .watchTimeline(requestId),
+    );
+
+final realtimeQuotationProvider = StreamProvider.family<Quotation?, String>(
+  (ref, requestId) =>
+      ref.watch(activeQuotationsRepositoryProvider).watchQuotation(requestId),
+);
 
 String _requestActorId(Ref ref, String mockId) {
   final backendMode = ref.watch(backendRepositoriesProvider).mode;

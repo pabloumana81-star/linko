@@ -81,7 +81,12 @@ class _ProfessionalRequestsScreenState
       ),
       data: (requests) {
         final visibleRequests = _visibleRequests(
-          requests.map((request) => request.toIncomingRequest()).toList(),
+          requests.map((request) {
+            final status = ref
+                .watch(realtimeRequestStatusProvider(request.id))
+                .value;
+            return request.copyWith(state: status).toIncomingRequest();
+          }).toList(),
         );
         return _buildScaffold(_requestList(visibleRequests));
       },

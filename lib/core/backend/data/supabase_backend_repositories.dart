@@ -20,6 +20,8 @@ import 'package:linko/features/requests/domain/models/timeline_event.dart';
 import 'package:linko/features/requests/data/service_request_supabase_mapper.dart';
 import 'package:linko/features/requests/data/conversation_supabase_mapper.dart';
 import 'package:linko/features/requests/domain/models/conversation.dart';
+import 'package:linko/features/requests/data/request_workflow_supabase_mapper.dart';
+import 'package:linko/features/requests/domain/services/request_state_machine.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAuthenticationRepository implements AuthenticationRepository {
@@ -178,7 +180,7 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
   final SupabaseClient _client;
 
   static const _selection =
-      'id,user_id,display_name,profession,rating,review_count,location';
+      'id,display_name,profession,rating,review_count,location';
 
   @override
   Future<List<ProfessionalProfile>> getProfessionals() async {
@@ -206,10 +208,12 @@ class ServiceRequestsRepositorySupabase implements ServiceRequestsRepository {
   ServiceRequestsRepositorySupabase(
     this._client, [
     this._mapper = const ServiceRequestSupabaseMapper(),
+    this._workflowMapper = const RequestWorkflowSupabaseMapper(),
   ]);
 
   final SupabaseClient _client;
   final ServiceRequestSupabaseMapper _mapper;
+  final RequestWorkflowSupabaseMapper _workflowMapper;
 
   static const _selection =
       '*,customer:profiles!customer_id(id,display_name),'
@@ -262,23 +266,97 @@ class ServiceRequestsRepositorySupabase implements ServiceRequestsRepository {
 
   @override
   Future<List<TimelineEvent>> getTimeline(String requestId) async {
-    return const [];
+    final rows = await _client
+        .from('request_events')
+        .select()
+        .eq('request_id', requestId)
+        .order('created_at')
+        .order('id');
+    return rows.map(_workflowMapper.eventFromRow).toList(growable: false);
   }
 
   @override
   Future<void> updateStatus(String requestId, RequestState state) async {
-    await _client
-        .from('service_requests')
-        .update({'status': RequestStatusMapper.toDatabase(state)})
-        .eq('id', requestId);
+    final current = await getRequestById(requestId);
+    if (current == null) throw StateError('No se encontró la solicitud.');
+    RequestStateMachine.ensureTransition(current.state, state);
+    await _client.rpc(
+      'transition_request_status',
+      params: {
+        'p_request_id': requestId,
+        'p_expected_status': RequestStatusMapper.toDatabase(current.state),
+        'p_new_status': RequestStatusMapper.toDatabase(state),
+        'p_event_type': null,
+        'p_payload': const <String, dynamic>{},
+      },
+    );
   }
 
   @override
   Future<void> updateSchedule(String requestId, DateTime? scheduledAt) async {
-    await _client
-        .from('service_requests')
-        .update({'scheduled_at': scheduledAt?.toUtc().toIso8601String()})
-        .eq('id', requestId);
+    await _client.rpc(
+      'update_request_schedule',
+      params: {
+        'p_request_id': requestId,
+        'p_scheduled_at': scheduledAt?.toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  @override
+  Stream<RequestStatus> watchStatus(String requestId) => _client
+      .from('service_requests')
+      .stream(primaryKey: ['id'])
+      .eq('id', requestId)
+      .where((rows) => rows.isNotEmpty)
+      .map((rows) => RequestStatusMapper.fromDatabase(rows.single['status']));
+
+  @override
+  Stream<List<TimelineEvent>> watchTimeline(String requestId) {
+    final buffer = RequestEventBuffer();
+    return _client
+        .from('request_events')
+        .stream(primaryKey: ['id'])
+        .eq('request_id', requestId)
+        .order('created_at')
+        .map((rows) => buffer.merge(rows.map(_workflowMapper.eventFromRow)));
+  }
+
+  @override
+  Future<void> transitionStatus({
+    required String requestId,
+    required RequestStatus nextStatus,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+  }) async {
+    final current = await getRequestById(requestId);
+    if (current == null) throw StateError('No se encontró la solicitud.');
+    RequestStateMachine.ensureTransition(current.state, nextStatus);
+    await _client.rpc(
+      'transition_request_status',
+      params: {
+        'p_request_id': requestId,
+        'p_expected_status': RequestStatusMapper.toDatabase(current.state),
+        'p_new_status': RequestStatusMapper.toDatabase(nextStatus),
+        'p_event_type': eventType,
+        'p_payload': payload,
+      },
+    );
+  }
+
+  @override
+  Future<void> appendEvent({
+    required String requestId,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+  }) {
+    if (eventType != 'schedule_proposed') {
+      throw StateError('El evento de solicitud no está permitido.');
+    }
+    return _client.rpc(
+      'propose_request_schedule',
+      params: {'p_request_id': requestId, 'p_payload': payload},
+    );
   }
 }
 
@@ -580,10 +658,14 @@ class _RealtimeConversation {
   }
 }
 
-class SupabaseQuotationsRepository implements QuotationsRepository {
-  SupabaseQuotationsRepository(this._client);
+class QuotationsRepositorySupabase implements QuotationsRepository {
+  QuotationsRepositorySupabase(
+    this._client, [
+    this._mapper = const RequestWorkflowSupabaseMapper(),
+  ]);
 
   final SupabaseClient _client;
+  final RequestWorkflowSupabaseMapper _mapper;
 
   @override
   Future<Quotation?> getQuotation(String requestId) async {
@@ -592,31 +674,71 @@ class SupabaseQuotationsRepository implements QuotationsRepository {
         .select()
         .eq('request_id', requestId)
         .maybeSingle();
-    return row == null ? null : _quotation(row);
+    return row == null ? null : _mapper.quotationFromRow(row);
   }
 
   @override
   Future<void> sendQuotation(Quotation quotation) async {
+    final current = await _requestStatus(quotation.requestId);
+    RequestStateMachine.ensureTransition(current, RequestState.quoted);
     await _client.rpc(
-      'send_quotation',
+      'create_request_quotation',
       params: {
         'p_request_id': quotation.requestId,
-        'p_labor_amount': quotation.laborAmount,
-        'p_materials_amount': quotation.materialsAmount,
-        'p_work_description': quotation.workDescription,
+        'p_expected_status': RequestStatusMapper.toDatabase(current),
+        'p_price': quotation.totalAmount,
+        'p_description': quotation.workDescription,
         'p_estimated_duration': quotation.estimatedDuration,
-        'p_start_timing': quotation.startTiming,
-        'p_validity_days': quotation.validityDays,
-        'p_warranty_label': quotation.warrantyLabel,
       },
     );
   }
 
   @override
   Future<void> acceptQuotation(String requestId) async {
-    await _client.rpc('accept_quotation', params: {'p_request_id': requestId});
+    await _resolve(requestId, QuotationStatus.accepted);
+  }
+
+  @override
+  Future<void> rejectQuotation(String requestId) async {
+    await _resolve(requestId, QuotationStatus.rejected);
+  }
+
+  Future<void> _resolve(String requestId, QuotationStatus resolution) async {
+    final current = await _requestStatus(requestId);
+    final next = resolution == QuotationStatus.accepted
+        ? RequestState.accepted
+        : RequestState.cancelled;
+    RequestStateMachine.ensureTransition(current, next);
+    await _client.rpc(
+      'resolve_request_quotation',
+      params: {
+        'p_request_id': requestId,
+        'p_expected_status': RequestStatusMapper.toDatabase(current),
+        'p_resolution': resolution.name,
+      },
+    );
+  }
+
+  @override
+  Stream<Quotation?> watchQuotation(String requestId) => _client
+      .from('quotations')
+      .stream(primaryKey: ['request_id'])
+      .eq('request_id', requestId)
+      .map(
+        (rows) => rows.isEmpty ? null : _mapper.quotationFromRow(rows.single),
+      );
+
+  Future<RequestStatus> _requestStatus(String requestId) async {
+    final row = await _client
+        .from('service_requests')
+        .select('status')
+        .eq('id', requestId)
+        .single();
+    return RequestStatusMapper.fromDatabase(row['status']);
   }
 }
+
+typedef SupabaseQuotationsRepository = QuotationsRepositorySupabase;
 
 class SupabaseRatingsRepository implements RatingsRepository {
   SupabaseRatingsRepository(this._client);
@@ -673,28 +795,13 @@ class SupabaseRatingsRepository implements RatingsRepository {
 ProfessionalProfile _professional(Map<String, dynamic> row) {
   return ProfessionalProfile(
     id: row['id'] as String,
-    user: AppUser(
-      id: row['user_id'] as String,
-      name: row['display_name'] as String,
-    ),
+    user: AppUser(id: row['id'] as String, name: row['display_name'] as String),
     profession: row['profession'] as String,
     rating: (row['rating'] as num?)?.toDouble() ?? 0,
     reviewCount: (row['review_count'] as num?)?.toInt() ?? 0,
     location: row['location'] as String? ?? '',
   );
 }
-
-Quotation _quotation(Map<String, dynamic> row) => Quotation(
-  requestId: row['request_id'] as String,
-  laborAmount: (row['labor_amount'] as num).toInt(),
-  materialsAmount: (row['materials_amount'] as num).toInt(),
-  workDescription: row['work_description'] as String,
-  estimatedDuration: row['estimated_duration'] as String,
-  startTiming: row['start_timing'] as String,
-  validityDays: (row['validity_days'] as num).toInt(),
-  warrantyLabel:
-      row['warranty_label'] as String? ?? '30 días sobre el trabajo realizado',
-);
 
 ServiceRating _rating(Map<String, dynamic> row) => ServiceRating(
   requestId: row['request_id'] as String,

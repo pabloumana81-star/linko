@@ -141,6 +141,9 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
   MockServiceRequestsRepository(this._requests);
 
   final RequestRepository _requests;
+  final Map<String, StreamController<RequestStatus>> _statusWatchers = {};
+  final Map<String, StreamController<List<TimelineEvent>>> _timelineWatchers =
+      {};
 
   @override
   Future<void> createRequest(ServiceRequest request) async {
@@ -175,6 +178,7 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
   @override
   Future<void> updateStatus(String requestId, RequestState state) async {
     _requests.updateStatus(requestId, state);
+    _emitWorkflow(requestId);
   }
 
   @override
@@ -188,6 +192,66 @@ class MockServiceRequestsRepository implements ServiceRequestsRepository {
         updatedAt: DateTime.now().toUtc(),
       ),
     );
+  }
+
+  @override
+  Stream<RequestStatus> watchStatus(String requestId) {
+    final request = _requests.getRequestById(requestId);
+    if (request == null) throw StateError('No se encontró la solicitud.');
+    final controller = _statusWatchers.putIfAbsent(
+      requestId,
+      StreamController<RequestStatus>.broadcast,
+    );
+    scheduleMicrotask(() {
+      if (!controller.isClosed) controller.add(request.state);
+    });
+    return controller.stream;
+  }
+
+  @override
+  Stream<List<TimelineEvent>> watchTimeline(String requestId) {
+    final controller = _timelineWatchers.putIfAbsent(
+      requestId,
+      StreamController<List<TimelineEvent>>.broadcast,
+    );
+    scheduleMicrotask(() {
+      if (!controller.isClosed) {
+        controller.add(_requests.getTimeline(requestId));
+      }
+    });
+    return controller.stream;
+  }
+
+  @override
+  Future<void> transitionStatus({
+    required String requestId,
+    required RequestStatus nextStatus,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+  }) async {
+    _requests.updateStatus(requestId, nextStatus);
+    _emitWorkflow(requestId);
+  }
+
+  @override
+  Future<void> appendEvent({
+    required String requestId,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+  }) async {}
+
+  void _emitWorkflow(String requestId) {
+    final request = _requests.getRequestById(requestId);
+    final statusController = _statusWatchers[requestId];
+    if (request != null &&
+        statusController != null &&
+        !statusController.isClosed) {
+      statusController.add(request.state);
+    }
+    final timelineController = _timelineWatchers[requestId];
+    if (timelineController != null && !timelineController.isClosed) {
+      timelineController.add(_requests.getTimeline(requestId));
+    }
   }
 }
 
@@ -341,19 +405,56 @@ class MockQuotationsRepository implements QuotationsRepository {
   MockQuotationsRepository(this._requests);
 
   final RequestRepository _requests;
+  final Map<String, QuotationStatus> _statuses = {};
+  final Map<String, StreamController<Quotation?>> _watchers = {};
 
   @override
   Future<void> acceptQuotation(String requestId) async {
     _requests.acceptQuotation(requestId);
+    _statuses[requestId] = QuotationStatus.accepted;
+    _emit(requestId);
   }
 
   @override
   Future<Quotation?> getQuotation(String requestId) async =>
-      _requests.getQuotation(requestId);
+      _quotation(requestId);
 
   @override
   Future<void> sendQuotation(Quotation quotation) async {
     _requests.sendQuotation(quotation);
+    _statuses[quotation.requestId] = QuotationStatus.pending;
+    _emit(quotation.requestId);
+  }
+
+  @override
+  Future<void> rejectQuotation(String requestId) async {
+    _requests.updateStatus(requestId, RequestState.cancelled);
+    _statuses[requestId] = QuotationStatus.rejected;
+    _emit(requestId);
+  }
+
+  @override
+  Stream<Quotation?> watchQuotation(String requestId) {
+    final controller = _watchers.putIfAbsent(
+      requestId,
+      StreamController<Quotation?>.broadcast,
+    );
+    scheduleMicrotask(() {
+      if (!controller.isClosed) controller.add(_quotation(requestId));
+    });
+    return controller.stream;
+  }
+
+  Quotation? _quotation(String requestId) {
+    final quotation = _requests.getQuotation(requestId);
+    return quotation?.copyWith(status: _statuses[requestId]);
+  }
+
+  void _emit(String requestId) {
+    final controller = _watchers[requestId];
+    if (controller != null && !controller.isClosed) {
+      controller.add(_quotation(requestId));
+    }
   }
 }
 

@@ -48,16 +48,29 @@ abstract final class RequestStatusMapper {
 class ServiceRequestSupabaseMapper {
   const ServiceRequestSupabaseMapper();
 
-  Map<String, Object?> toInsert(ServiceRequest request) => {
-    'id': request.id,
-    'customer_id': request.customer.id,
-    'professional_id': request.professional.id,
-    'service_category': request.category.name,
-    'title': request.serviceName,
-    'description': request.description,
-    'status': RequestStatusMapper.toDatabase(request.state),
-    'scheduled_at': request.scheduledAt?.toUtc().toIso8601String(),
-  };
+  Map<String, Object?> toInsert(ServiceRequest request) {
+    if (!isUuid(request.id) ||
+        !isUuid(request.customer.id) ||
+        !isUuid(request.professional.id)) {
+      throw const FormatException(
+        'Los identificadores de la solicitud deben ser UUID válidos.',
+      );
+    }
+    return {
+      'id': request.id,
+      'customer_id': request.customer.id,
+      'professional_id': request.professional.id,
+      'service_category': request.category.name,
+      'title': request.serviceName,
+      'description': request.description,
+      'status': RequestStatusMapper.toDatabase(request.state),
+      'scheduled_at': request.scheduledAt?.toUtc().toIso8601String(),
+    };
+  }
+
+  static bool isUuid(String value) => RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  ).hasMatch(value);
 
   ServiceRequest fromRow(Map<String, dynamic> row) {
     final customer = _relation(row['customer']);

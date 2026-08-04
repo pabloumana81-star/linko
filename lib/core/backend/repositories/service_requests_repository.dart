@@ -14,4 +14,17 @@ abstract interface class ServiceRequestsRepository {
   Future<void> updateStatus(String requestId, RequestState state);
   Future<void> updateSchedule(String requestId, DateTime? scheduledAt);
   Future<List<TimelineEvent>> getTimeline(String requestId);
+  Stream<RequestStatus> watchStatus(String requestId);
+  Stream<List<TimelineEvent>> watchTimeline(String requestId);
+  Future<void> transitionStatus({
+    required String requestId,
+    required RequestStatus nextStatus,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+  });
+  Future<void> appendEvent({
+    required String requestId,
+    required String eventType,
+    Map<String, dynamic> payload = const {},
+  });
 }

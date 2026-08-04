@@ -6,9 +6,9 @@ import 'package:linko/features/requests/domain/services/request_state_machine.da
 import 'package:linko/core/backend/backend_providers.dart';
 import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/features/home/presentation/providers/professional_requests_provider.dart';
-import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/requests/presentation/adapters/request_view_adapters.dart';
 import 'package:linko/features/requests/presentation/providers/request_providers.dart';
+import 'package:linko/features/requests/presentation/providers/request_workflow_controller.dart';
 import 'package:linko/features/home/presentation/widgets/customer_summary_card.dart';
 import 'package:linko/features/home/presentation/widgets/request_info_banner.dart';
 import 'package:linko/features/home/presentation/widgets/request_section_title.dart';
@@ -62,8 +62,8 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
     }
     try {
       await ref
-          .read(activeServiceRequestsRepositoryProvider)
-          .updateStatus(request.id, RequestState.cancelled);
+          .read(requestWorkflowControllerProvider)
+          .rejectRequest(request.id);
       ref
         ..invalidate(persistedProfessionalRequestsProvider)
         ..invalidate(persistedCustomerRequestsProvider)
@@ -86,7 +86,7 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentRequest =
+    var currentRequest =
         ref.watch(backendRepositoriesProvider).mode == BackendMode.mock
         ? ref
               .watch(professionalRequestFlowProvider)
@@ -100,6 +100,14 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
                   .value
                   ?.toIncomingRequest() ??
               request;
+    if (ref.watch(backendRepositoriesProvider).mode == BackendMode.supabase) {
+      final realtimeStatus = ref
+          .watch(realtimeRequestStatusProvider(request.id))
+          .value;
+      if (realtimeStatus != null) {
+        currentRequest = currentRequest.copyWith(status: realtimeStatus);
+      }
+    }
     final photoSummary = switch (currentRequest.attachedPhotoCount) {
       0 => 'No se agregaron fotos',
       1 => '1 foto adjunta',
