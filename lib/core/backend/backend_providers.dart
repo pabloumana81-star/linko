@@ -42,6 +42,10 @@ final professionalsRepositoryProvider = Provider<ProfessionalsRepository>(
   (ref) => ref.watch(backendRepositoriesProvider).professionals,
 );
 
+final availableProfessionalsProvider = StreamProvider(
+  (ref) => ref.watch(professionalsRepositoryProvider).watchProfessionals(),
+);
+
 final profileRepositoryProvider = Provider<ProfileRepository>(
   (ref) => ref.watch(backendRepositoriesProvider).profile,
 );

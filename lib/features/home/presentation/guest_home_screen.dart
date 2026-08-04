@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:linko/features/home/presentation/data/placeholder_professionals.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/home/presentation/models/professional_profile_data.dart';
+import 'package:linko/features/home/presentation/providers/professional_discovery_provider.dart';
 import 'package:linko/features/home/presentation/widgets/bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/widgets/category_card.dart';
 import 'package:linko/features/home/presentation/widgets/professional_card.dart';
 import 'package:linko/features/home/presentation/widgets/search_bar_widget.dart';
 
-class GuestHomeScreen extends StatelessWidget {
+class GuestHomeScreen extends ConsumerWidget {
   const GuestHomeScreen({
     required this.onCategorySelected,
     required this.onCreateRequest,
@@ -41,7 +42,8 @@ class GuestHomeScreen extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final professionals = ref.watch(professionalDiscoveryProvider);
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -113,28 +115,33 @@ class GuestHomeScreen extends StatelessWidget {
                     const SizedBox(height: 44),
                     const _SectionTitle(label: 'Profesionales destacados'),
                     const SizedBox(height: 18),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: 3,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: professionalColumns,
-                        crossAxisSpacing: 18,
-                        mainAxisSpacing: 18,
-                        mainAxisExtent: 252,
+                    professionals.when(
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (_, _) =>
+                          const Text('No pudimos cargar los profesionales.'),
+                      data: (items) => GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: items.take(3).length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: professionalColumns,
+                          crossAxisSpacing: 18,
+                          mainAxisSpacing: 18,
+                          mainAxisExtent: 252,
+                        ),
+                        itemBuilder: (context, index) {
+                          final professional = items[index];
+                          return ProfessionalCard(
+                            name: professional.name,
+                            rating: professional.rating,
+                            profession: professional.profession,
+                            location: professional.location,
+                            onViewProfile: () =>
+                                onProfessionalSelected(professional),
+                          );
+                        },
                       ),
-                      itemBuilder: (context, index) {
-                        final professional = placeholderProfessionals[index];
-                        return ProfessionalCard(
-                          name: professional.name,
-                          rating: professional.rating,
-                          profession: professional.profession,
-                          location: professional.location,
-                          onViewProfile: () {
-                            onProfessionalSelected(professional);
-                          },
-                        );
-                      },
                     ),
                   ],
                 ),

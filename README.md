@@ -1,4 +1,48 @@
-# linko
+# LinkO
+
+LinkO se distribuye como dos aplicaciones Flutter independientes:
+
+- La aplicación principal de clientes y profesionales vive en la raíz.
+- El backoffice web vive en [`admin/`](admin/) y no forma parte del router de la aplicación principal.
+
+## Ejecutar ambas aplicaciones
+
+Aplicación principal:
+
+```sh
+flutter pub get
+flutter run
+./qa.sh
+```
+
+Backoffice web:
+
+```sh
+cd admin
+flutter pub get
+flutter run -d chrome
+./qa.sh
+```
+
+Ambas aplicaciones aceptan `BACKEND_MODE`, `SUPABASE_URL` y
+`SUPABASE_ANON_KEY` mediante `--dart-define`. Solo debe usarse la clave pública;
+las políticas RLS y las funciones RPC de Supabase protegen el acceso
+administrativo. Consulta [`admin/README.md`](admin/README.md) para más detalles.
+
+Para conectarlas al mismo proyecto Supabase, inicia ambas con el mismo archivo
+de entorno:
+
+```sh
+flutter run -d macos --dart-define-from-file=.env
+cd admin
+flutter run -d chrome --dart-define-from-file=../.env
+```
+
+El archivo debe definir el mismo `SUPABASE_URL`, `SUPABASE_ANON_KEY` y
+`BACKEND_MODE=supabase`. Las suspensiones administrativas actualizan
+`profiles.account_status`; la aplicación principal escucha cambios realtime en
+`profiles` y `professional_profiles` y vuelve a consultar únicamente perfiles
+activos y verificados.
 
 A new Flutter project.
 

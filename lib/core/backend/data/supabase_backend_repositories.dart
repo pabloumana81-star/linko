@@ -181,28 +181,64 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
 
   final SupabaseClient _client;
 
-  static const _selection =
-      'id,display_name,profession,rating,review_count,location';
-
   @override
   Future<List<ProfessionalProfile>> getProfessionals() async {
-    final rows = await _client
-        .from('professional_profiles')
-        .select(_selection)
-        .order('display_name');
-    return rows.map(_professional).toList(growable: false);
+    final rows = await _client.rpc('list_available_professionals') as List;
+    return rows
+        .map((row) => _professional(Map<String, dynamic>.from(row as Map)))
+        .toList(growable: false);
   }
 
   @override
   Future<ProfessionalProfile?> getProfessionalById(
     String professionalId,
   ) async {
-    final row = await _client
-        .from('professional_profiles')
-        .select(_selection)
-        .eq('id', professionalId)
-        .maybeSingle();
-    return row == null ? null : _professional(row);
+    final rows = await getProfessionals();
+    for (final professional in rows) {
+      if (professional.id == professionalId ||
+          professional.user.id == professionalId) {
+        return professional;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Stream<List<ProfessionalProfile>> watchProfessionals() {
+    late final StreamController<List<ProfessionalProfile>> controller;
+    late final RealtimeChannel channel;
+    var loading = false;
+
+    Future<void> refresh() async {
+      if (loading || controller.isClosed) return;
+      loading = true;
+      try {
+        controller.add(await getProfessionals());
+      } catch (error, stackTrace) {
+        controller.addError(error, stackTrace);
+      } finally {
+        loading = false;
+      }
+    }
+
+    controller = StreamController<List<ProfessionalProfile>>();
+    channel = _client
+        .channel('main-professional-availability')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'profiles',
+          callback: (_) => refresh(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'professional_profiles',
+          callback: (_) => refresh(),
+        );
+    channel.subscribe((_, _) => refresh());
+    controller.onCancel = () => _client.removeChannel(channel);
+    return controller.stream;
   }
 }
 

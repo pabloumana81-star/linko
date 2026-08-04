@@ -8,6 +8,7 @@ import 'package:linko/core/backend/repositories/profile_repository.dart';
 import 'package:linko/core/backend/repositories/quotations_repository.dart';
 import 'package:linko/core/backend/repositories/ratings_repository.dart';
 import 'package:linko/core/backend/repositories/service_requests_repository.dart';
+import 'package:linko/core/backend/data/professional_availability_store.dart';
 import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
 import 'package:linko/features/requests/domain/models/conversation.dart';
@@ -109,9 +110,13 @@ class MockProfileRepository implements ProfileRepository {
 }
 
 class MockProfessionalsRepository implements ProfessionalsRepository {
-  MockProfessionalsRepository(this._requests);
+  MockProfessionalsRepository(
+    this._requests, [
+    ProfessionalAvailabilityStore? availability,
+  ]) : _availability = availability ?? ProfessionalAvailabilityStore();
 
   final RequestRepository _requests;
+  final ProfessionalAvailabilityStore _availability;
 
   @override
   Future<List<ProfessionalProfile>> getProfessionals() async {
@@ -119,7 +124,11 @@ class MockProfessionalsRepository implements ProfessionalsRepository {
     for (final request in _requests.getCustomerRequests('customer-current')) {
       profiles[request.professional.user.id] = request.professional;
     }
-    return List.unmodifiable(profiles.values);
+    return List.unmodifiable(
+      profiles.values.where(
+        (profile) => _availability.isAvailable(profile.user.id),
+      ),
+    );
   }
 
   @override
@@ -134,6 +143,14 @@ class MockProfessionalsRepository implements ProfessionalsRepository {
       }
     }
     return null;
+  }
+
+  @override
+  Stream<List<ProfessionalProfile>> watchProfessionals() async* {
+    yield await getProfessionals();
+    await for (final _ in _availability.changes) {
+      yield await getProfessionals();
+    }
   }
 }
 

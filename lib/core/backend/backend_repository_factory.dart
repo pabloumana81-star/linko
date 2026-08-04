@@ -1,5 +1,6 @@
 import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/core/backend/data/mock_backend_repositories.dart';
+import 'package:linko/core/backend/data/professional_availability_store.dart';
 import 'package:linko/core/backend/data/supabase_backend_repositories.dart';
 import 'package:linko/core/backend/repositories/authentication_repository.dart';
 import 'package:linko/core/backend/repositories/conversations_repository.dart';
@@ -23,6 +24,7 @@ class BackendRepositories {
     required this.quotations,
     required this.ratings,
     required this.mvpCompatibilityRequests,
+    this.professionalAvailability,
   });
 
   final BackendMode mode;
@@ -36,6 +38,7 @@ class BackendRepositories {
 
   /// Temporary synchronous bridge for screens not migrated during Phase 1.
   final RequestRepository mvpCompatibilityRequests;
+  final ProfessionalAvailabilityStore? professionalAvailability;
 }
 
 class BackendRepositoryFactory {
@@ -48,16 +51,18 @@ class BackendRepositoryFactory {
     config.validate();
     final compatibility = MockRequestRepository();
     if (config.mode == BackendMode.mock) {
+      final availability = ProfessionalAvailabilityStore();
       return BackendRepositories(
         mode: BackendMode.mock,
         authentication: MockAuthenticationRepository(),
-        professionals: MockProfessionalsRepository(compatibility),
+        professionals: MockProfessionalsRepository(compatibility, availability),
         profile: MockProfileRepository(),
         serviceRequests: MockServiceRequestsRepository(compatibility),
         conversations: MockConversationsRepository(compatibility),
         quotations: MockQuotationsRepository(compatibility),
         ratings: MockRatingsRepository(compatibility),
         mvpCompatibilityRequests: compatibility,
+        professionalAvailability: availability,
       );
     }
     if (supabaseClient == null) {

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:linko/features/home/presentation/data/placeholder_professionals.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/home/presentation/models/professional_profile_data.dart';
+import 'package:linko/features/home/presentation/providers/professional_discovery_provider.dart';
 import 'package:linko/features/home/presentation/widgets/bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/widgets/category_card.dart';
 import 'package:linko/features/home/presentation/widgets/professional_card.dart';
 import 'package:linko/features/home/presentation/widgets/search_bar_widget.dart';
 import 'package:linko/features/home/presentation/widgets/search_chip_widget.dart';
 
-class SearchScreen extends StatelessWidget {
+class SearchScreen extends ConsumerWidget {
   const SearchScreen({
     required this.showBackButton,
     required this.onHomeSelected,
@@ -48,7 +49,8 @@ class SearchScreen extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final professionals = ref.watch(professionalDiscoveryProvider);
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: showBackButton,
@@ -129,28 +131,33 @@ class SearchScreen extends StatelessWidget {
                     const SizedBox(height: 40),
                     const _SearchSectionTitle(label: 'Resultados'),
                     const SizedBox(height: 16),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: placeholderProfessionals.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: resultColumns,
-                        crossAxisSpacing: 18,
-                        mainAxisSpacing: 18,
-                        mainAxisExtent: 252,
+                    professionals.when(
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (_, _) =>
+                          const Text('No pudimos cargar los profesionales.'),
+                      data: (items) => GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: items.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: resultColumns,
+                          crossAxisSpacing: 18,
+                          mainAxisSpacing: 18,
+                          mainAxisExtent: 252,
+                        ),
+                        itemBuilder: (context, index) {
+                          final professional = items[index];
+                          return ProfessionalCard(
+                            name: professional.name,
+                            rating: professional.rating,
+                            profession: professional.profession,
+                            location: professional.location,
+                            onViewProfile: () =>
+                                onProfessionalSelected(professional),
+                          );
+                        },
                       ),
-                      itemBuilder: (context, index) {
-                        final professional = placeholderProfessionals[index];
-                        return ProfessionalCard(
-                          name: professional.name,
-                          rating: professional.rating,
-                          profession: professional.profession,
-                          location: professional.location,
-                          onViewProfile: () {
-                            onProfessionalSelected(professional);
-                          },
-                        );
-                      },
                     ),
                   ],
                 ),
