@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:linko/core/backend/repositories/conversations_repository.dart';
+import 'package:linko/core/diagnostics/diagnostics_service.dart';
 import 'package:linko/core/utils/schedule_date_formatter.dart';
 import 'package:linko/features/home/presentation/widgets/conversation_widgets.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
@@ -40,6 +41,7 @@ class ConversationScreen extends StatefulWidget {
     this.onReportProblem,
     this.onBack,
     this.realtime,
+    this.diagnostics,
     super.key,
   });
 
@@ -57,6 +59,7 @@ class ConversationScreen extends StatefulWidget {
   final VoidCallback? onReportProblem;
   final VoidCallback? onBack;
   final ConversationRealtimeConfig? realtime;
+  final DiagnosticsService? diagnostics;
 
   @override
   State<ConversationScreen> createState() => _ConversationScreenState();
@@ -164,16 +167,29 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 (_) => _scrollToBottom(animated: true),
               );
             },
-            onError: (Object error) {
+            onError: (Object error, StackTrace stackTrace) {
+              _report(error, stackTrace, 'conversation_message_stream');
               if (mounted) setState(() => _loadError = error);
             },
           );
       _connectionSubscription = config.repository
           .watchConnection(conversation.id)
-          .listen((status) {
-            if (mounted) setState(() => _connectionStatus = status);
-          });
-    } catch (error) {
+          .listen(
+            (status) {
+              if (mounted) setState(() => _connectionStatus = status);
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              _report(error, stackTrace, 'conversation_connection_stream');
+              if (mounted) {
+                setState(
+                  () => _connectionStatus =
+                      ConversationConnectionStatus.disconnected,
+                );
+              }
+            },
+          );
+    } catch (error, stackTrace) {
+      _report(error, stackTrace, 'conversation_initialize');
       if (mounted) {
         setState(() {
           _loading = false;
@@ -202,7 +218,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
           body: text,
         );
         if (mounted) _inputController.clear();
-      } catch (_) {
+      } catch (error, stackTrace) {
+        _report(error, stackTrace, 'conversation_send_message');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('No pudimos enviar el mensaje.')),
@@ -275,7 +292,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
           body: 'El profesional propuso una fecha para el trabajo.',
           metadata: {'schedule_label': label, 'schedule_status': 'pending'},
         );
-      } catch (_) {
+        widget.diagnostics?.workflow(
+          type: WorkflowEventType.scheduleProposed,
+          requestId: widget.requestId,
+          customerId: realtime.customerId,
+          professionalId: realtime.professionalId,
+          previousState: _requestStatus,
+          newState: _requestStatus,
+        );
+      } catch (error, stackTrace) {
+        _report(error, stackTrace, 'conversation_propose_schedule');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -304,6 +330,10 @@ class _ConversationScreenState extends State<ConversationScreen> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _scrollToBottom(animated: true),
     );
+  }
+
+  void _report(Object error, StackTrace stackTrace, String context) {
+    widget.diagnostics?.unexpectedError(error, stackTrace, context: context);
   }
 
   void _updateSchedule(

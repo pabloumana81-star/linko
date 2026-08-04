@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/app/app_mode.dart';
 import 'package:linko/core/backend/backend_providers.dart';
+import 'package:linko/core/diagnostics/diagnostics_service.dart';
 import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 
 enum AuthStatus { loading, unauthenticated, guest, authenticated }
@@ -44,7 +45,8 @@ class AuthController extends Notifier<AuthState> {
       await _loadProfile(
         await ref.read(authenticationRepositoryProvider).restoreSession(),
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _report(error, stackTrace, 'auth_restore_session');
       state = AuthState.unauthenticated(error: error);
     }
   }
@@ -62,7 +64,8 @@ class AuthController extends Notifier<AuthState> {
             .read(profileRepositoryProvider)
             .updateProfile(userId: user.id, activeMode: mode);
         state = AuthState.authenticated(updated);
-      } catch (error) {
+      } catch (error, stackTrace) {
+        _report(error, stackTrace, 'auth_update_active_mode');
         state = AuthState(
           status: AuthStatus.authenticated,
           user: user,
@@ -75,14 +78,19 @@ class AuthController extends Notifier<AuthState> {
   Future<void> updateProfile({String? displayName, String? avatarUrl}) async {
     final user = state.user;
     if (user == null) return;
-    final updated = await ref
-        .read(profileRepositoryProvider)
-        .updateProfile(
-          userId: user.id,
-          displayName: displayName,
-          avatarUrl: avatarUrl,
-        );
-    state = AuthState.authenticated(updated);
+    try {
+      final updated = await ref
+          .read(profileRepositoryProvider)
+          .updateProfile(
+            userId: user.id,
+            displayName: displayName,
+            avatarUrl: avatarUrl,
+          );
+      state = AuthState.authenticated(updated);
+    } catch (error, stackTrace) {
+      _report(error, stackTrace, 'auth_update_profile');
+      rethrow;
+    }
   }
 
   Future<void> sendEmailLink(String email) async {
@@ -92,7 +100,8 @@ class AuthController extends Notifier<AuthState> {
       state = const AuthState.unauthenticated(
         message: 'Revisa tu correo para abrir el enlace de acceso.',
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _report(error, stackTrace, 'auth_send_email_link');
       state = AuthState.unauthenticated(error: error);
     }
   }
@@ -108,7 +117,8 @@ class AuthController extends Notifier<AuthState> {
     try {
       await ref.read(authenticationRepositoryProvider).signOut();
       state = const AuthState.unauthenticated();
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _report(error, stackTrace, 'auth_sign_out');
       state = AuthState.unauthenticated(error: error);
     }
   }
@@ -122,7 +132,8 @@ class AuthController extends Notifier<AuthState> {
       } else {
         state = const AuthState.unauthenticated();
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _report(error, stackTrace, 'auth_sign_in');
       state = AuthState.unauthenticated(error: error);
     }
   }
@@ -137,9 +148,16 @@ class AuthController extends Notifier<AuthState> {
           .read(profileRepositoryProvider)
           .getOrCreateProfile(authUser);
       state = AuthState.authenticated(profile);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _report(error, stackTrace, 'auth_load_profile');
       state = AuthState.unauthenticated(error: error);
     }
+  }
+
+  void _report(Object error, StackTrace stackTrace, String context) {
+    ref
+        .read(diagnosticsServiceProvider)
+        .unexpectedError(error, stackTrace, context: context);
   }
 }
 

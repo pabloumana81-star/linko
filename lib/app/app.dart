@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:linko/app/router.dart';
+import 'package:linko/core/diagnostics/debug_diagnostics_overlay.dart';
 import 'package:linko/core/theme/linko_theme.dart';
 
 class LinkoApp extends StatelessWidget {
@@ -20,6 +21,8 @@ class LinkoApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       routerConfig: appRouter,
+      builder: (context, child) =>
+          DebugDiagnosticsOverlay(child: child ?? const SizedBox.shrink()),
     );
   }
 }

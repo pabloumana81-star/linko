@@ -42,6 +42,7 @@ import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/service_rating.dart';
 import 'package:linko/features/requests/domain/models/quotation.dart';
 import 'package:linko/core/backend/backend_providers.dart';
+import 'package:linko/core/diagnostics/diagnostics_service.dart';
 import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/features/requests/presentation/providers/request_workflow_controller.dart';
 import 'package:uuid/uuid.dart';
@@ -641,6 +642,7 @@ final GoRouter appRouter = GoRouter(
                         professionalId: serviceRequest.professional.id,
                         senderId: serviceRequest.professional.id,
                       ),
+                diagnostics: ref.watch(diagnosticsServiceProvider),
                 onBack: () => _popOrGo(context, AppRoutes.professionalRequests),
                 onSendMessage: isMock
                     ? (text) => _sendConversationMessage(
@@ -724,6 +726,7 @@ final GoRouter appRouter = GoRouter(
               );
               if (container.read(backendRepositoriesProvider).mode ==
                   BackendMode.mock) {
+                final previousState = request.status;
                 final sent = container
                     .read(professionalRequestFlowProvider.notifier)
                     .sendQuotation(draft);
@@ -737,6 +740,9 @@ final GoRouter appRouter = GoRouter(
                   );
                   return;
                 }
+                container
+                    .read(requestWorkflowControllerProvider)
+                    .recordQuotationSent(request.id, previousState);
               } else {
                 try {
                   await container
@@ -904,7 +910,7 @@ final GoRouter appRouter = GoRouter(
               createdAt: now.toUtc(),
             );
             await container
-                .read(activeServiceRequestsRepositoryProvider)
+                .read(requestWorkflowControllerProvider)
                 .createRequest(request);
             container
               ..invalidate(persistedCustomerRequestsProvider)
@@ -1100,7 +1106,7 @@ final GoRouter appRouter = GoRouter(
                   : ref.watch(realtimeTimelineProvider(requestId)).value ??
                         const [],
               scheduledDateLabel: _scheduledDateLabel(messages),
-              onSubmitRating: (stars, comment) {
+              onSubmitRating: (stars, comment) async {
                 final container = ProviderScope.containerOf(
                   context,
                   listen: false,
@@ -1127,26 +1133,20 @@ final GoRouter appRouter = GoRouter(
                     ..invalidate(professionalRequestFlowProvider);
                 }
 
-                if (isMock) {
-                  container
-                      .read(requestRepositoryProvider)
+                try {
+                  await container
+                      .read(requestWorkflowControllerProvider)
                       .submitRating(rating);
                   invalidateRatingData();
-                  return;
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No pudimos enviar la calificación.'),
+                      ),
+                    );
+                  }
                 }
-                container
-                    .read(ratingsRepositoryProvider)
-                    .submitRating(rating)
-                    .then((_) => invalidateRatingData())
-                    .catchError((Object _) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('No pudimos enviar la calificación.'),
-                          ),
-                        );
-                      }
-                    });
               },
               onViewQuotation: quotation == null
                   ? null
@@ -1303,6 +1303,7 @@ final GoRouter appRouter = GoRouter(
                         professionalId: serviceRequest.professional.id,
                         senderId: serviceRequest.customer.id,
                       ),
+                diagnostics: ref.watch(diagnosticsServiceProvider),
                 onBack: () => _popOrGo(context, AppRoutes.customerRequests),
                 onSendMessage: isMock
                     ? (text) => _sendConversationMessage(

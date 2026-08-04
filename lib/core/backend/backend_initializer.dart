@@ -4,7 +4,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 typedef SupabaseInitialize = Future<void> Function(String url, String anonKey);
 
 class BackendInitializationResult {
-  const BackendInitializationResult._({required this.config, this.error});
+  const BackendInitializationResult._({
+    required this.config,
+    this.error,
+    this.stackTrace,
+  });
 
   factory BackendInitializationResult.ready(BackendConfig config) =>
       BackendInitializationResult._(config: config);
@@ -12,10 +16,16 @@ class BackendInitializationResult {
   factory BackendInitializationResult.failure(
     BackendConfig config,
     Object error,
-  ) => BackendInitializationResult._(config: config, error: error);
+    StackTrace stackTrace,
+  ) => BackendInitializationResult._(
+    config: config,
+    error: error,
+    stackTrace: stackTrace,
+  );
 
   final BackendConfig config;
   final Object? error;
+  final StackTrace? stackTrace;
 
   bool get isReady => error == null;
 }
@@ -33,8 +43,8 @@ class BackendInitializer {
         await _initializeSupabase(config.supabaseUrl, config.supabaseAnonKey);
       }
       return BackendInitializationResult.ready(config);
-    } catch (error) {
-      return BackendInitializationResult.failure(config, error);
+    } catch (error, stackTrace) {
+      return BackendInitializationResult.failure(config, error, stackTrace);
     }
   }
 

@@ -5,6 +5,7 @@ set -eu
 cd "$(dirname "$0")"
 
 flutter analyze
+flutter test test/diagnostics_test.dart
 flutter test
 flutter test integration_test/full_mvp_flow_test.dart -d macos
 
