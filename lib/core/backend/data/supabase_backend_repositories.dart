@@ -88,6 +88,7 @@ class SupabaseAuthenticationRepository implements AuthenticationRepository {
       email: user.email,
       avatarUrl: metadata?['avatar_url'] as String?,
       activeMode: mode,
+      role: metadata?['role'] == 'admin' ? UserRole.admin : UserRole.user,
       createdAt: DateTime.tryParse(user.createdAt) ?? DateTime.now().toUtc(),
     );
   }
@@ -99,7 +100,7 @@ class ProfileRepositorySupabase implements ProfileRepository {
   final SupabaseClient _client;
 
   static const _selection =
-      'id,email,display_name,avatar_url,active_mode,created_at,updated_at';
+      'id,email,display_name,avatar_url,active_mode,role,created_at,updated_at';
 
   @override
   Future<AppUserProfile> getOrCreateProfile(AppUserProfile authUser) async {
@@ -163,6 +164,7 @@ class ProfileRepositorySupabase implements ProfileRepository {
       activeMode: row['active_mode'] == 'professional'
           ? AppMode.professional
           : AppMode.customer,
+      role: row['role'] == 'admin' ? UserRole.admin : UserRole.user,
       createdAt: DateTime.parse(row['created_at'] as String),
       updatedAt: DateTime.parse(row['updated_at'] as String),
     );

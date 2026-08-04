@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/auth/presentation/user_type_screen.dart';
 import 'package:linko/features/auth/presentation/welcome_screen.dart';
 import 'package:linko/features/auth/presentation/auth_controller.dart';
+import 'package:linko/features/auth/domain/models/app_user_profile.dart';
+import 'package:linko/features/admin/domain/admin_section.dart';
+import 'package:linko/features/admin/presentation/admin_access_gate.dart';
+import 'package:linko/features/admin/presentation/admin_shell_screen.dart';
 import 'package:linko/app/app_mode.dart';
 import 'package:linko/app/app_mode_provider.dart';
 import 'package:linko/features/home/presentation/data/placeholder_professionals.dart';
@@ -78,6 +82,12 @@ abstract final class AppRoutes {
       '/professional/requests/:requestId/quotation/review';
   static const professionalQuotationSuccess =
       '/professional/requests/:requestId/quotation/success';
+  static const adminDashboard = '/admin';
+  static const adminUsers = '/admin/users';
+  static const adminProfessionals = '/admin/professionals';
+  static const adminRequests = '/admin/requests';
+  static const adminReports = '/admin/reports';
+  static const adminSettings = '/admin/settings';
 }
 
 abstract final class AppRouteNames {
@@ -93,6 +103,25 @@ abstract final class AppRouteNames {
   static const customerQuotation = 'customer-quotation';
   static const customerConversation = 'customer-conversation';
   static const professionalConversation = 'professional-conversation';
+  static const adminDashboard = 'admin-dashboard';
+  static const adminUsers = 'admin-users';
+  static const adminProfessionals = 'admin-professionals';
+  static const adminRequests = 'admin-requests';
+  static const adminReports = 'admin-reports';
+  static const adminSettings = 'admin-settings';
+}
+
+GoRoute _adminRoute({
+  required String path,
+  required String name,
+  required AdminSection section,
+}) {
+  return GoRoute(
+    path: path,
+    name: name,
+    builder: (context, state) =>
+        AdminAccessGate(child: AdminShellScreen(section: section)),
+  );
 }
 
 Widget _incomingRequestRoute(
@@ -259,6 +288,10 @@ void _goToAuthenticatedHome(
   ProviderContainer container,
   AuthState auth,
 ) {
+  if (auth.user?.role == UserRole.admin) {
+    context.go(AppRoutes.adminDashboard);
+    return;
+  }
   final AppMode mode =
       auth.user?.activeMode ??
       container.read(appModeProvider) ??
@@ -280,6 +313,36 @@ Future<void> _signOut(BuildContext context) async {
 final GoRouter appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
   routes: [
+    _adminRoute(
+      path: AppRoutes.adminDashboard,
+      name: AppRouteNames.adminDashboard,
+      section: AdminSection.dashboard,
+    ),
+    _adminRoute(
+      path: AppRoutes.adminUsers,
+      name: AppRouteNames.adminUsers,
+      section: AdminSection.users,
+    ),
+    _adminRoute(
+      path: AppRoutes.adminProfessionals,
+      name: AppRouteNames.adminProfessionals,
+      section: AdminSection.professionals,
+    ),
+    _adminRoute(
+      path: AppRoutes.adminRequests,
+      name: AppRouteNames.adminRequests,
+      section: AdminSection.requests,
+    ),
+    _adminRoute(
+      path: AppRoutes.adminReports,
+      name: AppRouteNames.adminReports,
+      section: AdminSection.reports,
+    ),
+    _adminRoute(
+      path: AppRoutes.adminSettings,
+      name: AppRouteNames.adminSettings,
+      section: AdminSection.settings,
+    ),
     GoRoute(
       path: AppRoutes.splash,
       builder: (context, state) {

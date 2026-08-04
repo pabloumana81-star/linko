@@ -1,5 +1,7 @@
 import 'package:linko/app/app_mode.dart';
 
+enum UserRole { user, admin }
+
 class AppUserProfile {
   const AppUserProfile({
     required this.id,
@@ -8,6 +10,7 @@ class AppUserProfile {
     required this.avatarUrl,
     required this.activeMode,
     required this.createdAt,
+    this.role = UserRole.user,
     DateTime? updatedAt,
   }) : updatedAt = updatedAt ?? createdAt;
 
@@ -16,6 +19,7 @@ class AppUserProfile {
   final String? email;
   final String? avatarUrl;
   final AppMode activeMode;
+  final UserRole role;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -23,6 +27,7 @@ class AppUserProfile {
     String? displayName,
     String? avatarUrl,
     AppMode? activeMode,
+    UserRole? role,
     DateTime? updatedAt,
   }) {
     return AppUserProfile(
@@ -31,6 +36,7 @@ class AppUserProfile {
       email: email,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       activeMode: activeMode ?? this.activeMode,
+      role: role ?? this.role,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
