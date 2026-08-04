@@ -1,5 +1,6 @@
 import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/core/backend/data/mock_backend_repositories.dart';
+import 'package:linko/core/backend/data/account_status_store.dart';
 import 'package:linko/core/backend/data/professional_availability_store.dart';
 import 'package:linko/core/backend/data/supabase_backend_repositories.dart';
 import 'package:linko/core/backend/repositories/authentication_repository.dart';
@@ -8,6 +9,7 @@ import 'package:linko/core/backend/repositories/professionals_repository.dart';
 import 'package:linko/core/backend/repositories/profile_repository.dart';
 import 'package:linko/core/backend/repositories/quotations_repository.dart';
 import 'package:linko/core/backend/repositories/ratings_repository.dart';
+import 'package:linko/core/backend/repositories/reports_repository.dart';
 import 'package:linko/core/backend/repositories/service_requests_repository.dart';
 import 'package:linko/features/requests/data/mock_request_repository.dart';
 import 'package:linko/features/requests/domain/repositories/request_repository.dart';
@@ -23,8 +25,10 @@ class BackendRepositories {
     required this.conversations,
     required this.quotations,
     required this.ratings,
+    required this.reports,
     required this.mvpCompatibilityRequests,
     this.professionalAvailability,
+    this.accountStatuses,
   });
 
   final BackendMode mode;
@@ -35,10 +39,12 @@ class BackendRepositories {
   final ConversationsRepository conversations;
   final QuotationsRepository quotations;
   final RatingsRepository ratings;
+  final ReportsRepository reports;
 
   /// Temporary synchronous bridge for screens not migrated during Phase 1.
   final RequestRepository mvpCompatibilityRequests;
   final ProfessionalAvailabilityStore? professionalAvailability;
+  final AccountStatusStore? accountStatuses;
 }
 
 class BackendRepositoryFactory {
@@ -52,17 +58,20 @@ class BackendRepositoryFactory {
     final compatibility = MockRequestRepository();
     if (config.mode == BackendMode.mock) {
       final availability = ProfessionalAvailabilityStore();
+      final accountStatuses = AccountStatusStore();
       return BackendRepositories(
         mode: BackendMode.mock,
         authentication: MockAuthenticationRepository(),
         professionals: MockProfessionalsRepository(compatibility, availability),
-        profile: MockProfileRepository(),
+        profile: MockProfileRepository(accountStatuses),
         serviceRequests: MockServiceRequestsRepository(compatibility),
         conversations: MockConversationsRepository(compatibility),
         quotations: MockQuotationsRepository(compatibility),
         ratings: MockRatingsRepository(compatibility),
+        reports: MockReportsRepository(compatibility),
         mvpCompatibilityRequests: compatibility,
         professionalAvailability: availability,
+        accountStatuses: accountStatuses,
       );
     }
     if (supabaseClient == null) {
@@ -84,6 +93,7 @@ class BackendRepositoryFactory {
       conversations: ConversationsRepositorySupabase(supabaseClient),
       quotations: QuotationsRepositorySupabase(supabaseClient),
       ratings: SupabaseRatingsRepository(supabaseClient),
+      reports: SupabaseReportsRepository(supabaseClient),
       mvpCompatibilityRequests: compatibility,
     );
   }

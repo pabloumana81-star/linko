@@ -7,6 +7,7 @@ import 'package:linko/core/backend/repositories/professionals_repository.dart';
 import 'package:linko/core/backend/repositories/profile_repository.dart';
 import 'package:linko/core/backend/repositories/quotations_repository.dart';
 import 'package:linko/core/backend/repositories/ratings_repository.dart';
+import 'package:linko/core/backend/repositories/reports_repository.dart';
 import 'package:linko/core/backend/repositories/service_requests_repository.dart';
 import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/requests/domain/models/app_user.dart';
@@ -100,7 +101,14 @@ class ProfileRepositorySupabase implements ProfileRepository {
   final SupabaseClient _client;
 
   static const _selection =
-      'id,email,display_name,avatar_url,active_mode,role,created_at,updated_at';
+      'id,email,display_name,avatar_url,active_mode,role,account_status,created_at,updated_at';
+
+  @override
+  Stream<AppUserProfile?> watchProfile(String userId) => _client
+      .from('profiles')
+      .stream(primaryKey: ['id'])
+      .eq('id', userId)
+      .map((rows) => rows.isEmpty ? null : _profile(rows.single));
 
   @override
   Future<AppUserProfile> getOrCreateProfile(AppUserProfile authUser) async {
@@ -165,6 +173,9 @@ class ProfileRepositorySupabase implements ProfileRepository {
           ? AppMode.professional
           : AppMode.customer,
       role: row['role'] == 'admin' ? UserRole.admin : UserRole.user,
+      accountStatus: row['account_status'] == 'suspended'
+          ? AccountStatus.suspended
+          : AccountStatus.active,
       createdAt: DateTime.parse(row['created_at'] as String),
       updatedAt: DateTime.parse(row['updated_at'] as String),
     );
@@ -239,6 +250,25 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
     channel.subscribe((_, _) => refresh());
     controller.onCancel = () => _client.removeChannel(channel);
     return controller.stream;
+  }
+}
+
+class SupabaseReportsRepository implements ReportsRepository {
+  SupabaseReportsRepository(this._client);
+
+  final SupabaseClient _client;
+
+  @override
+  Future<void> createReport({
+    required String reporterId,
+    required String requestId,
+    required String reason,
+  }) async {
+    await _client.from('reports').insert({
+      'reporter_id': reporterId,
+      'request_id': requestId,
+      'reason': reason,
+    });
   }
 }
 

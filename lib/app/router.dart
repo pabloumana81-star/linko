@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1352,10 +1354,28 @@ final GoRouter appRouter = GoRouter(
                     context,
                     listen: false,
                   );
-                  container
-                      .read(requestRepositoryProvider)
-                      .reportCompletedWorkProblem(request.id);
-                  _invalidateScheduleData(container, request.id);
+                  final user = container.read(authControllerProvider).user;
+                  unawaited(
+                    container
+                        .read(reportsRepositoryProvider)
+                        .createReport(
+                          reporterId: user?.id ?? currentCustomerId,
+                          requestId: request.id,
+                          reason: 'Problema con el trabajo completado',
+                        )
+                        .then(
+                          (_) => _invalidateScheduleData(container, request.id),
+                        )
+                        .catchError((Object error, StackTrace stackTrace) {
+                          container
+                              .read(diagnosticsServiceProvider)
+                              .unexpectedError(
+                                error,
+                                stackTrace,
+                                context: 'customer_create_report',
+                              );
+                        }),
+                  );
                 },
               );
             },

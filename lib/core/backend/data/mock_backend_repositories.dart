@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:linko/app/app_mode.dart';
+import 'package:linko/core/backend/data/account_status_store.dart';
 import 'package:linko/core/backend/repositories/authentication_repository.dart';
 import 'package:linko/core/backend/repositories/conversations_repository.dart';
 import 'package:linko/core/backend/repositories/professionals_repository.dart';
 import 'package:linko/core/backend/repositories/profile_repository.dart';
 import 'package:linko/core/backend/repositories/quotations_repository.dart';
 import 'package:linko/core/backend/repositories/ratings_repository.dart';
+import 'package:linko/core/backend/repositories/reports_repository.dart';
 import 'package:linko/core/backend/repositories/service_requests_repository.dart';
 import 'package:linko/core/backend/data/professional_availability_store.dart';
 import 'package:linko/features/auth/domain/models/app_user_profile.dart';
@@ -80,12 +82,27 @@ class MockAuthenticationRepository implements AuthenticationRepository {
 }
 
 class MockProfileRepository implements ProfileRepository {
+  MockProfileRepository([AccountStatusStore? statuses])
+    : _statuses = statuses ?? AccountStatusStore();
+
+  final AccountStatusStore _statuses;
   final Map<String, AppUserProfile> _profiles = {};
 
   @override
   Future<AppUserProfile> getOrCreateProfile(AppUserProfile authUser) async {
-    return _profiles.putIfAbsent(authUser.id, () => authUser);
+    final profile = _profiles.putIfAbsent(authUser.id, () => authUser);
+    final status = _statuses.statusOf(profile.id);
+    return profile.accountStatus == status
+        ? profile
+        : profile.copyWith(accountStatus: status);
   }
+
+  @override
+  Stream<AppUserProfile?> watchProfile(String userId) =>
+      _statuses.watch(userId).map((status) {
+        final profile = _profiles[userId];
+        return profile?.copyWith(accountStatus: status);
+      });
 
   @override
   Future<AppUserProfile> updateProfile({
@@ -106,6 +123,21 @@ class MockProfileRepository implements ProfileRepository {
     );
     _profiles[userId] = updated;
     return updated;
+  }
+}
+
+class MockReportsRepository implements ReportsRepository {
+  MockReportsRepository(this._requests);
+
+  final RequestRepository _requests;
+
+  @override
+  Future<void> createReport({
+    required String reporterId,
+    required String requestId,
+    required String reason,
+  }) async {
+    _requests.reportCompletedWorkProblem(requestId);
   }
 }
 

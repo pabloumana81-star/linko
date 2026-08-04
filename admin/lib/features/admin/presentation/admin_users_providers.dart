@@ -9,7 +9,10 @@ import 'package:linko_admin/features/admin/domain/admin_users_repository.dart';
 final adminUsersRepositoryProvider = Provider<AdminUsersRepository>((ref) {
   final repositories = ref.watch(backendRepositoriesProvider);
   if (repositories.mode == BackendMode.mock) {
-    return MockAdminUsersRepository(repositories.mvpCompatibilityRequests);
+    return MockAdminUsersRepository(
+      repositories.mvpCompatibilityRequests,
+      accountStatuses: repositories.accountStatuses,
+    );
   }
   final client = ref.watch(supabaseClientProvider);
   if (client == null) {

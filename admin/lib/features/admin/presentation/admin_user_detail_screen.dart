@@ -69,12 +69,7 @@ class _DetailContent extends ConsumerWidget {
                   if (user.status == AdminAccountStatus.active)
                     FilledButton.icon(
                       key: const ValueKey('suspend-user'),
-                      onPressed: () => _action(
-                        context,
-                        ref,
-                        () =>
-                            ref.read(adminUserActionsProvider).suspend(user.id),
-                      ),
+                      onPressed: () => _confirmSuspension(context, ref, user),
                       icon: const Icon(Icons.block),
                       label: const Text('Suspender cuenta'),
                     )
@@ -87,6 +82,7 @@ class _DetailContent extends ConsumerWidget {
                         () => ref
                             .read(adminUserActionsProvider)
                             .reactivate(user.id),
+                        successMessage: 'La cuenta fue reactivada.',
                       ),
                       icon: const Icon(Icons.check_circle_outline),
                       label: const Text('Reactivar cuenta'),
@@ -99,6 +95,7 @@ class _DetailContent extends ConsumerWidget {
                       () => ref
                           .read(adminUserActionsProvider)
                           .resetOnboarding(user.id),
+                      successMessage: 'El onboarding fue reiniciado.',
                     ),
                     icon: const Icon(Icons.restart_alt),
                     label: const Text('Reiniciar onboarding'),
@@ -143,10 +140,16 @@ class _DetailContent extends ConsumerWidget {
   Future<void> _action(
     BuildContext context,
     WidgetRef ref,
-    Future<void> Function() action,
-  ) async {
+    Future<void> Function() action, {
+    required String successMessage,
+  }) async {
     try {
       await action();
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
+      }
     } catch (error, stackTrace) {
       ref
           .read(diagnosticsServiceProvider)
@@ -157,6 +160,40 @@ class _DetailContent extends ConsumerWidget {
         );
       }
     }
+  }
+
+  Future<void> _confirmSuspension(
+    BuildContext context,
+    WidgetRef ref,
+    AdminUser user,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Suspender cuenta'),
+        content: Text(
+          '¿Deseas suspender la cuenta de ${user.name}? El usuario perderá el acceso hasta que sea reactivado.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            key: const ValueKey('confirm-suspend-user'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Suspender'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await _action(
+      context,
+      ref,
+      () => ref.read(adminUserActionsProvider).suspend(user.id),
+      successMessage: 'La cuenta fue suspendida.',
+    );
   }
 
   void _showProfile(BuildContext context, AdminUser user) {

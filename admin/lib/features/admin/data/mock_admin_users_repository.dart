@@ -1,5 +1,7 @@
 import 'package:linko_admin/features/admin/domain/admin_user.dart';
 import 'package:linko_admin/features/admin/domain/admin_users_repository.dart';
+import 'package:linko/core/backend/data/account_status_store.dart';
+import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/repositories/request_repository.dart';
@@ -9,12 +11,14 @@ class MockAdminUsersRepository implements AdminUsersRepository {
     this._requests, {
     DateTime Function()? clock,
     this.adminId = 'admin-user',
-  }) : _clock = clock ?? DateTime.now;
+    AccountStatusStore? accountStatuses,
+  }) : _clock = clock ?? DateTime.now,
+       _accountStatuses = accountStatuses ?? AccountStatusStore();
 
   final RequestRepository _requests;
   final DateTime Function() _clock;
   final String adminId;
-  final Map<String, AdminAccountStatus> _statuses = {};
+  final AccountStatusStore _accountStatuses;
   final Map<String, bool> _onboarding = {};
   final List<AdminAuditEntry> _audit = [];
 
@@ -63,19 +67,18 @@ class MockAdminUsersRepository implements AdminUsersRepository {
   @override
   Future<void> suspendUser(String userId) async {
     _requireUser(userId);
-    if (_statuses[userId] == AdminAccountStatus.suspended) return;
-    _statuses[userId] = AdminAccountStatus.suspended;
+    if (_accountStatuses.statusOf(userId) == AccountStatus.suspended) return;
+    _accountStatuses.setStatus(userId, AccountStatus.suspended);
     _record(userId, AdminAuditAction.accountSuspended);
   }
 
   @override
   Future<void> reactivateUser(String userId) async {
     _requireUser(userId);
-    if ((_statuses[userId] ?? AdminAccountStatus.active) ==
-        AdminAccountStatus.active) {
+    if (_accountStatuses.statusOf(userId) == AccountStatus.active) {
       return;
     }
-    _statuses[userId] = AdminAccountStatus.active;
+    _accountStatuses.setStatus(userId, AccountStatus.active);
     _record(userId, AdminAuditAction.accountReactivated);
   }
 
@@ -127,7 +130,9 @@ class MockAdminUsersRepository implements AdminUsersRepository {
         email: '${entry.key}@mock.linko',
         avatarUrl: null,
         accountType: type,
-        status: _statuses[entry.key] ?? AdminAccountStatus.active,
+        status: _accountStatuses.statusOf(entry.key) == AccountStatus.suspended
+            ? AdminAccountStatus.suspended
+            : AdminAccountStatus.active,
         registeredAt: dates[entry.key]!,
         lastLoginAt: dates[entry.key]!.add(const Duration(days: 1)),
       );

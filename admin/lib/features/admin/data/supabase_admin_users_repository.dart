@@ -19,7 +19,8 @@ class SupabaseAdminUsersRepository implements AdminUsersRepository {
     );
     return List.unmodifiable(
       (response as List).map(
-        (row) => _user(Map<String, dynamic>.from(row as Map)),
+        (row) =>
+            AdminUserSupabaseMapper.user(Map<String, dynamic>.from(row as Map)),
       ),
     );
   }
@@ -33,14 +34,20 @@ class SupabaseAdminUsersRepository implements AdminUsersRepository {
     if (response == null) return null;
     final data = Map<String, dynamic>.from(response as Map);
     return AdminUserDetail(
-      user: _user(Map<String, dynamic>.from(data['user'] as Map)),
+      user: AdminUserSupabaseMapper.user(
+        Map<String, dynamic>.from(data['user'] as Map),
+      ),
       activeRequests: (data['active_requests'] as num).toInt(),
       completedRequests: (data['completed_requests'] as num).toInt(),
       ratings: (data['ratings'] as num).toInt(),
       reports: (data['reports'] as num).toInt(),
       onboardingCompleted: data['onboarding_completed'] as bool,
       history: (data['history'] as List? ?? const [])
-          .map((row) => _audit(Map<String, dynamic>.from(row as Map)))
+          .map(
+            (row) => AdminUserSupabaseMapper.audit(
+              Map<String, dynamic>.from(row as Map),
+            ),
+          )
           .toList(),
     );
   }
@@ -69,8 +76,12 @@ class SupabaseAdminUsersRepository implements AdminUsersRepository {
       params: {'p_user_id': userId, 'p_action': action},
     );
   }
+}
 
-  AdminUser _user(Map<String, dynamic> row) => AdminUser(
+class AdminUserSupabaseMapper {
+  const AdminUserSupabaseMapper._();
+
+  static AdminUser user(Map<String, dynamic> row) => AdminUser(
     id: row['id'] as String,
     name: row['name'] as String,
     email: row['email'] as String?,
@@ -83,7 +94,7 @@ class SupabaseAdminUsersRepository implements AdminUsersRepository {
         : DateTime.parse(row['last_login_at'] as String).toLocal(),
   );
 
-  AdminAuditEntry _audit(Map<String, dynamic> row) => AdminAuditEntry(
+  static AdminAuditEntry audit(Map<String, dynamic> row) => AdminAuditEntry(
     id: row['id'] as String,
     adminId: row['admin_id'] as String,
     userId: row['user_id'] as String,

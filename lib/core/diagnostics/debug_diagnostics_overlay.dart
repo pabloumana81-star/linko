@@ -13,9 +13,12 @@ class DebugDiagnosticsOverlay extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
+    if (auth.status == AuthStatus.suspended) {
+      return const _SuspendedAccountView();
+    }
     if (!kDebugMode) return child;
     final diagnostics = ref.watch(diagnosticsServiceProvider);
-    final auth = ref.watch(authControllerProvider);
     final repositories = ref.watch(backendRepositoriesProvider);
     final initialization = ref.watch(backendInitializationProvider);
     return ListenableBuilder(
@@ -69,4 +72,42 @@ class DebugDiagnosticsOverlay extends ConsumerWidget {
       },
     );
   }
+}
+
+class _SuspendedAccountView extends ConsumerWidget {
+  const _SuspendedAccountView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
+    body: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.block, size: 56),
+              const SizedBox(height: 20),
+              Text(
+                'Cuenta suspendida',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Tu cuenta está suspendida. Contacta al equipo de soporte de LinkO para recibir ayuda.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () =>
+                    ref.read(authControllerProvider.notifier).signOut(),
+                child: const Text('Cerrar sesión'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

@@ -6,7 +6,7 @@ import 'package:linko/core/backend/backend_providers.dart';
 import 'package:linko/core/diagnostics/diagnostics_service.dart';
 import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 
-enum AuthStatus { loading, unauthenticated, guest, authenticated }
+enum AuthStatus { loading, unauthenticated, guest, authenticated, suspended }
 
 class AuthState {
   const AuthState({required this.status, this.user, this.message, this.error});
@@ -17,6 +17,8 @@ class AuthState {
   const AuthState.guest() : this(status: AuthStatus.guest);
   const AuthState.authenticated(AppUserProfile user)
     : this(status: AuthStatus.authenticated, user: user);
+  const AuthState.suspended(AppUserProfile user)
+    : this(status: AuthStatus.suspended, user: user);
 
   final AuthStatus status;
   final AppUserProfile? user;
@@ -29,12 +31,16 @@ class AuthState {
 
 class AuthController extends Notifier<AuthState> {
   StreamSubscription<AppUserProfile?>? _subscription;
+  StreamSubscription<AppUserProfile?>? _profileSubscription;
 
   @override
   AuthState build() {
     final repository = ref.watch(authenticationRepositoryProvider);
     _subscription = repository.authStateChanges().listen(_loadProfile);
-    ref.onDispose(() => _subscription?.cancel());
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _profileSubscription?.cancel();
+    });
     Future<void>.microtask(restoreSession);
     return const AuthState.loading();
   }
@@ -46,6 +52,7 @@ class AuthController extends Notifier<AuthState> {
         await ref.read(authenticationRepositoryProvider).restoreSession(),
       );
     } catch (error, stackTrace) {
+      if (!ref.mounted) return;
       _report(error, stackTrace, 'auth_restore_session');
       state = AuthState.unauthenticated(error: error);
     }
@@ -116,6 +123,8 @@ class AuthController extends Notifier<AuthState> {
     state = const AuthState.loading();
     try {
       await ref.read(authenticationRepositoryProvider).signOut();
+      unawaited(_profileSubscription?.cancel());
+      _profileSubscription = null;
       state = const AuthState.unauthenticated();
     } catch (error, stackTrace) {
       _report(error, stackTrace, 'auth_sign_out');
@@ -140,6 +149,8 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> _loadProfile(AppUserProfile? authUser) async {
     if (authUser == null) {
+      unawaited(_profileSubscription?.cancel());
+      _profileSubscription = null;
       state = const AuthState.unauthenticated();
       return;
     }
@@ -147,14 +158,37 @@ class AuthController extends Notifier<AuthState> {
       final profile = await ref
           .read(profileRepositoryProvider)
           .getOrCreateProfile(authUser);
-      state = AuthState.authenticated(profile);
+      if (!ref.mounted) return;
+      _setProfileState(profile);
+      if (_profileSubscription != null && state.user?.id == profile.id) {
+        return;
+      }
+      await _profileSubscription?.cancel();
+      _profileSubscription = ref
+          .read(profileRepositoryProvider)
+          .watchProfile(profile.id)
+          .listen(
+            (updated) {
+              if (ref.mounted && updated != null) _setProfileState(updated);
+            },
+            onError: (Object error, StackTrace stackTrace) => ref.mounted
+                ? _report(error, stackTrace, 'auth_watch_profile')
+                : null,
+          );
     } catch (error, stackTrace) {
       _report(error, stackTrace, 'auth_load_profile');
       state = AuthState.unauthenticated(error: error);
     }
   }
 
+  void _setProfileState(AppUserProfile profile) {
+    state = profile.accountStatus == AccountStatus.suspended
+        ? AuthState.suspended(profile)
+        : AuthState.authenticated(profile);
+  }
+
   void _report(Object error, StackTrace stackTrace, String context) {
+    if (!ref.mounted) return;
     ref
         .read(diagnosticsServiceProvider)
         .unexpectedError(error, stackTrace, context: context);

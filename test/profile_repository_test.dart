@@ -113,6 +113,9 @@ class _SeededProfileRepository implements ProfileRepository {
   int updateCalls = 0;
 
   @override
+  Stream<AppUserProfile?> watchProfile(String userId) => Stream.value(profile);
+
+  @override
   Future<AppUserProfile> getOrCreateProfile(AppUserProfile authUser) async {
     getOrCreateCalls++;
     return profile;

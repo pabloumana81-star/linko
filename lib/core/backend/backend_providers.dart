@@ -8,6 +8,7 @@ import 'package:linko/core/backend/repositories/professionals_repository.dart';
 import 'package:linko/core/backend/repositories/profile_repository.dart';
 import 'package:linko/core/backend/repositories/quotations_repository.dart';
 import 'package:linko/core/backend/repositories/ratings_repository.dart';
+import 'package:linko/core/backend/repositories/reports_repository.dart';
 import 'package:linko/core/backend/repositories/service_requests_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -64,4 +65,8 @@ final quotationsRepositoryProvider = Provider<QuotationsRepository>(
 
 final ratingsRepositoryProvider = Provider<RatingsRepository>(
   (ref) => ref.watch(backendRepositoriesProvider).ratings,
+);
+
+final reportsRepositoryProvider = Provider<ReportsRepository>(
+  (ref) => ref.watch(backendRepositoriesProvider).reports,
 );

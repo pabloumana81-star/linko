@@ -1,5 +1,10 @@
 # Auditoría de preparación para beta
 
+> Documento histórico. Sus rutas, conteos y hallazgos reflejan la auditoría del
+> momento en que fue escrita y no describen necesariamente el estado actual.
+> Para reconstrucción y operación usa `ARCHITECTURE.md`, `DATABASE.md`,
+> `BOOTSTRAP.md`, `QA.md` y `RECOVERY.md`.
+
 Fecha: 3 de agosto de 2026  
 Alcance: aplicación Flutter, repositorios mock/Supabase, navegación, migraciones y pruebas.  
 Método: revisión estática del repositorio y ejecución de `./qa.sh`. No se modificó funcionalidad.
