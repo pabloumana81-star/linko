@@ -53,7 +53,12 @@ void main() {
 
     expect(find.byKey(const ValueKey('admin-navigation-rail')), findsOneWidget);
     for (final section in AdminSection.values.skip(1)) {
-      await tester.tap(find.byIcon(section.icon));
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('admin-navigation-rail')),
+          matching: find.byIcon(section.icon),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(
         find.byKey(ValueKey('admin-section-${section.name}')),

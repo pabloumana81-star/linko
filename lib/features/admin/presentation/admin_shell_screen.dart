@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:linko/features/admin/domain/admin_section.dart';
+import 'package:linko/features/admin/presentation/admin_dashboard_screen.dart';
 
 class AdminShellScreen extends StatelessWidget {
   const AdminShellScreen({required this.section, super.key});
@@ -22,7 +23,11 @@ class AdminShellScreen extends StatelessWidget {
           body: Row(
             children: [
               if (desktop) _AdminNavigationRail(section: section),
-              Expanded(child: _AdminSectionContent(section: section)),
+              Expanded(
+                child: section == AdminSection.dashboard
+                    ? const AdminDashboardScreen()
+                    : _AdminSectionContent(section: section),
+              ),
             ],
           ),
         );
