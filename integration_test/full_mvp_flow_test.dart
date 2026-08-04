@@ -7,6 +7,7 @@ import 'package:linko/app/router.dart';
 import 'package:linko/features/requests/data/mock_request_repository.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
 import 'package:linko/features/requests/domain/models/request_state.dart';
+import 'package:linko/features/requests/domain/models/service_rating.dart';
 import 'package:linko/features/requests/domain/models/timeline_event.dart';
 import 'package:linko/features/requests/presentation/providers/request_providers.dart';
 
@@ -379,6 +380,41 @@ void main() {
       greaterThan(initialSummary.averageRating),
     );
 
+    final messagesAfterRating = repository.getMessages(requestId).length;
+    repository.submitRating(
+      ServiceRating(
+        requestId: requestId,
+        professionalId: currentProfessionalId,
+        stars: 1,
+        comment: 'Intento duplicado.',
+      ),
+    );
+    expect(repository.getRating(requestId)?.stars, 5);
+    expect(repository.getMessages(requestId), hasLength(messagesAfterRating));
+    expect(
+      repository
+          .getProfessionalRatingSummary(currentProfessionalId)
+          .reviewCount,
+      finalSummary.reviewCount,
+    );
+    expect(
+      repository
+          .getProfessionalRatingSummary(currentProfessionalId)
+          .averageRating,
+      finalSummary.averageRating,
+    );
+
+    for (final activeState in RequestState.values.where(
+      (state) => !state.isArchived,
+    )) {
+      expect(
+        () => repository.updateStatus(requestId, activeState),
+        throwsStateError,
+        reason: 'Una solicitud archivada no puede volver a $activeState.',
+      );
+    }
+    expect(repository.getRequestById(requestId)?.state, RequestState.reviewed);
+
     await _backToRequests(tester);
     await _switchToProfessional(tester);
     await _openProfessionalRequests(tester);
@@ -394,9 +430,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Servicio calificado'), findsOneWidget);
-    expect(find.text('Iniciar trabajo'), findsNothing);
-    expect(find.text('Marcar trabajo como completado'), findsNothing);
-    expect(find.text('Proponer fecha y hora'), findsNothing);
+    _expectNoArchivedActions();
+    expect(find.text('Abrir conversación'), findsNothing);
 
     appRouter.go('/professional/Carlos%20Rodríguez');
     await tester.pumpAndSettle();
@@ -440,6 +475,64 @@ void main() {
           .dateLabel,
       'Ahora',
     );
+    _expectNoArchivedActions();
+    expect(find.text('Abrir conversación'), findsNothing);
+    expect(repository.getMessages(requestId), isNotEmpty);
+
+    await _backToRequests(tester);
+    await _expectRequestCard(
+      tester,
+      key: 'customer-request-$requestId',
+      status: 'Servicio calificado',
+    );
+    await _tapVisible(tester, find.text('Activas'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(ValueKey('customer-request-$requestId')), findsNothing);
+
+    await _switchToProfessional(tester);
+    await _openProfessionalRequests(tester);
+    await _selectProfessionalFilter(tester, 'Todas');
+    expect(
+      find.byKey(ValueKey('professional-request-$requestId')),
+      findsNothing,
+    );
+    await _selectProfessionalFilter(tester, 'Archivadas');
+    await _expectRequestCard(
+      tester,
+      key: 'professional-request-$requestId',
+      status: 'Servicio calificado',
+    );
+
+    final customerFinalState = repository
+        .getCustomerRequests(currentCustomerId)
+        .singleWhere((request) => request.id == requestId)
+        .state;
+    final professionalFinalState = repository
+        .getProfessionalRequests(currentProfessionalId)
+        .singleWhere((request) => request.id == requestId)
+        .state;
+    expect(customerFinalState, RequestState.reviewed);
+    expect(professionalFinalState, customerFinalState);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    appRouter.go(AppRoutes.customerRequests);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [requestRepositoryProvider.overrideWithValue(repository)],
+        child: const LinkoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Activas'), findsOneWidget);
+    expect(find.byKey(ValueKey('customer-request-$requestId')), findsNothing);
+    await _tapVisible(tester, find.text('Archivadas'));
+    await tester.pumpAndSettle();
+    await _expectRequestCard(
+      tester,
+      key: 'customer-request-$requestId',
+      status: 'Servicio calificado',
+    );
+    expect(repository.getRequestById(requestId)?.state, RequestState.reviewed);
     _expectNoEnglishWorkflowText();
   });
 }
@@ -561,5 +654,33 @@ void _expectNoEnglishWorkflowText() {
   ];
   for (final text in forbidden) {
     expect(find.text(text), findsNothing);
+  }
+}
+
+void _expectNoArchivedActions() {
+  const obsoleteLabels = [
+    'Enviar cotización',
+    'Aceptar cotización',
+    'Proponer fecha y hora',
+    'Confirmar fecha',
+    'Iniciar trabajo',
+    'Marcar trabajo como completado',
+    'Confirmar trabajo',
+    'Calificar servicio',
+  ];
+  for (final label in obsoleteLabels) {
+    expect(find.text(label), findsNothing);
+  }
+
+  const obsoleteKeys = [
+    'professional-action-sendQuotation',
+    'professional-action-proposeSchedule',
+    'professional-action-startJob',
+    'professional-action-markJobCompleted',
+    'confirm-job',
+    'submit-rating',
+  ];
+  for (final key in obsoleteKeys) {
+    expect(find.byKey(ValueKey(key)), findsNothing);
   }
 }
