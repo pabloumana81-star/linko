@@ -1,25 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:linko/core/backend/backend_config.dart';
-import 'package:linko/core/backend/backend_providers.dart';
-import 'package:linko_admin/features/admin/data/mock_admin_users_repository.dart';
-import 'package:linko_admin/features/admin/data/supabase_admin_users_repository.dart';
 import 'package:linko_admin/features/admin/domain/admin_user.dart';
 import 'package:linko_admin/features/admin/domain/admin_users_repository.dart';
+import 'package:linko_admin/features/admin/presentation/admin_repositories_provider.dart';
 
-final adminUsersRepositoryProvider = Provider<AdminUsersRepository>((ref) {
-  final repositories = ref.watch(backendRepositoriesProvider);
-  if (repositories.mode == BackendMode.mock) {
-    return MockAdminUsersRepository(
-      repositories.mvpCompatibilityRequests,
-      accountStatuses: repositories.accountStatuses,
-    );
-  }
-  final client = ref.watch(supabaseClientProvider);
-  if (client == null) {
-    throw StateError('Supabase no está disponible para administrar usuarios.');
-  }
-  return SupabaseAdminUsersRepository(client);
-});
+final adminUsersRepositoryProvider = Provider<AdminUsersRepository>(
+  (ref) => ref.watch(adminRepositoriesProvider).users,
+);
 
 final adminUserQueryProvider =
     NotifierProvider<AdminUserQueryController, AdminUserQuery>(

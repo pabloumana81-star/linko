@@ -1,30 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:linko/core/backend/backend_config.dart';
-import 'package:linko/core/backend/backend_providers.dart';
-import 'package:linko_admin/features/admin/data/mock_admin_professionals_repository.dart';
-import 'package:linko_admin/features/admin/data/supabase_admin_professionals_repository.dart';
 import 'package:linko_admin/features/admin/domain/admin_professional.dart';
 import 'package:linko_admin/features/admin/domain/admin_professionals_repository.dart';
 import 'package:linko_admin/features/admin/domain/admin_user.dart';
 import 'package:linko_admin/features/admin/presentation/admin_dashboard_providers.dart';
-import 'package:linko_admin/features/admin/presentation/admin_mock_providers.dart';
+import 'package:linko_admin/features/admin/presentation/admin_repositories_provider.dart';
 
 final adminProfessionalsRepositoryProvider =
     Provider<AdminProfessionalsRepository>((ref) {
-      final repositories = ref.watch(backendRepositoriesProvider);
-      if (repositories.mode == BackendMode.mock) {
-        return MockAdminProfessionalsRepository(
-          repositories.mvpCompatibilityRequests,
-          ref.watch(mockAdminStateProvider),
-        );
-      }
-      final client = ref.watch(supabaseClientProvider);
-      if (client == null) {
-        throw StateError(
-          'Supabase no está disponible para administrar profesionales.',
-        );
-      }
-      return SupabaseAdminProfessionalsRepository(client);
+      return ref.watch(adminRepositoriesProvider).professionals;
     });
 
 final adminProfessionalQueryProvider =

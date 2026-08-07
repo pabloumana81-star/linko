@@ -70,6 +70,31 @@ class UnexpectedErrorDiagnostic {
   };
 }
 
+class BackendStartupDiagnostic {
+  const BackendStartupDiagnostic({
+    required this.backendMode,
+    required this.hasSupabaseUrl,
+    required this.hasSupabaseAnonKey,
+    required this.repositoryImplementation,
+    required this.timestamp,
+  });
+
+  final String backendMode;
+  final bool hasSupabaseUrl;
+  final bool hasSupabaseAnonKey;
+  final String repositoryImplementation;
+  final DateTime timestamp;
+
+  Map<String, Object?> toJson() => {
+    'kind': 'backend_startup',
+    'backendMode': backendMode,
+    'hasSupabaseUrl': hasSupabaseUrl,
+    'hasSupabaseAnonKey': hasSupabaseAnonKey,
+    'repositoryImplementation': repositoryImplementation,
+    'timestamp': timestamp.toUtc().toIso8601String(),
+  };
+}
+
 abstract interface class DiagnosticsSink {
   void write(Map<String, Object?> record);
 }
@@ -127,6 +152,23 @@ class DiagnosticsService extends ChangeNotifier {
         stackTrace: stackTrace,
         timestamp: _clock(),
         context: context,
+      ).toJson(),
+    );
+  }
+
+  void backendStartup({
+    required String backendMode,
+    required bool hasSupabaseUrl,
+    required bool hasSupabaseAnonKey,
+    required String repositoryImplementation,
+  }) {
+    _sink.write(
+      BackendStartupDiagnostic(
+        backendMode: backendMode,
+        hasSupabaseUrl: hasSupabaseUrl,
+        hasSupabaseAnonKey: hasSupabaseAnonKey,
+        repositoryImplementation: repositoryImplementation,
+        timestamp: _clock(),
       ).toJson(),
     );
   }

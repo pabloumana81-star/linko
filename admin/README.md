@@ -47,6 +47,18 @@ información, suspender y reactivar se ejecuta mediante RPC; rechazo y solicitud
 de información exigen motivo y todas las acciones generan auditoría global y
 profesional.
 
+## Selección de backend
+
+`BACKEND_MODE=supabase` selecciona repositorios Supabase para Dashboard,
+Usuarios, Profesionales, Solicitudes y Reportes. `BACKEND_MODE=mock` conserva
+los repositorios en memoria para desarrollo local y QA. En compilaciones debug,
+una insignia en la esquina superior derecha muestra el backend activo.
+La selección de los cinco repositorios se construye una sola vez en
+`adminRepositoriesProvider`; los providers de pantalla solo consumen ese
+bundle. Al pulsar la insignia en debug se abre `/diagnostics`, con URL
+enmascarada, implementaciones efectivas, sesión, rol, Realtime y prueba de
+alcance a la base. La ruta y la insignia no existen en release.
+
 ## QA
 
 ```sh

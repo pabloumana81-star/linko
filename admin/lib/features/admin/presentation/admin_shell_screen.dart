@@ -4,6 +4,8 @@ import 'package:linko_admin/features/admin/domain/admin_section.dart';
 import 'package:linko_admin/features/admin/presentation/admin_dashboard_screen.dart';
 import 'package:linko_admin/features/admin/presentation/admin_users_screen.dart';
 import 'package:linko_admin/features/admin/presentation/admin_professionals_screen.dart';
+import 'package:linko_admin/features/admin/presentation/admin_reports_screen.dart';
+import 'package:linko_admin/features/admin/presentation/admin_requests_screen.dart';
 
 class AdminShellScreen extends StatelessWidget {
   const AdminShellScreen({required this.section, this.content, super.key});
@@ -35,6 +37,10 @@ class AdminShellScreen extends StatelessWidget {
                         ? const AdminUsersScreen()
                         : section == AdminSection.professionals
                         ? const AdminProfessionalsScreen()
+                        : section == AdminSection.requests
+                        ? const AdminRequestsScreen()
+                        : section == AdminSection.reports
+                        ? const AdminReportsScreen()
                         : _AdminSectionContent(section: section)),
               ),
             ],

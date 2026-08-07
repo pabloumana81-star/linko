@@ -1,30 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:linko/core/backend/backend_config.dart';
-import 'package:linko/core/backend/backend_providers.dart';
-import 'package:linko_admin/features/admin/data/mock_admin_dashboard_repository.dart';
-import 'package:linko_admin/features/admin/data/supabase_admin_dashboard_repository.dart';
 import 'package:linko_admin/features/admin/domain/admin_dashboard.dart';
 import 'package:linko_admin/features/admin/domain/admin_dashboard_repository.dart';
-import 'package:linko_admin/features/admin/presentation/admin_mock_providers.dart';
+import 'package:linko_admin/features/admin/presentation/admin_repositories_provider.dart';
 
-final adminDashboardRepositoryProvider = Provider<AdminDashboardRepository>((
-  ref,
-) {
-  final repositories = ref.watch(backendRepositoriesProvider);
-  if (repositories.mode == BackendMode.mock) {
-    return MockAdminDashboardRepository(
-      repositories.mvpCompatibilityRequests,
-      ref.watch(mockAdminStateProvider),
-    );
-  }
-  final client = ref.watch(supabaseClientProvider);
-  if (client == null) {
-    throw StateError(
-      'Supabase no está disponible para el panel administrativo.',
-    );
-  }
-  return SupabaseAdminDashboardRepository(client);
-});
+final adminDashboardRepositoryProvider = Provider<AdminDashboardRepository>(
+  (ref) => ref.watch(adminRepositoriesProvider).dashboard,
+);
 
 final adminDashboardRangeProvider =
     NotifierProvider<AdminDashboardRangeController, AdminDashboardRange>(

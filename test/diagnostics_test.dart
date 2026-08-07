@@ -84,6 +84,27 @@ void main() {
         expect(record['timestamp'], isA<String>());
       },
     );
+
+    test('backend startup diagnostics never include secrets', () {
+      final sink = _MemorySink();
+      final diagnostics = DiagnosticsService(sink: sink);
+
+      diagnostics.backendStartup(
+        backendMode: 'supabase',
+        hasSupabaseUrl: true,
+        hasSupabaseAnonKey: true,
+        repositoryImplementation: 'Supabase',
+      );
+
+      final record = sink.records.single;
+      expect(record['kind'], 'backend_startup');
+      expect(record['backendMode'], 'supabase');
+      expect(record['hasSupabaseUrl'], isTrue);
+      expect(record['hasSupabaseAnonKey'], isTrue);
+      expect(record['repositoryImplementation'], 'Supabase');
+      expect(record.containsKey('supabaseUrl'), isFalse);
+      expect(record.containsKey('supabaseAnonKey'), isFalse);
+    });
   });
 }
 

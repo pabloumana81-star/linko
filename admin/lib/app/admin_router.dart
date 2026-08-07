@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:linko_admin/features/admin/domain/admin_section.dart';
 import 'package:linko_admin/features/admin/presentation/admin_access_gate.dart';
 import 'package:linko_admin/features/admin/presentation/admin_professional_detail_screen.dart';
 import 'package:linko_admin/features/admin/presentation/admin_shell_screen.dart';
 import 'package:linko_admin/features/admin/presentation/admin_user_detail_screen.dart';
+import 'package:linko_admin/features/admin/presentation/admin_diagnostics_screen.dart';
 
 abstract final class AdminRoutes {
   static const dashboard = '/';
@@ -15,6 +17,7 @@ abstract final class AdminRoutes {
   static const requests = '/requests';
   static const reports = '/reports';
   static const settings = '/settings';
+  static const diagnostics = '/diagnostics';
 }
 
 GoRoute _sectionRoute(String path, AdminSection section) => GoRoute(
@@ -54,6 +57,12 @@ GoRouter createAdminRouter({String initialLocation = AdminRoutes.dashboard}) =>
         _sectionRoute(AdminRoutes.requests, AdminSection.requests),
         _sectionRoute(AdminRoutes.reports, AdminSection.reports),
         _sectionRoute(AdminRoutes.settings, AdminSection.settings),
+        if (kDebugMode)
+          GoRoute(
+            path: AdminRoutes.diagnostics,
+            builder: (_, _) =>
+                const AdminAccessGate(child: AdminDiagnosticsScreen()),
+          ),
       ],
       errorBuilder: (_, _) => const Scaffold(
         body: Center(child: Text('Página administrativa no encontrada.')),

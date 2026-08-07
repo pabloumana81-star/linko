@@ -15,6 +15,8 @@ Las migraciones se aplican en orden lexicográfico:
 11. `202608030010_admin_request_corrections.sql`
 12. `202608040001_harden_admin_users.sql`
 13. `202608040002_harden_admin_professionals.sql`
+14. `202608040003_admin_real_data_modules.sql`
+15. `202608060001_notify_professional_availability.sql`
 
 Tablas principales: `profiles`, `professional_profiles`, `service_requests`,
 `conversations`, `messages`, `quotations`, `request_events`, `ratings`,
@@ -38,9 +40,18 @@ El descubrimiento de la aplicación principal usa
 con cuenta activa. El historial de solicitudes no depende de ese listado y
 permanece disponible para sus participantes.
 
-Realtime debe publicar `profiles` y `professional_profiles`; la última
-migración lo configura de forma idempotente. Nunca edites una migración ya
-aplicada: añade otra con timestamp posterior.
+En modo Supabase, Dashboard, Usuarios, Profesionales, Solicitudes y Reportes
+consultan exclusivamente RPCs o repositorios Supabase compartidos. Las
+funciones `list_admin_requests()` y `list_admin_reports()` validan el rol admin
+en servidor antes de exponer datos que no pertenecen necesariamente al usuario
+autenticado.
+
+Realtime debe publicar `profiles` y `professional_profiles`. Como RLS impide
+que un cliente lea el perfil privado de otro usuario, los cambios de
+`profiles.account_status` actualizan `professional_profiles.updated_at` mediante
+un trigger. Así Realtime provoca un refresh del descubrimiento sin exponer la
+fila privada de `profiles`. Nunca edites una migración ya aplicada: añade otra
+con timestamp posterior.
 
 Para un proyecto enlazado:
 

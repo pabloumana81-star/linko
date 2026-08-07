@@ -109,4 +109,45 @@ void main() {
     expect(result.error, isA<BackendConfigurationException>());
     expect(initialized, isFalse);
   });
+
+  test('missing Supabase URL never falls back to mock', () async {
+    final result =
+        await BackendInitializer(
+          initializeSupabase: (_, _) async =>
+              fail('No debe inicializar Supabase'),
+        ).initialize(
+          const BackendConfig(
+            mode: BackendMode.supabase,
+            supabaseAnonKey: 'public-test-anon-key',
+          ),
+        );
+
+    expect(result.isReady, isFalse);
+    expect(result.config.mode, BackendMode.supabase);
+    expect(result.error, isA<BackendConfigurationException>());
+  });
+
+  test('missing Supabase anon key never falls back to mock', () async {
+    final result =
+        await BackendInitializer(
+          initializeSupabase: (_, _) async =>
+              fail('No debe inicializar Supabase'),
+        ).initialize(
+          const BackendConfig(
+            mode: BackendMode.supabase,
+            supabaseUrl: 'https://linko-test.supabase.co',
+          ),
+        );
+
+    expect(result.isReady, isFalse);
+    expect(result.config.mode, BackendMode.supabase);
+    expect(result.error, isA<BackendConfigurationException>());
+  });
+
+  test('invalid BACKEND_MODE is rejected instead of selecting mock', () {
+    expect(
+      () => BackendConfig.fromValues(modeValue: 'invalid'),
+      throwsA(isA<BackendConfigurationException>()),
+    );
+  });
 }

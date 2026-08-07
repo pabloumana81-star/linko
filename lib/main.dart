@@ -17,17 +17,42 @@ Future<void> main() async {
   GlobalErrorHandler(diagnostics).install();
   await runZonedGuarded(
     () async {
-      final config = BackendConfig.fromEnvironment();
+      late final BackendConfig config;
+      try {
+        config = BackendConfig.fromEnvironment();
+      } catch (error, stackTrace) {
+        diagnostics.unexpectedError(
+          error,
+          stackTrace,
+          context: 'backend_configuration',
+        );
+        runApp(BackendFailureApp(error: error));
+        return;
+      }
       final initialization = await BackendInitializer().initialize(config);
       if (!initialization.isReady) {
+        diagnostics.backendStartup(
+          backendMode: config.mode.name,
+          hasSupabaseUrl: config.supabaseUrl.trim().isNotEmpty,
+          hasSupabaseAnonKey: config.supabaseAnonKey.trim().isNotEmpty,
+          repositoryImplementation: 'none',
+        );
         diagnostics.unexpectedError(
           initialization.error!,
           initialization.stackTrace ?? StackTrace.current,
           context: 'backend_initialization',
         );
-        runApp(const BackendFailureApp());
+        runApp(BackendFailureApp(error: initialization.error));
         return;
       }
+      diagnostics.backendStartup(
+        backendMode: config.mode.name,
+        hasSupabaseUrl: config.supabaseUrl.trim().isNotEmpty,
+        hasSupabaseAnonKey: config.supabaseAnonKey.trim().isNotEmpty,
+        repositoryImplementation: config.mode == BackendMode.supabase
+            ? 'Supabase'
+            : 'Mock',
+      );
       runApp(
         ProviderScope(
           overrides: [

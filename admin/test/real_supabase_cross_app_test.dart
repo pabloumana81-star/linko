@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:linko/core/backend/data/supabase_backend_repositories.dart';
+import 'package:linko/features/requests/domain/models/professional_profile.dart';
 import 'package:linko_admin/features/admin/data/supabase_admin_dashboard_repository.dart';
 import 'package:linko_admin/features/admin/data/supabase_admin_professionals_repository.dart';
 import 'package:linko_admin/features/admin/domain/admin_dashboard.dart';
@@ -22,10 +23,17 @@ void main() {
       final service = SupabaseClient(_url, _serviceKey);
       final admin = SupabaseClient(_url, _anonKey);
       final customer = SupabaseClient(_url, _anonKey);
+      final staleUsers = await service.auth.admin.listUsers(perPage: 1000);
+      for (final user in staleUsers.where(
+        (user) => user.email?.startsWith('linko-cert-') ?? false,
+      )) {
+        await _deleteTestUser(service, user.id);
+      }
       final suffix = DateTime.now().microsecondsSinceEpoch;
       const password = 'LinkO-test-only-42!';
       final createdIds = <String>[];
       String? requestId;
+      StreamIterator<List<ProfessionalProfile>>? updates;
       try {
         Future<User> create(String kind) async {
           final response = await service.auth.admin.createUser(
@@ -67,7 +75,7 @@ void main() {
 
         final mainRepository = SupabaseProfessionalsRepository(customer);
         final adminRepository = SupabaseAdminProfessionalsRepository(admin);
-        final updates = StreamIterator(mainRepository.watchProfessionals());
+        updates = StreamIterator(mainRepository.watchProfessionals());
         expect(await updates.moveNext(), isTrue);
 
         var next = updates.moveNext();
@@ -138,8 +146,8 @@ void main() {
           isTrue,
         );
         expect(await adminRepository.getAuditLog(professional.id), isNotEmpty);
-        await updates.cancel();
       } finally {
+        await updates?.cancel();
         if (requestId != null) {
           await service
               .from('admin_request_audit_log')
@@ -149,11 +157,7 @@ void main() {
           await service.from('service_requests').delete().eq('id', requestId);
         }
         for (final id in createdIds.reversed) {
-          await service
-              .from('admin_professional_audit_log')
-              .delete()
-              .eq('professional_id', id);
-          await service.auth.admin.deleteUser(id);
+          await _deleteTestUser(service, id);
         }
         await admin.dispose();
         await customer.dispose();
@@ -163,4 +167,22 @@ void main() {
     skip: _run ? false : 'RUN_SUPABASE_TESTS no está habilitado.',
     timeout: const Timeout(Duration(minutes: 3)),
   );
+}
+
+Future<void> _deleteTestUser(SupabaseClient service, String id) async {
+  await service.from('reports').delete().eq('reporter_id', id);
+  await service.from('service_requests').delete().eq('customer_id', id);
+  await service.from('service_requests').delete().eq('professional_id', id);
+  await service
+      .from('admin_professional_audit_log')
+      .delete()
+      .eq('professional_id', id);
+  await service
+      .from('admin_professional_audit_log')
+      .delete()
+      .eq('admin_id', id);
+  await service.from('admin_request_audit_log').delete().eq('admin_id', id);
+  await service.from('admin_audit_log').delete().eq('user_id', id);
+  await service.from('admin_audit_log').delete().eq('admin_id', id);
+  await service.auth.admin.deleteUser(id);
 }

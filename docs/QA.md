@@ -1,5 +1,10 @@
 # QA
 
+La suite Admin verifica conjuntamente que Dashboard, Usuarios, Profesionales,
+Solicitudes y Reportes resuelvan repositorios Supabase cuando
+`BACKEND_MODE=supabase`, y mocks únicamente en modo mock. También cubre la
+insignia de backend y la página `/diagnostics`, disponible solo en debug.
+
 Pruebas sin secretos:
 
 ```sh
