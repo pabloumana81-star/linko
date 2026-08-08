@@ -235,12 +235,16 @@ Esto amplía rebuilds, dificulta pruebas aisladas y hace probable que UI invoque
 
 No es ruta muerta, pero sí un callejón funcional: no crea una solicitud ni conduce al flujo por profesional.
 
-### M-08 — Catálogo placeholder sigue siendo fuente de navegación
+### ✅ M-08 — Catálogo placeholder sigue siendo fuente de navegación — Completado
 
-- `lib/features/home/presentation/data/placeholder_professionals.dart` alimenta home/búsqueda/resultados.
-- `lib/app/router.dart:131-138` selecciona el primer profesional si el nombre de URL no existe.
+Resolución: discovery Supabase y rutas directas resuelven el profesional por ID
+mediante `ProfessionalsRepository`; un ID ausente muestra un estado controlado.
+El catálogo placeholder quedó restringido al modo mock.
 
-Un enlace inválido puede abrir el profesional equivocado en vez de 404/error controlado.
+- `lib/features/home/presentation/data/placeholder_professionals.dart` alimenta
+  únicamente discovery mock.
+- `lib/features/home/presentation/professional_profile_route.dart` resuelve
+  rutas Supabase por ID y diferencia ausencia de error.
 
 ### M-09 — Texto de rechazo contradice el modo Supabase
 
@@ -294,11 +298,16 @@ Esto ya produjo coexistencia de providers mock/persistidos. Encapsular la invali
 
 Confirmar si solo son compatibilidad de pruebas; retirar gradualmente para evitar “repositorios duplicados” nominales.
 
-### B-05 — Estados de pantallas estáticas no aplican todavía, pero deben quedar contractuales
+### ✅ B-05 — Estados de pantallas estáticas no aplican todavía, pero deben quedar contractuales — Parcialmente completado
 
-- `lib/features/home/presentation/guest_home_screen.dart`, `search_screen.dart`, `search_results_screen.dart` y `professional_profile_screen.dart` usan datos locales/placeholder y por ello no tienen loading/error.
+Resolución del perfil profesional: la ruta ofrece loading, no encontrado y
+error, y oculta detalles demostrativos cuando usa Supabase. Otras pantallas
+históricas de este hallazgo se evalúan en sus hitos correspondientes.
 
-No es un defecto mientras sigan estáticas; sí es un criterio obligatorio al conectarlas a Supabase.
+- `guest_home_screen.dart`, `search_screen.dart` y
+  `professionals_results_screen.dart` consumen el provider de discovery.
+- `professional_profile_route.dart` concentra loading/error/not-found del
+  perfil; `professional_profile_screen.dart` recibe solo datos resueltos.
 
 ### B-06 — No hay guardas de ruta centralizadas
 

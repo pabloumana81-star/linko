@@ -433,7 +433,7 @@ void main() {
     _expectNoArchivedActions();
     expect(find.text('Abrir conversación'), findsNothing);
 
-    appRouter.go('/professional/Carlos%20Rodríguez');
+    appRouter.go('/professional/professional-carlos');
     await tester.pumpAndSettle();
     expect(
       find.textContaining('(${finalSummary.reviewCount} reseñas)'),

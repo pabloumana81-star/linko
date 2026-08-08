@@ -29,6 +29,10 @@ flutter run -d chrome --dart-define-from-file=../.env
 
 Nunca uses una service-role key en una aplicación cliente.
 
+En Supabase, discovery y rutas directas de perfiles profesionales cargan datos
+persistidos por ID. El catálogo demostrativo se conserva únicamente con
+`BACKEND_MODE=mock`.
+
 ## Validación
 
 ```sh

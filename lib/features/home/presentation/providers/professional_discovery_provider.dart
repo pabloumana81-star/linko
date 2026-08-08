@@ -3,6 +3,7 @@ import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/core/backend/backend_providers.dart';
 import 'package:linko/features/home/presentation/data/placeholder_professionals.dart';
 import 'package:linko/features/home/presentation/models/professional_profile_data.dart';
+import 'package:linko/features/requests/domain/models/professional_profile.dart';
 
 final professionalDiscoveryProvider =
     Provider<AsyncValue<List<ProfessionalProfileData>>>((ref) {
@@ -13,16 +14,28 @@ final professionalDiscoveryProvider =
           .watch(availableProfessionalsProvider)
           .whenData(
             (profiles) => profiles
-                .map(
-                  (profile) => ProfessionalProfileData(
-                    id: profile.id,
-                    name: profile.user.name,
-                    profession: profile.profession,
-                    rating: profile.rating,
-                    reviewCount: profile.reviewCount,
-                    location: profile.location,
-                  ),
-                )
+                .map(professionalProfileDataFromDomain)
                 .toList(growable: false),
           );
     });
+
+final professionalProfileByIdProvider =
+    FutureProvider.family<ProfessionalProfileData?, String>((ref, id) async {
+      final profile = await ref
+          .watch(professionalsRepositoryProvider)
+          .getProfessionalById(id);
+      return profile == null
+          ? null
+          : professionalProfileDataFromDomain(profile);
+    });
+
+ProfessionalProfileData professionalProfileDataFromDomain(
+  ProfessionalProfile profile,
+) => ProfessionalProfileData(
+  id: profile.user.id,
+  name: profile.user.name,
+  profession: profile.profession,
+  rating: profile.rating,
+  reviewCount: profile.reviewCount,
+  location: profile.location,
+);

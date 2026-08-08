@@ -2,9 +2,9 @@
 
 ## Fase actual
 
-Hito de autenticación passwordless y recuperación de sesión en certificación.
-El backend compartido y Backoffice conservan su certificación contra el
-proyecto Supabase real.
+Production UX & Operations Closure — Phase 1. La carga de perfiles
+profesionales y sus rutas directas ya usan repositorios reales en Supabase; el
+backend compartido, autenticación y Backoffice conservan su certificación.
 
 ## Módulos completados
 
@@ -27,6 +27,10 @@ proyecto Supabase real.
 - Guest separado de la sesión Supabase y transición segura hacia una cuenta.
 - Perfil, rol, suspensión y onboarding proceden de `profiles`; usuarios nuevos
   completan la selección customer/professional sin duplicar perfiles.
+- Discovery navega por ID profesional y el perfil reconstruye su estado desde
+  `ProfessionalsRepository.getProfessionalById` cuando Supabase está activo.
+- IDs inexistentes y fallos de backend muestran estados controlados en español;
+  ningún profesional placeholder sustituye datos Supabase.
 
 ## Estado de QA
 
@@ -51,6 +55,11 @@ proyecto Supabase real.
   - QA raíz y QA Admin: **PASS**.
   - Regresión E2E Supabase Main/Admin/Realtime: **PASS**.
   - Google, Apple y entrega Magic Link reales: **PROVIDER CERTIFIED pendiente**.
+- Production UX & Operations Closure — Phase 1, 8 de agosto de 2026:
+  - Perfil directo por ID y estados UX: **PASS**.
+  - QA raíz (125 pruebas + integración macOS): **PASS**.
+  - QA Admin (57 pruebas; opt-in omitido por diseño): **PASS**.
+  - Lookup real Supabase y regresión Main/Admin/Realtime: **PASS**.
 
 ## Trabajo restante
 
@@ -58,8 +67,9 @@ proyecto Supabase real.
   definan sus opciones operativas.
 - Completar acciones operativas de resolución de reportes y gestión avanzada de
   solicitudes; actualmente estos módulos ofrecen datos reales y seguimiento.
-- Sustituir el fallback visual de perfil profesional usado en deep links sin
-  estado por una carga directa desde Supabase.
+- Incorporar biografía, servicios, portafolio, experiencia y reseñas reales al
+  perfil principal; hasta existir ese contrato no se muestran detalles
+  ficticios en Supabase.
 - Certificar externamente Google, Apple y entrega de Magic Link con credenciales,
   dominios, plantillas y cuentas reales; el código está completo, pero los
   proveedores aún no están certificados.

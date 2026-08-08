@@ -151,6 +151,10 @@ void main() {
           discovered.where((item) => item.id == professionalUser.id),
           hasLength(1),
         );
+        final directProfessional = await customerProfessionals
+            .getProfessionalById(professionalUser.id);
+        expect(directProfessional?.id, professionalUser.id);
+        expect(directProfessional?.user.name, prefix);
         await discovery.cancel();
 
         final users = await adminUsers.listUsers(

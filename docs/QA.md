@@ -85,3 +85,16 @@ cancelación, error, usuario existente y usuario nuevo. Consulta
 Última ejecución del 8 de agosto de 2026: `flutter analyze`, `./qa.sh`,
 `cd admin && ./qa.sh` y `./scripts/qa_supabase.sh` aprobaron. La certificación
 de proveedores externos permanece separada de este PASS automatizado.
+
+## Perfil profesional
+
+`test/professional_profile_loading_test.dart` valida el mapeo del RPC Supabase,
+lookup por ID, reconstrucción de la ruta sin `extra`, optimización con estado en
+mock, ID inexistente, error de repositorio y ausencia de contaminación
+placeholder en Supabase. La certificación real también consulta por ID al
+profesional aislado después de aprobar su verificación.
+
+Certificación del 8 de agosto de 2026: análisis, 125 pruebas raíz, integración
+MVP macOS, 57 pruebas Admin y `./scripts/qa_supabase.sh` aprobaron. El E2E real
+confirmó lookup por ID del profesional verificado sin afectar Realtime ni la
+limpieza aislada.

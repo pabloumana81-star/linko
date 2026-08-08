@@ -32,6 +32,21 @@ Mock mode utiliza `ProfessionalAvailabilityStore` como equivalente observable
 en memoria. No intenta sincronizar procesos independientes; existe para QA
 determinista.
 
+## Discovery y perfil profesional
+
+Home, búsqueda y resultados consumen `professionalDiscoveryProvider`. La
+navegación usa `/professional/:professionalId`; el objeto enviado en `extra`
+solo optimiza el modo mock. En Supabase, `professionalProfileByIdProvider`
+siempre resuelve el ID mediante `ProfessionalsRepository.getProfessionalById`,
+que reutiliza `list_available_professionals()` y sus reglas de cuenta activa y
+verificación. La UI no consulta Supabase directamente y distingue loading,
+ausencia y error.
+
+`placeholderProfessionals` pertenece exclusivamente al backend mock. Los
+detalles demostrativos del perfil —biografía, servicios, galería y reseñas— se
+muestran solo en mock; Supabase muestra únicamente campos persistidos hasta que
+el contrato principal incorpore esos datos reales.
+
 ## Seguridad
 
 Los clientes reciben solo la anon/publishable key. RLS está habilitado y los

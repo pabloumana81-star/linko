@@ -8,7 +8,6 @@ import 'package:linko/features/auth/presentation/welcome_screen.dart';
 import 'package:linko/features/auth/presentation/auth_controller.dart';
 import 'package:linko/app/app_mode.dart';
 import 'package:linko/app/app_mode_provider.dart';
-import 'package:linko/features/home/presentation/data/placeholder_professionals.dart';
 import 'package:linko/features/home/presentation/confirm_request_screen.dart';
 import 'package:linko/features/home/presentation/conversation_screen.dart';
 import 'package:linko/features/home/presentation/customer_request_detail_screen.dart';
@@ -22,7 +21,7 @@ import 'package:linko/features/home/presentation/models/incoming_service_request
 import 'package:linko/features/home/presentation/models/request_draft.dart';
 import 'package:linko/features/home/presentation/models/quotation_draft.dart';
 import 'package:linko/features/home/presentation/professional_home_screen.dart';
-import 'package:linko/features/home/presentation/professional_profile_screen.dart';
+import 'package:linko/features/home/presentation/professional_profile_route.dart';
 import 'package:linko/features/home/presentation/professional_request_detail_screen.dart';
 import 'package:linko/features/home/presentation/professional_requests_screen.dart';
 import 'package:linko/features/home/presentation/providers/professional_requests_provider.dart';
@@ -58,7 +57,7 @@ abstract final class AppRoutes {
   static const category = '/category/:categoryName';
   static const createRequest = '/create-request';
   static const professionalHome = '/professional-home';
-  static const professionalProfile = '/professional/:professionalName';
+  static const professionalProfile = '/professional/:professionalId';
   static const results = '/results/:serviceName';
   static const requestService = '/request-service/:professionalName';
   static const confirmRequest = '/confirm-request';
@@ -146,16 +145,6 @@ ServiceCategory _serviceCategoryFor(String profession) {
     return ServiceCategory.airConditioning;
   }
   return ServiceCategory.maintenance;
-}
-
-ProfessionalProfileData _professionalFromState(GoRouterState state) {
-  final professionalName = state.pathParameters['professionalName']!;
-
-  return state.extra as ProfessionalProfileData? ??
-      placeholderProfessionals.firstWhere(
-        (item) => item.name == professionalName,
-        orElse: () => placeholderProfessionals.first,
-      );
 }
 
 Widget _customerRequestRoute(
@@ -408,7 +397,7 @@ final GoRouter appRouter = GoRouter(
           onProfessionalSelected: (professional) {
             context.pushNamed(
               AppRouteNames.professionalProfile,
-              pathParameters: {'professionalName': professional.name},
+              pathParameters: {'professionalId': professional.id},
               extra: professional,
             );
           },
@@ -424,7 +413,7 @@ final GoRouter appRouter = GoRouter(
           onProfessionalSelected: (professional) {
             context.pushNamed(
               AppRouteNames.professionalProfile,
-              pathParameters: {'professionalName': professional.name},
+              pathParameters: {'professionalId': professional.id},
               extra: professional,
             );
           },
@@ -452,7 +441,7 @@ final GoRouter appRouter = GoRouter(
           onProfessionalSelected: (professional) {
             context.pushNamed(
               AppRouteNames.professionalProfile,
-              pathParameters: {'professionalName': professional.name},
+              pathParameters: {'professionalId': professional.id},
               extra: professional,
             );
           },
@@ -801,27 +790,14 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalProfile,
       name: AppRouteNames.professionalProfile,
       builder: (context, state) {
-        final professional = _professionalFromState(state);
-
-        return Consumer(
-          builder: (context, ref, child) {
-            final summary = ref.watch(
-              professionalRatingSummaryProvider(professional.id),
-            );
-            final currentProfessional = professional.copyWith(
-              rating: summary.averageRating,
-              reviewCount: summary.reviewCount,
-            );
-            return ProfessionalProfileScreen(
-              professional: currentProfessional,
-              completedJobsCount: summary.completedJobsCount,
-              onRequestService: () {
-                context.pushNamed(
-                  AppRouteNames.requestService,
-                  pathParameters: {'professionalName': professional.name},
-                  extra: currentProfessional,
-                );
-              },
+        return ProfessionalProfileRoute(
+          professionalId: state.pathParameters['professionalId']!,
+          initialProfessional: state.extra as ProfessionalProfileData?,
+          onRequestService: (professional) {
+            context.pushNamed(
+              AppRouteNames.requestService,
+              pathParameters: {'professionalName': professional.name},
+              extra: professional,
             );
           },
         );
@@ -831,7 +807,14 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.requestService,
       name: AppRouteNames.requestService,
       builder: (context, state) {
-        final professional = _professionalFromState(state);
+        final professional = state.extra as ProfessionalProfileData?;
+        if (professional == null) {
+          return const Scaffold(
+            body: Center(
+              child: Text('No se encontró el profesional seleccionado.'),
+            ),
+          );
+        }
 
         return RequestServiceScreen(
           professional: professional,

@@ -73,7 +73,7 @@ void main() {
 
     appRouter.goNamed(
       AppRouteNames.professionalProfile,
-      pathParameters: {'professionalName': 'Daniel Morales'},
+      pathParameters: {'professionalId': placeholderProfessionals.last.id},
       extra: placeholderProfessionals.last,
     );
     await tester.pumpAndSettle();

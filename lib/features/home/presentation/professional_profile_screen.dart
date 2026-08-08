@@ -11,12 +11,14 @@ class ProfessionalProfileScreen extends StatelessWidget {
     required this.professional,
     required this.completedJobsCount,
     required this.onRequestService,
+    required this.showMockDetails,
     super.key,
   });
 
   final ProfessionalProfileData professional;
-  final int completedJobsCount;
+  final int? completedJobsCount;
   final VoidCallback onRequestService;
+  final bool showMockDetails;
 
   static const _services = [
     'Instalaciones eléctricas',
@@ -133,78 +135,85 @@ class ProfessionalProfileScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 28),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    const TrustIndicator(
-                      icon: Icons.workspace_premium_outlined,
-                      label: '8 años de experiencia',
-                    ),
-                    TrustIndicator(
-                      icon: Icons.task_alt_rounded,
-                      label: '$completedJobsCount servicios completados',
-                    ),
-                    const TrustIndicator(
-                      icon: Icons.schedule_rounded,
-                      label: 'Responde en menos de 1 hora',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 36),
-                const _ProfileSectionTitle(label: 'Acerca de'),
-                const SizedBox(height: 12),
-                Text(
-                  'Profesional con experiencia en instalaciones, reparaciones '
-                  'y mantenimiento eléctrico residencial y comercial.',
-                  style: textTheme.bodyLarge?.copyWith(height: 1.5),
-                ),
-                const SizedBox(height: 32),
-                const _ProfileSectionTitle(label: 'Servicios'),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    for (final service in _services)
-                      ServiceChip(label: service),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                const _ProfileSectionTitle(label: 'Trabajos realizados'),
-                const SizedBox(height: 14),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final columnCount = constraints.maxWidth >= 700 ? 3 : 1;
-
-                    return GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: 3,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columnCount,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 4 / 3,
-                      ),
-                      itemBuilder: (context, index) {
-                        return WorkGalleryItem(label: 'Trabajo ${index + 1}');
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 32),
-                const _ProfileSectionTitle(label: 'Reseñas'),
-                const SizedBox(height: 10),
-                for (var index = 0; index < _reviews.length; index++) ...[
-                  ReviewCard(
-                    clientName: _reviews[index].clientName,
-                    rating: _reviews[index].rating,
-                    comment: _reviews[index].comment,
-                    date: _reviews[index].date,
+                if (completedJobsCount != null || showMockDetails)
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      if (showMockDetails)
+                        const TrustIndicator(
+                          icon: Icons.workspace_premium_outlined,
+                          label: '8 años de experiencia',
+                        ),
+                      if (completedJobsCount != null)
+                        TrustIndicator(
+                          icon: Icons.task_alt_rounded,
+                          label: '$completedJobsCount servicios completados',
+                        ),
+                      if (showMockDetails)
+                        const TrustIndicator(
+                          icon: Icons.schedule_rounded,
+                          label: 'Responde en menos de 1 hora',
+                        ),
+                    ],
                   ),
-                  if (index != _reviews.length - 1) const SizedBox(height: 10),
+                if (showMockDetails) ...[
+                  const SizedBox(height: 36),
+                  const _ProfileSectionTitle(label: 'Acerca de'),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Profesional con experiencia en instalaciones, reparaciones '
+                    'y mantenimiento eléctrico residencial y comercial.',
+                    style: textTheme.bodyLarge?.copyWith(height: 1.5),
+                  ),
+                  const SizedBox(height: 32),
+                  const _ProfileSectionTitle(label: 'Servicios'),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final service in _services)
+                        ServiceChip(label: service),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  const _ProfileSectionTitle(label: 'Trabajos realizados'),
+                  const SizedBox(height: 14),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columnCount = constraints.maxWidth >= 700 ? 3 : 1;
+
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: 3,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columnCount,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 4 / 3,
+                        ),
+                        itemBuilder: (context, index) {
+                          return WorkGalleryItem(label: 'Trabajo ${index + 1}');
+                        },
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  const _ProfileSectionTitle(label: 'Reseñas'),
+                  const SizedBox(height: 10),
+                  for (var index = 0; index < _reviews.length; index++) ...[
+                    ReviewCard(
+                      clientName: _reviews[index].clientName,
+                      rating: _reviews[index].rating,
+                      comment: _reviews[index].comment,
+                      date: _reviews[index].date,
+                    ),
+                    if (index != _reviews.length - 1)
+                      const SizedBox(height: 10),
+                  ],
                 ],
               ],
             ),
