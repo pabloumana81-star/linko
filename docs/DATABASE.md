@@ -21,11 +21,17 @@ Las migraciones se aplican en orden lexicográfico:
 17. `202608060003_publish_service_requests.sql`
 18. `202608080001_service_requests_replica_identity.sql`
 19. `202608080002_sync_rating_summary.sql`
+20. `202608080004_auth_onboarding_default.sql`
 
 Tablas principales: `profiles`, `professional_profiles`, `service_requests`,
 `conversations`, `messages`, `quotations`, `request_events`, `ratings`,
 `reports`, `admin_audit_logs`, `admin_professional_audit_log` y
 `admin_request_audit_log`.
+
+`profiles.id` comparte la identidad de `auth.users`. El trigger
+`handle_new_auth_user_profile` y el upsert por clave primaria hacen idempotente
+la creación de perfil. Desde `202608080004`, solo los perfiles nuevos nacen con
+`onboarding_completed = false`; no se reescriben cuentas existentes.
 
 Los repositorios admin consultan las mismas tablas mediante RPCs. Suspender una
 cuenta actualiza `profiles`; verificar un profesional actualiza

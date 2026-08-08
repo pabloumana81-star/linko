@@ -131,4 +131,47 @@ void main() {
     expect(find.text('Continuar como invitado'), findsOneWidget);
     expect(find.text('Recibir enlace de acceso'), findsOneWidget);
   });
+
+  testWidgets('an expired session redirects a protected screen to access', (
+    tester,
+  ) async {
+    final repository = MockAuthenticationRepository(initialUser: restoredUser);
+    appRouter.go(AppRoutes.customerRequests);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authenticationRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: const LinkoApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await repository.signOut();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Continuar como invitado'), findsOneWidget);
+  });
+
+  testWidgets('a new authenticated account enters role onboarding', (
+    tester,
+  ) async {
+    final pending = restoredUser.copyWith(onboardingCompleted: false);
+    appRouter.go(AppRoutes.splash);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authenticationRepositoryProvider.overrideWithValue(
+            MockAuthenticationRepository(initialUser: pending),
+          ),
+        ],
+        child: const LinkoApp(),
+      ),
+    );
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('¿Cómo deseas usar LinkO?'), findsOneWidget);
+  });
 }

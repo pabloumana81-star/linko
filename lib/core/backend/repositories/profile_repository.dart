@@ -11,5 +11,6 @@ abstract interface class ProfileRepository {
     String? displayName,
     String? avatarUrl,
     AppMode? activeMode,
+    bool? onboardingCompleted,
   });
 }

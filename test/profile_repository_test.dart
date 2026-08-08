@@ -127,12 +127,14 @@ class _SeededProfileRepository implements ProfileRepository {
     String? displayName,
     String? avatarUrl,
     AppMode? activeMode,
+    bool? onboardingCompleted,
   }) async {
     updateCalls++;
     profile = profile.copyWith(
       displayName: displayName,
       avatarUrl: avatarUrl,
       activeMode: activeMode,
+      onboardingCompleted: onboardingCompleted,
     );
     return profile;
   }

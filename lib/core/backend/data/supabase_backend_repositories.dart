@@ -34,16 +34,23 @@ class SupabaseAuthenticationRepository implements AuthenticationRepository {
   @override
   Stream<AppUserProfile?> authStateChanges() => _client.auth.onAuthStateChange
       .map((event) => event.session?.user)
-      .map((user) => user == null ? null : _appUserProfile(user));
+      .map((user) => user == null ? null : _appUserProfile(user))
+      .distinct((previous, next) => previous?.id == next?.id);
 
   @override
   Future<AppUserProfile?> restoreSession() async {
-    final user = _client.auth.currentUser;
+    var session = _client.auth.currentSession;
+    if (session == null) return null;
+    if (session.isExpired) {
+      session = (await _client.auth.refreshSession()).session;
+    }
+    final user = session?.user;
     return user == null ? null : _appUserProfile(user);
   }
 
   @override
   Future<void> sendEmailLink(String email) {
+    _validateRedirect();
     return _client.auth.signInWithOtp(
       email: email,
       emailRedirectTo: redirectTo,
@@ -51,27 +58,44 @@ class SupabaseAuthenticationRepository implements AuthenticationRepository {
   }
 
   @override
-  Future<AppUserProfile?> signInWithApple() async {
-    await _client.auth.signInWithOAuth(
+  Future<void> signInWithApple() async {
+    _validateRedirect();
+    final launched = await _client.auth.signInWithOAuth(
       OAuthProvider.apple,
       redirectTo: redirectTo,
     );
-    final user = _client.auth.currentUser;
-    return user == null ? null : _appUserProfile(user);
+    if (!launched) {
+      throw const AuthenticationLaunchException(
+        'No fue posible abrir el acceso con Apple.',
+      );
+    }
   }
 
   @override
-  Future<AppUserProfile?> signInWithGoogle() async {
-    await _client.auth.signInWithOAuth(
+  Future<void> signInWithGoogle() async {
+    _validateRedirect();
+    final launched = await _client.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: redirectTo,
     );
-    final user = _client.auth.currentUser;
-    return user == null ? null : _appUserProfile(user);
+    if (!launched) {
+      throw const AuthenticationLaunchException(
+        'No fue posible abrir el acceso con Google.',
+      );
+    }
   }
 
   @override
   Future<void> signOut() => _client.auth.signOut();
+
+  void _validateRedirect() {
+    final uri = Uri.tryParse(redirectTo ?? '');
+    if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+      throw const AuthenticationLaunchException(
+        'La URL de retorno de autenticación no está configurada.',
+      );
+    }
+  }
 
   AppUserProfile _appUserProfile(User user) {
     final metadata = user.userMetadata;
@@ -101,7 +125,7 @@ class ProfileRepositorySupabase implements ProfileRepository {
   final SupabaseClient _client;
 
   static const _selection =
-      'id,email,display_name,avatar_url,active_mode,role,account_status,created_at,updated_at';
+      'id,email,display_name,avatar_url,active_mode,role,account_status,onboarding_completed,created_at,updated_at';
 
   @override
   Stream<AppUserProfile?> watchProfile(String userId) => _client
@@ -141,11 +165,15 @@ class ProfileRepositorySupabase implements ProfileRepository {
     String? displayName,
     String? avatarUrl,
     AppMode? activeMode,
+    bool? onboardingCompleted,
   }) async {
     final values = <String, Object?>{};
     if (displayName != null) values['display_name'] = displayName;
     if (avatarUrl != null) values['avatar_url'] = avatarUrl;
     if (activeMode != null) values['active_mode'] = _modeValue(activeMode);
+    if (onboardingCompleted != null) {
+      values['onboarding_completed'] = onboardingCompleted;
+    }
     if (values.isEmpty) {
       final current = await _client
           .from('profiles')
@@ -176,6 +204,7 @@ class ProfileRepositorySupabase implements ProfileRepository {
       accountStatus: row['account_status'] == 'suspended'
           ? AccountStatus.suspended
           : AccountStatus.active,
+      onboardingCompleted: row['onboarding_completed'] as bool,
       createdAt: DateTime.parse(row['created_at'] as String),
       updatedAt: DateTime.parse(row['updated_at'] as String),
     );

@@ -44,18 +44,22 @@ class MockAuthenticationRepository implements AuthenticationRepository {
   }
 
   @override
-  Future<AppUserProfile?> signInWithApple() => _authenticate(
-    id: 'mock-apple-user',
-    name: 'Usuario Apple',
-    email: 'apple@mock.linko',
-  );
+  Future<void> signInWithApple() async {
+    await _authenticate(
+      id: 'mock-apple-user',
+      name: 'Usuario Apple',
+      email: 'apple@mock.linko',
+    );
+  }
 
   @override
-  Future<AppUserProfile?> signInWithGoogle() => _authenticate(
-    id: 'mock-google-user',
-    name: 'Usuario Google',
-    email: 'google@mock.linko',
-  );
+  Future<void> signInWithGoogle() async {
+    await _authenticate(
+      id: 'mock-google-user',
+      name: 'Usuario Google',
+      email: 'google@mock.linko',
+    );
+  }
 
   Future<AppUserProfile> _authenticate({
     required String id,
@@ -110,6 +114,7 @@ class MockProfileRepository implements ProfileRepository {
     String? displayName,
     String? avatarUrl,
     AppMode? activeMode,
+    bool? onboardingCompleted,
   }) async {
     final current = _profiles[userId];
     if (current == null) {
@@ -119,6 +124,7 @@ class MockProfileRepository implements ProfileRepository {
       displayName: displayName,
       avatarUrl: avatarUrl,
       activeMode: activeMode,
+      onboardingCompleted: onboardingCompleted,
       updatedAt: DateTime.now().toUtc(),
     );
     _profiles[userId] = updated;

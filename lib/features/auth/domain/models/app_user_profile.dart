@@ -14,6 +14,7 @@ class AppUserProfile {
     required this.createdAt,
     this.role = UserRole.user,
     this.accountStatus = AccountStatus.active,
+    this.onboardingCompleted = true,
     DateTime? updatedAt,
   }) : updatedAt = updatedAt ?? createdAt;
 
@@ -24,6 +25,7 @@ class AppUserProfile {
   final AppMode activeMode;
   final UserRole role;
   final AccountStatus accountStatus;
+  final bool onboardingCompleted;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -33,6 +35,7 @@ class AppUserProfile {
     AppMode? activeMode,
     UserRole? role,
     AccountStatus? accountStatus,
+    bool? onboardingCompleted,
     DateTime? updatedAt,
   }) {
     return AppUserProfile(
@@ -43,6 +46,7 @@ class AppUserProfile {
       activeMode: activeMode ?? this.activeMode,
       role: role ?? this.role,
       accountStatus: accountStatus ?? this.accountStatus,
+      onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

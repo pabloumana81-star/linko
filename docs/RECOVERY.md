@@ -18,6 +18,8 @@
    `docs/DATABASE.md`.
 5. Habilita Email y los proveedores OAuth requeridos.
 6. Registra `AUTH_REDIRECT_URL` en Authentication URL Configuration.
+   Para OAuth y Magic Link añade también la URL web de cada entorno y sigue la
+   configuración por proveedor de `docs/AUTHENTICATION.md`.
 7. Crea el primer perfil admin mediante un proceso operativo seguro; no desde
    el cliente Flutter.
 8. Confirma RLS, publicación realtime y ejecuta la certificación Supabase en un

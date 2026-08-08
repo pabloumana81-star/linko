@@ -15,6 +15,11 @@ Ambas aplicaciones construyen `BackendConfig.fromEnvironment()` y seleccionan
 repositorios Riverpod mock o Supabase. En Supabase usan la misma URL, clave
 pública y `SupabaseClient`. GoRouter es independiente en cada aplicación.
 
+La aplicación principal trata Supabase Auth como fuente de sesión y `profiles`
+como fuente de rol/onboarding. OAuth y Magic Link finalizan por callback y
+`onAuthStateChange`; el guard de navegación reconcilia expiración, logout y
+cambio de cuenta. Los detalles están en `docs/AUTHENTICATION.md`.
+
 ## Sincronización profesional
 
 Las acciones admin modifican `profiles.account_status` y

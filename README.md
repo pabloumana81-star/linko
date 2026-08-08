@@ -43,6 +43,7 @@ cd ..
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Base de datos](docs/DATABASE.md)
 - [QA y certificación](docs/QA.md)
+- [Autenticación passwordless](docs/AUTHENTICATION.md)
 - [Bootstrap](docs/BOOTSTRAP.md)
 - [Recuperación](docs/RECOVERY.md)
 - [Backoffice](admin/README.md)

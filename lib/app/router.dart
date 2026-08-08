@@ -261,6 +261,10 @@ void _goToAuthenticatedHome(
   ProviderContainer container,
   AuthState auth,
 ) {
+  if (auth.user?.onboardingCompleted == false) {
+    context.go(AppRoutes.userType);
+    return;
+  }
   final AppMode mode =
       auth.user?.activeMode ??
       container.read(appModeProvider) ??
