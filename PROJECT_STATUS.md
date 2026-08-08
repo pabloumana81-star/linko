@@ -2,7 +2,9 @@
 
 ## Fase actual
 
-Endurecimiento de producción del Backoffice, con gestión de usuarios y profesionales sincronizada con la aplicación principal.
+Hito de backend compartido y Backoffice certificado contra el proyecto Supabase
+real. La aplicación principal y Admin completan el flujo íntegro con datos
+persistidos, RLS y Realtime.
 
 ## Módulos completados
 
@@ -25,9 +27,25 @@ Endurecimiento de producción del Backoffice, con gestión de usuarios y profesi
 - La cobertura automatizada incluye autorización, estados de interfaz, mapeo del repositorio, filtros, acciones administrativas, auditoría y sincronización de cuenta.
 - El arranque del Admin cubre por regresión los modos mock y Supabase, además de configuración ausente o inválida.
 - El resultado de la ejecución más reciente se registra en la entrega del sprint.
+- La certificación real completa se ejecuta de forma opt-in con
+  `./scripts/qa_supabase.sh`; crea únicamente registros `qa_<timestamp>`, valida
+  sincronización cross-app y confirma su limpieza.
+- Certificación final del 8 de agosto de 2026:
+  - Flujo completo: **PASS**.
+  - Sincronización Main/Admin: **PASS**.
+  - Realtime: **PASS**.
+  - Limpieza aislada: **PASS**.
+  - `flutter analyze`, QA raíz y QA Admin: **PASS**.
 
 ## Trabajo restante
 
-- Ejecutar la certificación contra un proyecto Supabase remoto con credenciales de prueba aisladas.
-- Validar las políticas RLS y Realtime en cada ambiente desplegado después de aplicar la última migración.
+- Convertir Configuración Admin de pantalla base a módulo funcional cuando se
+  definan sus opciones operativas.
+- Completar acciones operativas de resolución de reportes y gestión avanzada de
+  solicitudes; actualmente estos módulos ofrecen datos reales y seguimiento.
+- Sustituir el fallback visual de perfil profesional usado en deep links sin
+  estado por una carga directa desde Supabase.
+- Certificar OAuth y navegación UI completa en los proveedores y navegadores de
+  producción; la certificación actual cubre el flujo real a nivel repositorio.
+- Revalidar RLS y Realtime después de cada migración futura.
 - Completar pruebas manuales de accesibilidad y compatibilidad en los navegadores soportados.

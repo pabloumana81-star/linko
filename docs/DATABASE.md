@@ -17,6 +17,10 @@ Las migraciones se aplican en orden lexicográfico:
 13. `202608040002_harden_admin_professionals.sql`
 14. `202608040003_admin_real_data_modules.sql`
 15. `202608060001_notify_professional_availability.sql`
+16. `202608060002_complete_request_timeline.sql`
+17. `202608060003_publish_service_requests.sql`
+18. `202608080001_service_requests_replica_identity.sql`
+19. `202608080002_sync_rating_summary.sql`
 
 Tablas principales: `profiles`, `professional_profiles`, `service_requests`,
 `conversations`, `messages`, `quotations`, `request_events`, `ratings`,
@@ -52,6 +56,13 @@ que un cliente lea el perfil privado de otro usuario, los cambios de
 un trigger. Así Realtime provoca un refresh del descubrimiento sin exponer la
 fila privada de `profiles`. Nunca edites una migración ya aplicada: añade otra
 con timestamp posterior.
+
+`service_requests` también pertenece a `supabase_realtime` y usa
+`REPLICA IDENTITY FULL`. Los streams customer y professional conservan RLS de
+participantes y reciben las mismas transiciones sin polling. La timeline
+persiste `request_created` y `rating_submitted`; al calificar, el RPC actualiza
+de forma transaccional el archivo de la solicitud y el resumen denormalizado de
+rating del profesional.
 
 Para un proyecto enlazado:
 

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:linko_admin/features/admin/domain/admin_professional.dart';
-import 'package:linko_admin/features/admin/domain/admin_professionals_repository.dart';
-import 'package:linko_admin/features/admin/domain/admin_user.dart';
+import 'package:linko/features/admin/domain/admin_professional.dart';
+import 'package:linko/features/admin/domain/admin_professionals_repository.dart';
+import 'package:linko/features/admin/domain/admin_user.dart';
 import 'package:linko_admin/features/admin/presentation/admin_dashboard_providers.dart';
 import 'package:linko_admin/features/admin/presentation/admin_repositories_provider.dart';
 

@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:linko/core/backend/data/supabase_backend_repositories.dart';
 import 'package:linko/features/requests/domain/models/professional_profile.dart';
-import 'package:linko_admin/features/admin/data/supabase_admin_dashboard_repository.dart';
-import 'package:linko_admin/features/admin/data/supabase_admin_professionals_repository.dart';
-import 'package:linko_admin/features/admin/domain/admin_dashboard.dart';
+import 'package:linko/features/admin/data/supabase_admin_dashboard_repository.dart';
+import 'package:linko/features/admin/data/supabase_admin_professionals_repository.dart';
+import 'package:linko/features/admin/domain/admin_dashboard.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const _run = bool.fromEnvironment('RUN_SUPABASE_TESTS');

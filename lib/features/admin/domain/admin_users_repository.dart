@@ -1,4 +1,4 @@
-import 'package:linko_admin/features/admin/domain/admin_user.dart';
+import 'package:linko/features/admin/domain/admin_user.dart';
 
 abstract interface class AdminUsersRepository {
   Future<List<AdminUser>> listUsers(AdminUserQuery query);

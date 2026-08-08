@@ -218,21 +218,39 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
   Stream<List<ProfessionalProfile>> watchProfessionals() {
     late final StreamController<List<ProfessionalProfile>> controller;
     late final RealtimeChannel channel;
+    Timer? refreshTimer;
+
     var loading = false;
+    var refreshPending = false;
 
     Future<void> refresh() async {
-      if (loading || controller.isClosed) return;
+      if (controller.isClosed) return;
+
+      if (loading) {
+        refreshPending = true;
+        return;
+      }
+
       loading = true;
+
       try {
         controller.add(await getProfessionals());
       } catch (error, stackTrace) {
-        controller.addError(error, stackTrace);
+        if (!controller.isClosed) {
+          controller.addError(error, stackTrace);
+        }
       } finally {
         loading = false;
+
+        if (refreshPending && !controller.isClosed) {
+          refreshPending = false;
+          await refresh();
+        }
       }
     }
 
     controller = StreamController<List<ProfessionalProfile>>();
+
     channel = _client
         .channel('main-professional-availability')
         .onPostgresChanges(
@@ -247,8 +265,20 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
           table: 'professional_profiles',
           callback: (_) => refresh(),
         );
+
     channel.subscribe((_, _) => refresh());
-    controller.onCancel = () => _client.removeChannel(channel);
+
+    // Realtime puede no entregar una transición de una fila que antes
+    // no era visible por RLS. Este refresco periódico garantiza convergencia.
+    refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) => refresh());
+
+    controller.onListen = refresh;
+
+    controller.onCancel = () async {
+      refreshTimer?.cancel();
+      await _client.removeChannel(channel);
+    };
+
     return controller.stream;
   }
 }
@@ -324,20 +354,18 @@ class ServiceRequestsRepositorySupabase implements ServiceRequestsRepository {
 
   @override
   Stream<List<ServiceRequest>> watchCustomerRequests(String customerId) =>
-      _client
-          .from('service_requests')
-          .stream(primaryKey: ['id'])
-          .eq('customer_id', customerId)
-          .asyncMap((_) => listCustomerRequests(customerId));
+      _watchRequestList(
+        channelName: 'customer-requests:$customerId',
+        load: () => listCustomerRequests(customerId),
+      );
 
   @override
   Stream<List<ServiceRequest>> watchProfessionalRequests(
     String professionalId,
-  ) => _client
-      .from('service_requests')
-      .stream(primaryKey: ['id'])
-      .eq('professional_id', professionalId)
-      .asyncMap((_) => listProfessionalRequests(professionalId));
+  ) => _watchRequestList(
+    channelName: 'professional-requests:$professionalId',
+    load: () => listProfessionalRequests(professionalId),
+  );
 
   @override
   Future<ServiceRequest?> getRequestById(String requestId) async {
@@ -389,22 +417,149 @@ class ServiceRequestsRepositorySupabase implements ServiceRequestsRepository {
   }
 
   @override
-  Stream<RequestStatus> watchStatus(String requestId) => _client
-      .from('service_requests')
-      .stream(primaryKey: ['id'])
-      .eq('id', requestId)
-      .where((rows) => rows.isNotEmpty)
-      .map((rows) => RequestStatusMapper.fromDatabase(rows.single['status']));
+  Stream<RequestStatus> watchStatus(String requestId) {
+    late final StreamController<RequestStatus> controller;
+    late final RealtimeChannel channel;
+    RequestStatus? lastStatus;
+
+    void addStatus(Object? value) {
+      if (controller.isClosed) return;
+      final status = RequestStatusMapper.fromDatabase(value);
+      if (status != lastStatus) {
+        lastStatus = status;
+        controller.add(status);
+      }
+    }
+
+    Future<void> loadInitial() async {
+      try {
+        final row = await _client
+            .from('service_requests')
+            .select('status')
+            .eq('id', requestId)
+            .single();
+        addStatus(row['status']);
+      } catch (error, stackTrace) {
+        if (!controller.isClosed) controller.addError(error, stackTrace);
+      }
+    }
+
+    controller = StreamController<RequestStatus>();
+    channel = _client
+        .channel('request-status:$requestId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'service_requests',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: requestId,
+          ),
+          callback: (payload) => addStatus(payload.newRecord['status']),
+        )
+        .subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            unawaited(loadInitial());
+          } else if (status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            controller.addError(
+              StateError('No fue posible sincronizar la solicitud.'),
+            );
+          }
+        });
+    controller.onCancel = () => _client.removeChannel(channel);
+    return controller.stream;
+  }
 
   @override
   Stream<List<TimelineEvent>> watchTimeline(String requestId) {
     final buffer = RequestEventBuffer();
-    return _client
-        .from('request_events')
-        .stream(primaryKey: ['id'])
-        .eq('request_id', requestId)
-        .order('created_at')
-        .map((rows) => buffer.merge(rows.map(_workflowMapper.eventFromRow)));
+    late final StreamController<List<TimelineEvent>> controller;
+    late final RealtimeChannel channel;
+
+    void addEvents(Iterable<TimelineEvent> events) {
+      if (!controller.isClosed) controller.add(buffer.merge(events));
+    }
+
+    Future<void> loadInitial() async {
+      try {
+        addEvents(await getTimeline(requestId));
+      } catch (error, stackTrace) {
+        if (!controller.isClosed) controller.addError(error, stackTrace);
+      }
+    }
+
+    controller = StreamController<List<TimelineEvent>>();
+    channel = _client
+        .channel('request-timeline:$requestId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'request_events',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'request_id',
+            value: requestId,
+          ),
+          callback: (payload) =>
+              addEvents([_workflowMapper.eventFromRow(payload.newRecord)]),
+        )
+        .subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            unawaited(loadInitial());
+          } else if (status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            controller.addError(
+              StateError('No fue posible sincronizar la línea de tiempo.'),
+            );
+          }
+        });
+    controller.onCancel = () => _client.removeChannel(channel);
+    return controller.stream;
+  }
+
+  Stream<List<ServiceRequest>> _watchRequestList({
+    required String channelName,
+    required Future<List<ServiceRequest>> Function() load,
+  }) {
+    late final StreamController<List<ServiceRequest>> controller;
+    late final RealtimeChannel channel;
+    var loading = false;
+
+    Future<void> refresh() async {
+      if (loading || controller.isClosed) return;
+      loading = true;
+      try {
+        controller.add(await load());
+      } catch (error, stackTrace) {
+        controller.addError(error, stackTrace);
+      } finally {
+        loading = false;
+      }
+    }
+
+    controller = StreamController<List<ServiceRequest>>();
+    channel = _client
+        .channel(channelName)
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'service_requests',
+          callback: (_) => refresh(),
+        )
+        .subscribe((status, error) {
+          if (status == RealtimeSubscribeStatus.subscribed) {
+            unawaited(refresh());
+          } else if (status == RealtimeSubscribeStatus.channelError ||
+              status == RealtimeSubscribeStatus.timedOut) {
+            controller.addError(
+              StateError('No fue posible sincronizar las solicitudes.'),
+            );
+          }
+        });
+    controller.onCancel = () => _client.removeChannel(channel);
+    return controller.stream;
   }
 
   @override

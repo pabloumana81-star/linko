@@ -1,4 +1,4 @@
-import 'package:linko_admin/features/admin/domain/admin_professional.dart';
+import 'package:linko/features/admin/domain/admin_professional.dart';
 
 abstract interface class AdminProfessionalsRepository {
   Future<List<AdminProfessional>> listProfessionals(

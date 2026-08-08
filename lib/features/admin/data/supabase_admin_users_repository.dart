@@ -1,5 +1,5 @@
-import 'package:linko_admin/features/admin/domain/admin_user.dart';
-import 'package:linko_admin/features/admin/domain/admin_users_repository.dart';
+import 'package:linko/features/admin/domain/admin_user.dart';
+import 'package:linko/features/admin/domain/admin_users_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAdminUsersRepository implements AdminUsersRepository {

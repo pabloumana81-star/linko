@@ -52,3 +52,6 @@ admin/build/
 admin/.dart_tool/
 admin/.flutter-plugins
 admin/.flutter-plugins-dependencies
+
+# Supabase CLI local link/cache metadata
+/supabase/.temp/

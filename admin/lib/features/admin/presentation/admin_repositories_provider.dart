@@ -6,16 +6,16 @@ import 'package:linko_admin/features/admin/data/mock_admin_professionals_reposit
 import 'package:linko_admin/features/admin/data/mock_admin_reports_repository.dart';
 import 'package:linko_admin/features/admin/data/mock_admin_requests_repository.dart';
 import 'package:linko_admin/features/admin/data/mock_admin_users_repository.dart';
-import 'package:linko_admin/features/admin/data/supabase_admin_dashboard_repository.dart';
-import 'package:linko_admin/features/admin/data/supabase_admin_professionals_repository.dart';
+import 'package:linko/features/admin/data/supabase_admin_dashboard_repository.dart';
+import 'package:linko/features/admin/data/supabase_admin_professionals_repository.dart';
 import 'package:linko_admin/features/admin/data/supabase_admin_reports_repository.dart';
-import 'package:linko_admin/features/admin/data/supabase_admin_requests_repository.dart';
-import 'package:linko_admin/features/admin/data/supabase_admin_users_repository.dart';
-import 'package:linko_admin/features/admin/domain/admin_dashboard_repository.dart';
-import 'package:linko_admin/features/admin/domain/admin_professionals_repository.dart';
+import 'package:linko/features/admin/data/supabase_admin_requests_repository.dart';
+import 'package:linko/features/admin/data/supabase_admin_users_repository.dart';
+import 'package:linko/features/admin/domain/admin_dashboard_repository.dart';
+import 'package:linko/features/admin/domain/admin_professionals_repository.dart';
 import 'package:linko_admin/features/admin/domain/admin_report.dart';
-import 'package:linko_admin/features/admin/domain/admin_request.dart';
-import 'package:linko_admin/features/admin/domain/admin_users_repository.dart';
+import 'package:linko/features/admin/domain/admin_request.dart';
+import 'package:linko/features/admin/domain/admin_users_repository.dart';
 import 'package:linko_admin/features/admin/presentation/admin_mock_providers.dart';
 
 class AdminRepositories {

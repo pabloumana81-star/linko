@@ -13,9 +13,10 @@ cp .env.example .env
 scripts/bootstrap.sh
 ```
 
-Mock mode es el valor predeterminado. Para Supabase, ambas aplicaciones deben
-usar el mismo `.env` con `BACKEND_MODE=supabase`, `SUPABASE_URL`, la clave
-pública `SUPABASE_ANON_KEY` y `AUTH_REDIRECT_URL`.
+`BACKEND_MODE` es obligatorio y solo acepta `mock` o `supabase`; no existe un
+fallback silencioso. Para Supabase, ambas aplicaciones deben usar el mismo
+`.env` con `BACKEND_MODE=supabase`, `SUPABASE_URL`, la clave pública
+`SUPABASE_ANON_KEY` y `AUTH_REDIRECT_URL`.
 
 ```sh
 # Aplicación principal
@@ -33,6 +34,8 @@ Nunca uses una service-role key en una aplicación cliente.
 ```sh
 ./qa.sh
 cd admin && ./qa.sh
+cd ..
+./scripts/qa_supabase.sh # opt-in; requiere proyecto Supabase enlazado
 ```
 
 ## Documentación

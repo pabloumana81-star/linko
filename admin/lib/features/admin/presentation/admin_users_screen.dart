@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:linko_admin/features/admin/domain/admin_user.dart';
+import 'package:linko/features/admin/domain/admin_user.dart';
 import 'package:linko_admin/features/admin/presentation/admin_users_providers.dart';
 
 class AdminUsersScreen extends ConsumerWidget {

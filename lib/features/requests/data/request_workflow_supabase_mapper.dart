@@ -46,6 +46,11 @@ class RequestWorkflowSupabaseMapper {
   ({TimelineStage stage, String title, String description}) _eventPresentation(
     String type,
   ) => switch (type) {
+    'request_created' => (
+      stage: TimelineStage.requestSent,
+      title: 'Solicitud enviada',
+      description: 'El cliente creó la solicitud.',
+    ),
     'quotation_created' => (
       stage: TimelineStage.quotationSent,
       title: 'Cotización enviada',
@@ -85,6 +90,11 @@ class RequestWorkflowSupabaseMapper {
       stage: TimelineStage.workCompleted,
       title: 'Calificación solicitada',
       description: 'El servicio está listo para ser calificado.',
+    ),
+    'rating_submitted' => (
+      stage: TimelineStage.workCompleted,
+      title: 'Calificación enviada',
+      description: 'El cliente calificó el servicio.',
     ),
     _ => throw const FormatException('Tipo de evento de solicitud inválido.'),
   };

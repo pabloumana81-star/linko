@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:linko_admin/features/admin/domain/admin_request.dart';
+import 'package:linko/features/admin/domain/admin_request.dart';
 import 'package:linko_admin/features/admin/presentation/admin_requests_providers.dart';
 
 class AdminRequestsScreen extends ConsumerWidget {

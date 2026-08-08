@@ -1,7 +1,7 @@
 import 'package:linko_admin/features/admin/data/mock_admin_state.dart';
-import 'package:linko_admin/features/admin/domain/admin_professional.dart';
-import 'package:linko_admin/features/admin/domain/admin_professionals_repository.dart';
-import 'package:linko_admin/features/admin/domain/admin_user.dart';
+import 'package:linko/features/admin/domain/admin_professional.dart';
+import 'package:linko/features/admin/domain/admin_professionals_repository.dart';
+import 'package:linko/features/admin/domain/admin_user.dart';
 import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/requests/domain/models/service_rating.dart';
 import 'package:linko/features/requests/domain/repositories/request_repository.dart';

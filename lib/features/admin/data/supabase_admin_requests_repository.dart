@@ -1,4 +1,4 @@
-import 'package:linko_admin/features/admin/domain/admin_request.dart';
+import 'package:linko/features/admin/domain/admin_request.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAdminRequestsRepository implements AdminRequestsRepository {

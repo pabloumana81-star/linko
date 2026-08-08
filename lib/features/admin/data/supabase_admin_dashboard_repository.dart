@@ -1,5 +1,5 @@
-import 'package:linko_admin/features/admin/domain/admin_dashboard.dart';
-import 'package:linko_admin/features/admin/domain/admin_dashboard_repository.dart';
+import 'package:linko/features/admin/domain/admin_dashboard.dart';
+import 'package:linko/features/admin/domain/admin_dashboard_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAdminDashboardRepository implements AdminDashboardRepository {

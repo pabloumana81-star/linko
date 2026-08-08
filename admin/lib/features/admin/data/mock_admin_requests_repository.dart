@@ -1,5 +1,5 @@
 import 'package:linko/features/requests/domain/repositories/request_repository.dart';
-import 'package:linko_admin/features/admin/domain/admin_request.dart';
+import 'package:linko/features/admin/domain/admin_request.dart';
 
 class MockAdminRequestsRepository implements AdminRequestsRepository {
   const MockAdminRequestsRepository(this._requests);

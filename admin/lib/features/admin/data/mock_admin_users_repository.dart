@@ -1,5 +1,5 @@
-import 'package:linko_admin/features/admin/domain/admin_user.dart';
-import 'package:linko_admin/features/admin/domain/admin_users_repository.dart';
+import 'package:linko/features/admin/domain/admin_user.dart';
+import 'package:linko/features/admin/domain/admin_users_repository.dart';
 import 'package:linko/core/backend/data/account_status_store.dart';
 import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/requests/domain/models/request_state.dart';
