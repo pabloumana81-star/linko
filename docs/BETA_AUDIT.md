@@ -282,6 +282,16 @@ migración `202608090001` preserva esos datos en una tabla privada, elimina la
 columna pública y restringe lectura a propietario/Admin y escritura al dueño.
 Discovery conserva únicamente `verification_status`.
 
+### ✅ S-02 — Reportes y solicitudes Admin sin cierre operativo — Completado
+
+La migración `202608090002_admin_operations_closure.sql` añade transiciones de
+reporte protegidas, auditoría inmutable para reportes y acciones acotadas sobre
+solicitudes. Resolver, descartar y escalar exigen motivo; no hay borrado ni
+reapertura. Las solicitudes solo admiten marca de revisión, nota y cancelación
+antes del cierre. La función histórica de corrección arbitraria ya no puede ser
+ejecutada por clientes autenticados. El E2E real confirma autorización negativa,
+integridad del estado, sincronización y limpieza.
+
 ### B-01 — Marcador temporal explícito
 
 - `lib/core/backend/backend_repository_factory.dart:37` contiene “Temporary synchronous bridge”.

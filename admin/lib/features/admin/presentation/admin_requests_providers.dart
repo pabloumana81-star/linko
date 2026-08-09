@@ -9,3 +9,22 @@ final adminRequestsRepositoryProvider = Provider<AdminRequestsRepository>(
 final adminRequestsProvider = FutureProvider<List<AdminRequest>>(
   (ref) => ref.watch(adminRequestsRepositoryProvider).listRequests(),
 );
+
+final adminRequestOperationsProvider = Provider(
+  (ref) => AdminRequestOperations(ref),
+);
+
+class AdminRequestOperations {
+  const AdminRequestOperations(this._ref);
+  final Ref _ref;
+  Future<void> perform(
+    String id,
+    AdminRequestAction action,
+    String note,
+  ) async {
+    await _ref
+        .read(adminRequestsRepositoryProvider)
+        .performAction(id, action, note);
+    _ref.invalidate(adminRequestsProvider);
+  }
+}

@@ -2,9 +2,8 @@
 
 ## Fase actual
 
-Harden Professional Verification Privacy. Los documentos y metadatos privados
-de verificación están separados del perfil público mediante una tabla con RLS
-de propietario/Admin, sin alterar discovery ni el estado público verificado.
+Admin Operations Closure. Reportes y solicitudes cuentan con las operaciones
+mínimas de beta protegidas por RPC, motivos obligatorios y auditoría persistida.
 
 ## Módulos completados
 
@@ -13,7 +12,8 @@ de propietario/Admin, sin alterar discovery ni el estado público verificado.
 - Dashboard administrativo.
 - Gestión de usuarios: listado, búsqueda, filtros, detalle, suspensión, reactivación y auditoría.
 - Gestión de profesionales: datos operativos, filtros, detalle, documentos, aprobación, rechazo motivado, solicitud de información, suspensión, reactivación y auditoría.
-- Solicitudes, reportes y configuración base del Backoffice.
+- Reportes: resolución, descarte y escalamiento sin borrado, con motivo e historial.
+- Solicitudes Admin: detalle, marca de revisión, notas de intervención y cancelación limitada a estados operativamente válidos.
 - Repositorios seleccionables para los modos mock y Supabase.
 - Sincronización del estado de cuenta mediante `profiles.account_status`.
 - Sincronización de visibilidad y distintivo profesional mediante `professional_profiles.verification_status` y Realtime.
@@ -78,13 +78,18 @@ de propietario/Admin, sin alterar discovery ni el estado público verificado.
   - QA raíz (135 pruebas + integración macOS): **PASS**.
   - QA Admin (58 pruebas; opt-in omitido por diseño): **PASS**.
   - RLS propietario/Admin, discovery, aprobación, Realtime y E2E: **PASS**.
+- Admin Operations Closure, 9 de agosto de 2026:
+  - Migración `202608090002_admin_operations_closure.sql`: **APLICADA**.
+  - QA raíz (138 pruebas + integración macOS): **PASS**.
+  - QA Admin (65 pruebas; 1 opt-in omitida por diseño): **PASS**.
+  - Lint de esquema, autorización Admin/no-Admin, auditoría, sincronización y E2E real: **PASS**.
 
 ## Trabajo restante
 
 - Convertir Configuración Admin de pantalla base a módulo funcional cuando se
   definan sus opciones operativas.
-- Completar acciones operativas de resolución de reportes y gestión avanzada de
-  solicitudes; actualmente estos módulos ofrecen datos reales y seguimiento.
+- Definir, después de observar la beta, si se necesita reapertura de reportes;
+  no forma parte del flujo operativo actual.
 - Configurar un bucket de Supabase Storage, políticas de objetos y
   transformación de imágenes antes de habilitar carga de portfolio desde el
   cliente. El contrato de URLs persistidas ya puede leerlas.

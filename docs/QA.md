@@ -123,3 +123,17 @@ Certificación del 9 de agosto de 2026: análisis sin incidencias, 135 pruebas
 raíz, integración MVP macOS, 58 pruebas Admin, lint del esquema y E2E Supabase
 real aprobaron. El test Admin real opt-in permanece omitido dentro de su QA
 normal porque la certificación raíz ya cubre el backend enlazado y su limpieza.
+
+## Operaciones Admin
+
+`admin/test/admin_operations_test.dart` cubre resolver, descartar, escalar,
+motivos obligatorios, auditoría, duplicados y paridad mock para intervenciones
+de solicitudes. `test/admin_operations_migration_test.dart` verifica las
+garantías contractuales del SQL. El E2E real ejecuta marca y nota sin cambiar el
+estado de la solicitud, rechaza customer no autorizado, escala y resuelve un
+reporte, comprueba sus auditorías y limpia esos registros aislados.
+
+Certificación del 9 de agosto de 2026: `flutter analyze`, 138 pruebas raíz,
+integración MVP macOS, 65 pruebas Admin, `supabase db lint --linked` y E2E
+Supabase real aprobaron. El dry-run y la aplicación de
+`202608090002_admin_operations_closure.sql` finalizaron correctamente.

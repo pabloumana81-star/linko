@@ -9,3 +9,18 @@ final adminReportsRepositoryProvider = Provider<AdminReportsRepository>(
 final adminReportsProvider = FutureProvider<List<AdminReport>>(
   (ref) => ref.watch(adminReportsRepositoryProvider).listReports(),
 );
+
+final adminReportOperationsProvider = Provider(
+  (ref) => AdminReportOperations(ref),
+);
+
+class AdminReportOperations {
+  const AdminReportOperations(this._ref);
+  final Ref _ref;
+  Future<void> perform(String id, AdminReportAction action, String note) async {
+    await _ref
+        .read(adminReportsRepositoryProvider)
+        .performAction(id, action, note);
+    _ref.invalidate(adminReportsProvider);
+  }
+}

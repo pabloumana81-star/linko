@@ -55,7 +55,7 @@ final adminRepositoriesProvider = Provider<AdminRepositories>((ref) {
         state,
       ),
       requests: MockAdminRequestsRepository(shared.mvpCompatibilityRequests),
-      reports: const MockAdminReportsRepository(),
+      reports: MockAdminReportsRepository(),
     );
   }
 

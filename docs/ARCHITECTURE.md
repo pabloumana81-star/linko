@@ -81,3 +81,16 @@ Los clientes reciben solo la anon/publishable key. RLS está habilitado y los
 RPC administrativos validan `profiles.role = 'admin'`. Las service-role keys no
 forman parte de ninguna aplicación; la certificación real puede usar una clave
 de test exclusivamente para crear y limpiar fixtures aislados.
+
+## Operaciones administrativas
+
+Reports y Requests mantienen contratos de repositorio compartidos, con
+implementaciones mock deterministas y Supabase seleccionadas centralmente. La
+UI Admin nunca escribe tablas ni decide transiciones: invoca RPCs de intención
+que vuelven a autorizar al actor, bloquean la fila y agregan auditoría.
+
+Los reportes son un flujo cerrado `open/in_review/escalated` hacia `resolved` o
+`dismissed`; no se borran ni se reabren. En solicitudes, Admin puede inspeccionar
+detalle e historial, marcar revisión, documentar una intervención y cancelar
+solo antes del cierre. No hay mutación arbitraria de estado, por lo que las
+transiciones de customer/professional siguen siendo la fuente del workflow.

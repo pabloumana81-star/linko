@@ -25,11 +25,13 @@ Las migraciones se aplican en orden lexicográfico:
 21. `202608080005_production_professional_profiles.sql`
 22. `202608080006_preserve_professional_display_name.sql`
 23. `202608090001_harden_professional_verification_privacy.sql`
+24. `202608090002_admin_operations_closure.sql`
 
 Tablas principales: `profiles`, `professional_profiles`, `service_requests`,
 `conversations`, `messages`, `quotations`, `request_events`, `ratings`,
 `reports`, `professional_verification_submissions`, `admin_audit_logs`,
-`admin_professional_audit_log` y `admin_request_audit_log`.
+`admin_professional_audit_log`, `admin_request_audit_log` y
+`admin_report_audit_log`.
 
 `profiles.id` comparte la identidad de `auth.users`. El trigger
 `handle_new_auth_user_profile` y el upsert por clave primaria hacen idempotente
@@ -97,6 +99,16 @@ consultan exclusivamente RPCs o repositorios Supabase compartidos. Las
 funciones `list_admin_requests()` y `list_admin_reports()` validan el rol admin
 en servidor antes de exponer datos que no pertenecen necesariamente al usuario
 autenticado.
+
+`perform_admin_report_action()` limita las transiciones a resolver, descartar o
+escalar, exige una nota y bloquea repeticiones o cambios sobre cierres. Cada
+acción se agrega a `admin_report_audit_log`; no existe borrado desde el cliente.
+`perform_admin_request_action()` solo permite marcar para revisión, agregar una
+nota o cancelar antes de la confirmación final. La corrección genérica
+`correct_admin_request_status()` fue revocada a clientes autenticados. La marca
+no altera el estado del workflow y toda intervención queda en
+`admin_request_audit_log`. Ambos RPC validan `profiles.role = 'admin'`, mientras
+RLS deja los historiales en lectura exclusiva para Admin.
 
 Realtime debe publicar `profiles` y `professional_profiles`. Como RLS impide
 que un cliente lea el perfil privado de otro usuario, los cambios de

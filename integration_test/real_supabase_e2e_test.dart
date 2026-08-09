@@ -21,6 +21,7 @@ import 'package:linko/features/admin/data/supabase_admin_users_repository.dart';
 import 'package:linko/features/admin/domain/admin_dashboard.dart';
 import 'package:linko/features/admin/domain/admin_professional.dart';
 import 'package:linko/features/admin/domain/admin_user.dart';
+import 'package:linko/features/admin/domain/admin_request.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -45,6 +46,7 @@ void main() {
       final unrelatedProfessionalClient = SupabaseClient(_url, _anonKey);
       final createdUserIds = <String>[];
       String? requestId;
+      String? reportId;
       StreamIterator<RequestStatus>? customerStatuses;
       StreamIterator<RequestStatus>? professionalStatuses;
       StreamIterator<List<TimelineEvent>>? realtimeTimeline;
@@ -340,6 +342,79 @@ void main() {
           timeline: realtimeTimeline,
         );
 
+        await adminRequests.performAction(
+          requestId,
+          AdminRequestAction.flagForReview,
+          '${prefix}_review_required',
+        );
+        await adminRequests.performAction(
+          requestId,
+          AdminRequestAction.addInterventionNote,
+          '${prefix}_intervention',
+        );
+        final operatedRequest = (await adminRequests.listRequests())
+            .singleWhere((item) => item.id == requestId);
+        expect(operatedRequest.status, 'pending');
+        expect(operatedRequest.adminReviewFlag, isTrue);
+        expect(operatedRequest.auditHistory, hasLength(2));
+        await expectLater(
+          customerClient.rpc(
+            'perform_admin_request_action',
+            params: {
+              'p_request_id': requestId,
+              'p_action': 'addInterventionNote',
+              'p_note': '${prefix}_unauthorized',
+            },
+          ),
+          throwsA(isA<PostgrestException>()),
+        );
+
+        await SupabaseReportsRepository(customerClient).createReport(
+          reporterId: customerUser.id,
+          requestId: requestId,
+          reason: '${prefix}_report',
+        );
+        final createdReportRows =
+            await adminClient.rpc('list_admin_reports') as List;
+        reportId =
+            createdReportRows.cast<Map>().singleWhere(
+                  (row) => row['reason'] == '${prefix}_report',
+                )['id']
+                as String;
+        await adminClient.rpc(
+          'perform_admin_report_action',
+          params: {
+            'p_report_id': reportId,
+            'p_action': 'escalate',
+            'p_note': '${prefix}_escalation',
+          },
+        );
+        await adminClient.rpc(
+          'perform_admin_report_action',
+          params: {
+            'p_report_id': reportId,
+            'p_action': 'resolve',
+            'p_note': '${prefix}_resolution',
+          },
+        );
+        final reportRows = await adminClient.rpc('list_admin_reports') as List;
+        final operatedReport = reportRows.cast<Map>().singleWhere(
+          (row) => row['id'] == reportId,
+        );
+        expect(operatedReport['status'], 'resolved');
+        expect(operatedReport['audit_history'] as List, hasLength(2));
+        await expectLater(
+          customerClient.rpc(
+            'perform_admin_report_action',
+            params: {
+              'p_report_id': reportId,
+              'p_action': 'dismiss',
+              'p_note': '${prefix}_unauthorized',
+            },
+          ),
+          throwsA(isA<PostgrestException>()),
+        );
+
         final professionalList = await professionalRequests
             .listProfessionalRequests(professionalUser.id);
         expect(
@@ -610,6 +685,12 @@ void main() {
         await customerStatuses?.cancel();
         await professionalStatuses?.cancel();
         if (requestId != null) {
+          if (reportId != null) {
+            await service
+                .from('admin_report_audit_log')
+                .delete()
+                .eq('report_id', reportId);
+          }
           await service.from('reports').delete().eq('request_id', requestId);
           await service
               .from('admin_request_audit_log')
@@ -796,6 +877,7 @@ Future<List<ProfessionalProfile>> _waitForProfessional(
 }
 
 Future<void> _deleteCreatedUser(SupabaseClient service, String id) async {
+  await service.from('admin_report_audit_log').delete().eq('admin_id', id);
   await service.from('reports').delete().eq('reporter_id', id);
   await service.from('service_requests').delete().eq('customer_id', id);
   await service.from('service_requests').delete().eq('professional_id', id);
