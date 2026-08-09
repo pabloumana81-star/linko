@@ -26,6 +26,8 @@ Las migraciones se aplican en orden lexicográfico:
 22. `202608080006_preserve_professional_display_name.sql`
 23. `202608090001_harden_professional_verification_privacy.sql`
 24. `202608090002_admin_operations_closure.sql`
+25. `202608100001_production_professional_storage.sql`
+26. `202608100002_enforce_storage_metadata.sql`
 
 Tablas principales: `profiles`, `professional_profiles`, `service_requests`,
 `conversations`, `messages`, `quotations`, `request_events`, `ratings`,
@@ -63,9 +65,29 @@ actual. `update_own_professional_profile()` usa `security definer`, valida
 de servicios y hace un upsert únicamente sobre el ID autenticado. Sus permisos
 se revocan a `public`/`anon` y se conceden a `authenticated`.
 
-No existe aún una migración de Supabase Storage. `portfolio` conserva JSON para
-URLs HTTPS previamente administradas; habilitar uploads exige crear un bucket,
-límites MIME/tamaño y políticas por carpeta de propietario.
+`202608100001` crea dos buckets versionados. `professional-portfolio` es público,
+acepta JPG/PNG/WebP hasta 5 MB y almacena objetos bajo `<auth.uid()>/...`.
+`professional-verification` es privado, acepta esos formatos y PDF hasta 10 MB,
+con límite de 10 MB. El profesional administra exclusivamente su carpeta; un
+Admin autorizado solo puede leer verificación y debe usar una URL firmada de
+60 segundos. Customer, `anon` y profesionales no relacionados no pueden leer
+documentos privados.
+
+El JSON persistido guarda metadatos estables (`path`, `name`, `mime_type`,
+`size`), nunca URLs firmadas. Los RPCs `add/remove_own_portfolio_object` y
+`add/remove_own_verification_document` derivan el propietario de `auth.uid()`.
+Las URLs HTTPS de portafolio anteriores continúan siendo legibles y removibles
+por su dueño; la migración no reescribe filas existentes.
+
+`202608100002` añade triggers que rechazan metadatos nuevos si el objeto no
+existe en el bucket y carpeta esperados. Conserva valores legacy ya persistidos,
+bloquea rutas fabricadas por escrituras directas o el RPC masivo heredado y
+evita modificar documentos después de aprobar la verificación. Quitar metadata
+de un objeto administrado requiere eliminar primero el archivo.
+
+Metadata de verificación legacy que no tiene un objeto verificable se conserva
+y continúa visible a owner/Admin como referencia heredada, pero no genera una
+URL ni permite descarga/eliminación ficticia desde Storage.
 
 `202608080006` garantiza que editar campos profesionales no sobrescriba
 `display_name`: el nombre general se usa al crear la ficha, pero una ficha

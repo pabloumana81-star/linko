@@ -16,6 +16,13 @@ La aplicación conserva una base sólida para continuar: los estados de solicitu
 Inventario original: **7 críticos, 12 altos, 12 medios y 8 bajos**.  
 Estado actual: **0 críticos pendientes; 7 críticos resueltos**. Los hallazgos altos, medios y bajos permanecen fuera del alcance de este sprint.
 
+Actualización del 9 de agosto de 2026: Production Supabase Storage está
+implementado. Portafolio usa un bucket público limitado y verificación un
+bucket privado; RLS restringe por carpeta de owner, Admin accede con URL firmada
+temporal y triggers rechazan metadata sin objeto real. QA mock, Admin, lint y
+E2E real con cleanup aprobaron. Las observaciones históricas posteriores deben
+interpretarse junto con `PROJECT_STATUS.md`.
+
 ## Crítico
 
 ### ✅ C-01 — La creación Supabase envía identificadores que no son UUID — Completado

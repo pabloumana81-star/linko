@@ -323,6 +323,24 @@ class _ProfessionalsRepository implements ProfessionalsRepository {
   ) async {}
 
   @override
+  Future<void> uploadOwnPortfolioImage(ProfessionalUploadFile file) async {}
+
+  @override
+  Future<void> deleteOwnPortfolioImage(String imageUrl) async {}
+
+  @override
+  Future<List<ProfessionalVerificationDocument>>
+  getOwnVerificationDocuments() async => const [];
+
+  @override
+  Future<void> uploadOwnVerificationDocument(
+    ProfessionalUploadFile file,
+  ) async {}
+
+  @override
+  Future<void> deleteOwnVerificationDocument(String objectPath) async {}
+
+  @override
   Future<List<ProfessionalProfile>> getProfessionals() async => const [];
 
   @override

@@ -2,9 +2,9 @@
 
 ## Fase actual
 
-Production Application Identity. Android, iOS y macOS usan `com.linko.app` y
-conservan el callback Supabase independiente; falta registrar y firmar esta
-identidad en las consolas externas.
+Production Supabase Storage. Portafolios públicos y documentos de verificación
+privados usan buckets, RLS, metadata validada y cleanup certificado contra el
+proyecto enlazado.
 
 ## Módulos completados
 
@@ -45,6 +45,12 @@ identidad en las consolas externas.
   tokens sin perder contexto ni stack traces.
 - Identidad de producción `com.linko.app` alineada en Android, iOS y macOS;
   targets Apple de pruebas usan `com.linko.app.RunnerTests`.
+- Carga y eliminación de imágenes de portafolio con límites de tipo/tamaño,
+  rutas por propietario y compatibilidad con URLs HTTPS anteriores.
+- Carga privada de documentos de verificación; solo owner y Admin autorizado
+  pueden leerlos, y Admin usa enlaces firmados temporales no persistidos.
+- Triggers de integridad bloquean metadata Storage fabricada y cambios de
+  documentos después de una aprobación sin reescribir filas existentes.
 
 ## Estado de QA
 
@@ -101,6 +107,12 @@ identidad en las consolas externas.
   - QA raíz (145 pruebas + integración macOS): **PASS**.
   - Build APK debug con `com.linko.app`: **PASS**.
   - QA Admin (65 pruebas) y E2E Supabase real: **PASS**.
+- Production Supabase Storage, 9 de agosto de 2026:
+  - Migraciones `202608100001` y `202608100002`: **APLICADAS**.
+  - QA raíz (151 pruebas + integración macOS): **PASS**.
+  - QA Admin (66 pruebas; 1 opt-in omitida por diseño): **PASS**.
+  - Upload/lectura/eliminación, RLS cross-user, URL firmada Admin, lint y
+    cleanup E2E real: **PASS**.
 
 ## Trabajo restante
 
@@ -108,9 +120,8 @@ identidad en las consolas externas.
   definan sus opciones operativas.
 - Definir, después de observar la beta, si se necesita reapertura de reportes;
   no forma parte del flujo operativo actual.
-- Configurar un bucket de Supabase Storage, políticas de objetos y
-  transformación de imágenes antes de habilitar carga de portfolio desde el
-  cliente. El contrato de URLs persistidas ya puede leerlas.
+- Definir transformación/optimización de imágenes y cuotas operativas si el
+  volumen de beta lo requiere; upload seguro y límites base ya están activos.
 - Certificar externamente Google, Apple y entrega de Magic Link con credenciales,
   dominios, plantillas y cuentas reales; el código está completo, pero los
   proveedores aún no están certificados.

@@ -4,6 +4,7 @@ import 'package:linko/core/diagnostics/diagnostics_service.dart';
 import 'package:linko/features/admin/domain/admin_professional.dart';
 import 'package:linko/features/admin/domain/admin_user.dart';
 import 'package:linko_admin/features/admin/presentation/admin_professionals_providers.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AdminProfessionalDetailScreen extends ConsumerWidget {
   const AdminProfessionalDetailScreen({
@@ -248,13 +249,24 @@ class _Content extends ConsumerWidget {
                     for (final document in detail.verificationDocuments)
                       ListTile(
                         leading: const Icon(Icons.description_outlined),
-                        title: Text(document),
-                        trailing: const Icon(Icons.visibility_outlined),
-                        onTap: () => _dialog(
-                          context,
-                          'Vista previa del documento',
-                          document,
+                        title: Text(document.name),
+                        subtitle: Text(
+                          document.path == null
+                              ? 'Referencia heredada sin archivo administrado.'
+                              : document.mimeType == 'application/pdf'
+                              ? 'Documento PDF privado'
+                              : 'Imagen privada',
                         ),
+                        trailing: document.path == null
+                            ? const Icon(Icons.info_outline)
+                            : const Icon(Icons.visibility_outlined),
+                        onTap: document.path == null
+                            ? null
+                            : () => _openVerificationDocument(
+                                context,
+                                ref,
+                                document,
+                              ),
                       ),
                   ],
                 ),
@@ -423,6 +435,40 @@ class _Content extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _openVerificationDocument(
+    BuildContext context,
+    WidgetRef ref,
+    AdminVerificationDocument document,
+  ) async {
+    try {
+      final temporaryUrl = await ref
+          .read(adminProfessionalsRepositoryProvider)
+          .createVerificationDocumentUrl(document.path!);
+      if (!context.mounted) return;
+      final opened = await launchUrl(
+        temporaryUrl,
+        mode: LaunchMode.platformDefault,
+        webOnlyWindowName: '_blank',
+      );
+      if (!opened) throw StateError('No se pudo abrir el documento.');
+    } catch (error, stackTrace) {
+      ref
+          .read(diagnosticsServiceProvider)
+          .unexpectedError(
+            error,
+            stackTrace,
+            context: 'admin_verification_document_preview',
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No pudimos abrir el documento privado.'),
+          ),
+        );
+      }
+    }
   }
 }
 

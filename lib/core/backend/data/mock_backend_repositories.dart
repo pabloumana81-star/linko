@@ -157,6 +157,8 @@ class MockProfessionalsRepository implements ProfessionalsRepository {
   final RequestRepository _requests;
   final ProfessionalAvailabilityStore _availability;
   ProfessionalProfile? _ownProfile;
+  final List<ProfessionalVerificationDocument> _verificationDocuments = [];
+  int _nextStorageId = 0;
 
   @override
   Future<List<ProfessionalProfile>> getProfessionals() async {
@@ -230,6 +232,64 @@ class MockProfessionalsRepository implements ProfessionalsRepository {
   }
 
   @override
+  Future<void> uploadOwnPortfolioImage(ProfessionalUploadFile file) async {
+    ProfessionalStorageRules.validatePortfolio(file);
+    final current = await getOwnProfessionalProfile();
+    final url =
+        'https://mock.linko/portfolio/${++_nextStorageId}${_mockExtension(file.mimeType)}';
+    _ownProfile = _copyProfessional(
+      current,
+      portfolio: [...?current?.portfolio, url],
+    );
+  }
+
+  @override
+  Future<void> deleteOwnPortfolioImage(String imageUrl) async {
+    final current = await getOwnProfessionalProfile();
+    if (current == null || !current.portfolio.contains(imageUrl)) {
+      throw ArgumentError('La imagen no pertenece a este perfil.');
+    }
+    _ownProfile = _copyProfessional(
+      current,
+      portfolio: current.portfolio.where((url) => url != imageUrl).toList(),
+    );
+  }
+
+  @override
+  Future<List<ProfessionalVerificationDocument>>
+  getOwnVerificationDocuments() async =>
+      List.unmodifiable(_verificationDocuments);
+
+  @override
+  Future<void> uploadOwnVerificationDocument(
+    ProfessionalUploadFile file,
+  ) async {
+    ProfessionalStorageRules.validateVerification(file);
+    _verificationDocuments.add(
+      ProfessionalVerificationDocument(
+        path:
+            'mock-professional/${++_nextStorageId}${_mockExtension(file.mimeType)}',
+        name: file.name,
+        mimeType: file.mimeType,
+        size: file.bytes.length,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteOwnVerificationDocument(String objectPath) async {
+    final exists = _verificationDocuments.any(
+      (document) => document.path == objectPath,
+    );
+    if (!exists) {
+      throw ArgumentError('El documento no pertenece a este perfil.');
+    }
+    _verificationDocuments.removeWhere(
+      (document) => document.path == objectPath,
+    );
+  }
+
+  @override
   Stream<List<ProfessionalProfile>> watchProfessionals() async* {
     yield await getProfessionals();
     await for (final _ in _availability.changes) {
@@ -237,6 +297,38 @@ class MockProfessionalsRepository implements ProfessionalsRepository {
     }
   }
 }
+
+ProfessionalProfile _copyProfessional(
+  ProfessionalProfile? current, {
+  required List<String> portfolio,
+}) => ProfessionalProfile(
+  id: current?.id ?? 'mock-own-professional',
+  user:
+      current?.user ??
+      const AppUser(id: 'mock-own-professional', name: 'Profesional LinkO'),
+  profession: current?.profession ?? 'Profesional',
+  rating: current?.rating ?? 0,
+  reviewCount: current?.reviewCount ?? 0,
+  location: current?.location ?? '',
+  isVerified: current?.isVerified ?? false,
+  avatarUrl: current?.avatarUrl,
+  biography: current?.biography ?? '',
+  services: current?.services ?? const [],
+  experienceYears: current?.experienceYears ?? 0,
+  experienceDescription: current?.experienceDescription ?? '',
+  portfolio: List.unmodifiable(portfolio),
+  completedJobsCount: current?.completedJobsCount ?? 0,
+  reviews: current?.reviews ?? const [],
+  coverageArea: current?.coverageArea ?? '',
+);
+
+String _mockExtension(String mimeType) => switch (mimeType) {
+  'image/jpeg' => '.jpg',
+  'image/png' => '.png',
+  'image/webp' => '.webp',
+  'application/pdf' => '.pdf',
+  _ => '',
+};
 
 class MockServiceRequestsRepository implements ServiceRequestsRepository {
   MockServiceRequestsRepository(this._requests);

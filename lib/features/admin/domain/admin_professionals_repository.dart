@@ -16,4 +16,5 @@ abstract interface class AdminProfessionalsRepository {
   Future<void> suspendProfessional(String professionalId);
   Future<void> reactivateProfessional(String professionalId);
   Future<List<ProfessionalAuditEntry>> getAuditLog(String professionalId);
+  Future<Uri> createVerificationDocumentUrl(String objectPath);
 }

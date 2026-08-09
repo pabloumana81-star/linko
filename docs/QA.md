@@ -159,3 +159,23 @@ Certificación del 9 de agosto de 2026: `flutter analyze`, 138 pruebas raíz,
 integración MVP macOS, 65 pruebas Admin, `supabase db lint --linked` y E2E
 Supabase real aprobaron. El dry-run y la aplicación de
 `202608090002_admin_operations_closure.sql` finalizaron correctamente.
+
+## Supabase Storage
+
+`test/professional_storage_test.dart` cubre MIME/tamaño, paridad mock,
+agregar/eliminar portafolio y documentos, buckets separados, rutas de owner y
+triggers contra metadata fabricada. Las regresiones de ruta directa permanecen
+en `test/professional_profile_loading_test.dart`.
+
+`integration_test/real_supabase_e2e_test.dart` carga una imagen pública y un
+PDF privado con el profesional aislado; comprueba lectura pública del
+portafolio, lectura privada del owner, denegación a customer/profesional no
+relacionado, rechazo de upload cruzado y metadata fabricada, revisión Admin por
+URL firmada, bloqueo posterior a aprobación y eliminación/cleanup. No imprime
+rutas privadas, tokens ni enlaces firmados.
+
+Certificación del 9 de agosto de 2026: `flutter analyze`, 151 pruebas raíz,
+integración MVP macOS, 66 pruebas Admin, dry-run/aplicación de las migraciones
+`202608100001`/`202608100002`, lint enlazado y E2E Supabase real aprobaron.
+Mock mode conserva uploads deterministas y la suite real eliminó todos sus
+objetos y registros `qa_<timestamp>`.

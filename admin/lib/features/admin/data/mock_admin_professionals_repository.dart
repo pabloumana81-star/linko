@@ -65,7 +65,14 @@ class MockAdminProfessionalsRepository implements AdminProfessionalsRepository {
       experienceYears: 5,
       skills: [profile.profession],
       portfolio: const [],
-      verificationDocuments: const ['Documento de identidad'],
+      verificationDocuments: const [
+        AdminVerificationDocument(
+          path: 'professional-current/documento-identidad.pdf',
+          name: 'Documento de identidad.pdf',
+          mimeType: 'application/pdf',
+          size: 1024,
+        ),
+      ],
       reviewCount: profile.reviewCount + ratings.length,
       reviews: ratings
           .map((rating) => rating.comment)
@@ -141,6 +148,16 @@ class MockAdminProfessionalsRepository implements AdminProfessionalsRepository {
         .toList()
         .reversed,
   );
+
+  @override
+  Future<Uri> createVerificationDocumentUrl(String objectPath) async {
+    if (objectPath.trim().isEmpty) {
+      throw ArgumentError('No se encontró el documento.');
+    }
+    return Uri.https('mock.linko', '/verification/$objectPath', {
+      'expires': '60',
+    });
+  }
 
   Map<String, AdminProfessional> _professionals() {
     final result = <String, AdminProfessional>{};

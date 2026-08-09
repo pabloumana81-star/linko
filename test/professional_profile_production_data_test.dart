@@ -83,6 +83,42 @@ void main() {
     },
   );
 
+  test(
+    'managed Storage paths and legacy HTTPS portfolio URLs coexist',
+    () async {
+      final row = Map<String, dynamic>.from(_completeRow)
+        ..['portfolio'] = [
+          {
+            'path': '11111111-1111-1111-1111-111111111111/work.png',
+            'name': 'work.png',
+            'mime_type': 'image/png',
+            'size': 512,
+          },
+          'https://legacy.example.com/work.jpg',
+        ];
+      final client = _client(
+        (request) => http.Response(
+          jsonEncode([row]),
+          200,
+          headers: {'content-type': 'application/json'},
+          request: request,
+        ),
+      );
+      addTearDown(client.dispose);
+
+      final profile = (await SupabaseProfessionalsRepository(
+        client,
+      ).getProfessionals()).single;
+
+      expect(profile.portfolio, hasLength(2));
+      expect(
+        profile.portfolio.first,
+        contains('/storage/v1/object/public/professional-portfolio/'),
+      );
+      expect(profile.portfolio.last, 'https://legacy.example.com/work.jpg');
+    },
+  );
+
   test('server rejection prevents unauthorized professional updates', () async {
     final client = _client(
       (request) => http.Response(

@@ -213,6 +213,22 @@ void main() {
   });
 
   test(
+    'verification review uses temporary URL without persisting it',
+    () async {
+      final detail = await repository.getProfessional('professional-carlos');
+      final document = detail!.verificationDocuments.single;
+
+      expect(document.path, isNot(startsWith('http')));
+      final temporaryUrl = await repository.createVerificationDocumentUrl(
+        document.path!,
+      );
+      expect(temporaryUrl.scheme, 'https');
+      expect(temporaryUrl.queryParameters['expires'], '60');
+      expect(detail.verificationDocuments.single.path, document.path);
+    },
+  );
+
+  test(
     'rejection requires a reason and request for information is audited',
     () async {
       const id = 'professional-carlos';

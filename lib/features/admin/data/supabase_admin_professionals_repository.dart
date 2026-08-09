@@ -55,10 +55,19 @@ class SupabaseAdminProfessionalsRepository
           (data['verification_documents'] as List? ?? const [])
               .map(
                 (document) => document is Map
-                    ? (document['url'] ?? document['name'] ?? '').toString()
-                    : document.toString(),
+                    ? Map<String, dynamic>.from(document)
+                    : <String, dynamic>{'name': 'Documento heredado'},
               )
-              .where((value) => value.isNotEmpty)
+              .map(
+                (document) => AdminVerificationDocument(
+                  path: document['path'] as String?,
+                  name: document['name'] as String? ?? 'Documento heredado',
+                  mimeType:
+                      document['mime_type'] as String? ??
+                      'application/octet-stream',
+                  size: (document['size'] as num?)?.toInt() ?? 0,
+                ),
+              )
               .toList(growable: false),
       reviewCount: (data['review_count'] as num).toInt(),
       reviews: List<String>.from(data['reviews'] as List? ?? const []),
@@ -96,6 +105,18 @@ class SupabaseAdminProfessionalsRepository
   @override
   Future<List<ProfessionalAuditEntry>> getAuditLog(String id) async =>
       (await getProfessional(id))?.timeline ?? const [];
+
+  @override
+  Future<Uri> createVerificationDocumentUrl(String objectPath) async {
+    final url = await _client.storage
+        .from('professional-verification')
+        .createSignedUrl(objectPath, 60);
+    final parsed = Uri.tryParse(url);
+    if (parsed == null || parsed.scheme != 'https') {
+      throw StateError('No pudimos crear el acceso temporal al documento.');
+    }
+    return parsed;
+  }
 
   Future<void> _action(String id, String action, {String? reason}) async {
     await _client.rpc(

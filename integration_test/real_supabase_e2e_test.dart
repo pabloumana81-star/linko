@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:linko/app/app_mode.dart';
 import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/core/backend/data/supabase_backend_repositories.dart';
+import 'package:linko/core/backend/repositories/professionals_repository.dart';
 import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/requests/data/service_request_supabase_mapper.dart';
 import 'package:linko/features/requests/domain/models/app_user.dart';
@@ -48,6 +50,8 @@ void main() {
       final createdUserIds = <String>[];
       String? requestId;
       String? reportId;
+      String? portfolioObjectPath;
+      String? verificationObjectPath;
       StreamIterator<RequestStatus>? customerStatuses;
       StreamIterator<RequestStatus>? professionalStatuses;
       StreamIterator<List<TimelineEvent>>? realtimeTimeline;
@@ -135,15 +139,126 @@ void main() {
           'profession': 'Certificación aislada',
           'verification_status': 'pending',
         });
-        final privateDocumentName = '${prefix}_private_document';
-        await professionalClient.rpc(
-          'submit_own_professional_verification',
-          params: {
-            'p_documents': [
-              {'name': privateDocumentName, 'type': 'identity'},
-            ],
-            'p_submission_metadata': {'source': 'qa'},
-          },
+        final professionalProfessionals = SupabaseProfessionalsRepository(
+          professionalClient,
+        );
+        final privateDocumentName = '${prefix}_identidad.pdf';
+        final imageBytes = Uint8List.fromList(const [
+          0x89,
+          0x50,
+          0x4e,
+          0x47,
+          0x0d,
+          0x0a,
+          0x1a,
+          0x0a,
+        ]);
+        await professionalProfessionals.uploadOwnPortfolioImage(
+          ProfessionalUploadFile(
+            name: '${prefix}_portfolio.png',
+            mimeType: 'image/png',
+            bytes: imageBytes,
+          ),
+        );
+        await professionalProfessionals.uploadOwnVerificationDocument(
+          ProfessionalUploadFile(
+            name: privateDocumentName,
+            mimeType: 'application/pdf',
+            bytes: Uint8List.fromList(const [0x25, 0x50, 0x44, 0x46]),
+          ),
+        );
+        final ownBeforeVerification = await professionalProfessionals
+            .getOwnProfessionalProfile();
+        portfolioObjectPath = _storageObjectPath(
+          ownBeforeVerification!.portfolio.single,
+          SupabaseProfessionalsRepository.portfolioBucket,
+        );
+        final ownDocuments = await professionalProfessionals
+            .getOwnVerificationDocuments();
+        verificationObjectPath = ownDocuments.single.path!;
+        expect(ownDocuments.single.name, privateDocumentName);
+        expect(
+          await professionalClient.storage
+              .from(SupabaseProfessionalsRepository.verificationBucket)
+              .download(verificationObjectPath),
+          isNotEmpty,
+        );
+        await expectLater(
+          professionalClient
+              .from('professional_profiles')
+              .update({
+                'portfolio': [
+                  {
+                    'path': '${professionalUser.id}/${prefix}_fabricated.png',
+                    'name': 'fabricated.png',
+                    'mime_type': 'image/png',
+                    'size': 8,
+                  },
+                ],
+              })
+              .eq('id', professionalUser.id),
+          throwsA(isA<PostgrestException>()),
+        );
+        await expectLater(
+          professionalClient.rpc(
+            'submit_own_professional_verification',
+            params: {
+              'p_documents': [
+                {
+                  'path': '${professionalUser.id}/${prefix}_fabricated.pdf',
+                  'name': 'fabricated.pdf',
+                  'mime_type': 'application/pdf',
+                  'size': 4,
+                },
+              ],
+              'p_submission_metadata': {'source': 'qa'},
+            },
+          ),
+          throwsA(isA<PostgrestException>()),
+        );
+        await expectLater(
+          customerClient.storage
+              .from(SupabaseProfessionalsRepository.verificationBucket)
+              .download(verificationObjectPath),
+          throwsA(isA<StorageException>()),
+        );
+        await expectLater(
+          unrelatedProfessionalClient.storage
+              .from(SupabaseProfessionalsRepository.verificationBucket)
+              .download(verificationObjectPath),
+          throwsA(isA<StorageException>()),
+        );
+        await _attemptUnauthorizedRemove(
+          unrelatedProfessionalClient,
+          SupabaseProfessionalsRepository.portfolioBucket,
+          portfolioObjectPath,
+        );
+        expect(
+          await customerClient.storage
+              .from(SupabaseProfessionalsRepository.portfolioBucket)
+              .download(portfolioObjectPath),
+          isNotEmpty,
+        );
+        await _attemptUnauthorizedRemove(
+          unrelatedProfessionalClient,
+          SupabaseProfessionalsRepository.verificationBucket,
+          verificationObjectPath,
+        );
+        expect(
+          await professionalClient.storage
+              .from(SupabaseProfessionalsRepository.verificationBucket)
+              .download(verificationObjectPath),
+          isNotEmpty,
+        );
+        await expectLater(
+          unrelatedProfessionalClient.storage
+              .from(SupabaseProfessionalsRepository.portfolioBucket)
+              .uploadBinary(
+                '${professionalUser.id}/${prefix}_forbidden.png',
+                imageBytes,
+                fileOptions: const FileOptions(contentType: 'image/png'),
+              ),
+          throwsA(isA<StorageException>()),
         );
         final ownerVerification = await professionalClient
             .from('professional_verification_submissions')
@@ -185,9 +300,6 @@ void main() {
           expect(row.containsKey('verification_documents'), isFalse);
           expect(row.containsKey('submission_metadata'), isFalse);
         }
-        final professionalProfessionals = SupabaseProfessionalsRepository(
-          professionalClient,
-        );
         await professionalProfessionals.updateOwnProfessionalProfile(
           ProfessionalProfileUpdate(
             profession: 'Certificación QA',
@@ -236,8 +348,27 @@ void main() {
         final adminProfessionalDetail = await adminProfessionals
             .getProfessional(professionalUser.id);
         expect(
-          adminProfessionalDetail?.verificationDocuments,
-          contains(privateDocumentName),
+          adminProfessionalDetail?.verificationDocuments.single.name,
+          privateDocumentName,
+        );
+        expect(
+          adminProfessionalDetail?.verificationDocuments.single.path,
+          verificationObjectPath,
+        );
+        expect(verificationObjectPath, isNot(startsWith('http')));
+        final temporaryDocumentUrl = await adminProfessionals
+            .createVerificationDocumentUrl(verificationObjectPath);
+        expect(temporaryDocumentUrl.scheme, 'https');
+        expect(temporaryDocumentUrl.queryParameters, contains('token'));
+        await expectLater(
+          professionalProfessionals.uploadOwnVerificationDocument(
+            ProfessionalUploadFile(
+              name: '${prefix}_after_approval.pdf',
+              mimeType: 'application/pdf',
+              bytes: Uint8List.fromList(const [0x25, 0x50, 0x44, 0x46]),
+            ),
+          ),
+          throwsA(isA<StorageException>()),
         );
         final discovered = await _waitForProfessional(
           discovery,
@@ -254,6 +385,22 @@ void main() {
         expect(directProfessional?.biography, '${prefix}_biography');
         expect(directProfessional?.services, contains('QA E2E'));
         expect(directProfessional?.experienceYears, 6);
+        expect(directProfessional?.portfolio, hasLength(1));
+        expect(
+          await customerClient.storage
+              .from(SupabaseProfessionalsRepository.portfolioBucket)
+              .download(portfolioObjectPath),
+          isNotEmpty,
+        );
+        await professionalProfessionals.deleteOwnPortfolioImage(
+          directProfessional!.portfolio.single,
+        );
+        portfolioObjectPath = null;
+        expect(
+          (await professionalProfessionals.getOwnProfessionalProfile())
+              ?.portfolio,
+          isEmpty,
+        );
         await discovery.cancel();
 
         final users = await adminUsers.listUsers(
@@ -685,6 +832,16 @@ void main() {
         await realtimeTimeline?.cancel();
         await customerStatuses?.cancel();
         await professionalStatuses?.cancel();
+        if (portfolioObjectPath != null) {
+          await service.storage
+              .from(SupabaseProfessionalsRepository.portfolioBucket)
+              .remove([portfolioObjectPath]);
+        }
+        if (verificationObjectPath != null) {
+          await service.storage
+              .from(SupabaseProfessionalsRepository.verificationBucket)
+              .remove([verificationObjectPath]);
+        }
         if (requestId != null) {
           if (reportId != null) {
             await service
@@ -726,6 +883,26 @@ void main() {
 }
 
 const _realtimeTimeout = Duration(seconds: 25);
+
+String _storageObjectPath(String publicUrl, String bucket) {
+  final segments = Uri.parse(publicUrl).pathSegments;
+  final bucketIndex = segments.indexOf(bucket);
+  expect(bucketIndex, greaterThanOrEqualTo(0));
+  return segments.sublist(bucketIndex + 1).join('/');
+}
+
+Future<void> _attemptUnauthorizedRemove(
+  SupabaseClient client,
+  String bucket,
+  String objectPath,
+) async {
+  try {
+    await client.storage.from(bucket).remove([objectPath]);
+  } on StorageException {
+    // Storage may report an authorization error or an empty deletion depending
+    // on the hosted API version. The caller verifies that the object remains.
+  }
+}
 
 void _validateEnvironment() {
   expect(_mode, 'supabase', reason: 'BACKEND_MODE debe ser supabase.');

@@ -79,13 +79,27 @@ class AdminProfessionalDetail {
   final int experienceYears;
   final List<String> skills;
   final List<String> portfolio;
-  final List<String> verificationDocuments;
+  final List<AdminVerificationDocument> verificationDocuments;
   final int reviewCount;
   final List<String> reviews;
   final int cancelledJobs;
   final List<String> currentRequests;
   final int conversationCount;
   final List<ProfessionalAuditEntry> timeline;
+}
+
+class AdminVerificationDocument {
+  const AdminVerificationDocument({
+    required this.path,
+    required this.name,
+    required this.mimeType,
+    required this.size,
+  });
+
+  final String? path;
+  final String name;
+  final String mimeType;
+  final int size;
 }
 
 enum ProfessionalAuditAction {

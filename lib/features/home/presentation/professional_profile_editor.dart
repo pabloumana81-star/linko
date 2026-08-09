@@ -1,5 +1,9 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:linko/core/backend/repositories/professionals_repository.dart';
 import 'package:linko/features/home/presentation/providers/professional_profile_management_provider.dart';
 import 'package:linko/features/requests/domain/models/professional_profile.dart';
 
@@ -23,6 +27,7 @@ class _ProfessionalProfileEditorState
   final _coverageArea = TextEditingController();
   bool _initialized = false;
   bool _saving = false;
+  bool _storageBusy = false;
 
   @override
   void dispose() {
@@ -86,6 +91,74 @@ class _ProfessionalProfileEditorState
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _pickPortfolioImage() async {
+    final file = await _pickFile(
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+    );
+    if (file == null) return;
+    await _runStorageAction(
+      () =>
+          ref.read(professionalProfileManagementProvider).uploadPortfolio(file),
+      success: 'Imagen agregada al portafolio.',
+    );
+  }
+
+  Future<void> _pickVerificationDocument() async {
+    final file = await _pickFile(
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
+    );
+    if (file == null) return;
+    await _runStorageAction(
+      () => ref
+          .read(professionalProfileManagementProvider)
+          .uploadVerification(file),
+      success: 'Documento de verificación agregado.',
+    );
+  }
+
+  Future<ProfessionalUploadFile?> _pickFile({
+    required List<String> allowedExtensions,
+  }) async {
+    final selection = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: allowedExtensions,
+      withData: true,
+    );
+    final selected = selection?.files.single;
+    final bytes = selected?.bytes;
+    if (selected == null || bytes == null) return null;
+    return ProfessionalUploadFile(
+      name: selected.name,
+      mimeType: _mimeType(selected.extension),
+      bytes: Uint8List.fromList(bytes),
+    );
+  }
+
+  Future<void> _runStorageAction(
+    Future<void> Function() action, {
+    required String success,
+  }) async {
+    setState(() => _storageBusy = true);
+    try {
+      await action();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(success)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No pudimos completar la operación con el archivo.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _storageBusy = false);
     }
   }
 
@@ -177,10 +250,35 @@ class _ProfessionalProfileEditorState
                   labelText: 'Área de cobertura',
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Las fotos del portafolio estarán disponibles cuando el almacenamiento seguro esté configurado.',
-                key: ValueKey('professional-portfolio-storage-pending'),
+              const SizedBox(height: 20),
+              if (_storageBusy) ...[
+                const LinearProgressIndicator(
+                  key: ValueKey('professional-storage-loading'),
+                ),
+                const SizedBox(height: 12),
+              ],
+              _PortfolioEditor(
+                images: value?.portfolio ?? const [],
+                busy: _storageBusy,
+                onAdd: _pickPortfolioImage,
+                onDelete: (url) => _runStorageAction(
+                  () => ref
+                      .read(professionalProfileManagementProvider)
+                      .deletePortfolio(url),
+                  success: 'Imagen eliminada del portafolio.',
+                ),
+              ),
+              const SizedBox(height: 20),
+              _VerificationDocumentsEditor(
+                documents: ref.watch(ownVerificationDocumentsProvider),
+                busy: _storageBusy,
+                onAdd: _pickVerificationDocument,
+                onDelete: (path) => _runStorageAction(
+                  () => ref
+                      .read(professionalProfileManagementProvider)
+                      .deleteVerification(path),
+                  success: 'Documento de verificación eliminado.',
+                ),
               ),
               const SizedBox(height: 18),
               FilledButton(
@@ -194,4 +292,164 @@ class _ProfessionalProfileEditorState
       },
     );
   }
+}
+
+String _mimeType(String? extension) => switch (extension?.toLowerCase()) {
+  'jpg' || 'jpeg' => 'image/jpeg',
+  'png' => 'image/png',
+  'webp' => 'image/webp',
+  'pdf' => 'application/pdf',
+  _ => 'application/octet-stream',
+};
+
+class _PortfolioEditor extends StatelessWidget {
+  const _PortfolioEditor({
+    required this.images,
+    required this.busy,
+    required this.onAdd,
+    required this.onDelete,
+  });
+
+  final List<String> images;
+  final bool busy;
+  final VoidCallback onAdd;
+  final ValueChanged<String> onDelete;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('Portafolio', style: Theme.of(context).textTheme.titleMedium),
+      const SizedBox(height: 6),
+      Text(
+        images.isEmpty
+            ? 'Aún no has agregado imágenes.'
+            : 'Tus imágenes públicas.',
+      ),
+      if (images.isNotEmpty) ...[
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final image in images)
+              Stack(
+                children: [
+                  SizedBox(
+                    width: 112,
+                    height: 88,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        image,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const ColoredBox(
+                          color: Color(0xFFE6E8EC),
+                          child: Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 2,
+                    right: 2,
+                    child: IconButton.filledTonal(
+                      key: ValueKey('delete-portfolio-$image'),
+                      tooltip: 'Eliminar imagen',
+                      onPressed: busy ? null : () => onDelete(image),
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ],
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
+        key: const ValueKey('add-portfolio-image'),
+        onPressed: busy ? null : onAdd,
+        icon: const Icon(Icons.add_photo_alternate_outlined),
+        label: const Text('Agregar imagen'),
+      ),
+      const Text('JPG, PNG o WebP. Máximo 5 MB.'),
+    ],
+  );
+}
+
+class _VerificationDocumentsEditor extends StatelessWidget {
+  const _VerificationDocumentsEditor({
+    required this.documents,
+    required this.busy,
+    required this.onAdd,
+    required this.onDelete,
+  });
+
+  final AsyncValue<List<ProfessionalVerificationDocument>> documents;
+  final bool busy;
+  final VoidCallback onAdd;
+  final ValueChanged<String> onDelete;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Documentos de verificación',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: 6),
+      const Text(
+        'Son privados y solo tú y el equipo administrador pueden consultarlos.',
+      ),
+      documents.when(
+        loading: () => const Padding(
+          padding: EdgeInsets.all(12),
+          child: LinearProgressIndicator(),
+        ),
+        error: (_, _) => const Text('No pudimos cargar tus documentos.'),
+        data: (items) => Column(
+          children: [
+            if (items.isEmpty)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Aún no has agregado documentos.'),
+              ),
+            for (final document in items)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  document.mimeType == 'application/pdf'
+                      ? Icons.picture_as_pdf_outlined
+                      : Icons.image_outlined,
+                ),
+                title: Text(document.name),
+                subtitle: Text(
+                  document.path == null
+                      ? 'Referencia heredada; archivo no administrado por LinkO.'
+                      : '${(document.size / 1024).ceil()} KB',
+                ),
+                trailing: IconButton(
+                  key: ValueKey(
+                    'delete-verification-${document.path ?? document.name}',
+                  ),
+                  tooltip: 'Eliminar documento',
+                  onPressed: busy || document.path == null
+                      ? null
+                      : () => onDelete(document.path!),
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ),
+          ],
+        ),
+      ),
+      OutlinedButton.icon(
+        key: const ValueKey('add-verification-document'),
+        onPressed: busy ? null : onAdd,
+        icon: const Icon(Icons.upload_file_outlined),
+        label: const Text('Agregar documento'),
+      ),
+      const Text('JPG, PNG, WebP o PDF. Máximo 10 MB.'),
+    ],
+  );
 }

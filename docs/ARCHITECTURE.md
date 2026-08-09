@@ -67,10 +67,13 @@ La pantalla de perfil del modo profesional consume
 Supabase. `update_own_professional_profile()` valida `auth.uid()`, exige que la
 cuenta esté en modo profesional y solo modifica campos editables propios.
 
-`professional_profiles.portfolio` conserva el contrato JSON existente. La app
-acepta únicamente URLs HTTPS al leer, pero no permite cargas todavía: no existe
-un bucket de Storage ni políticas de objetos versionadas y no se introdujo un
-atajo inseguro.
+`ProfessionalProfileManagementController` también concentra Storage. El
+repositorio valida MIME/tamaño, carga bajo la carpeta del usuario y registra
+metadata mediante RPC; presentación no consulta Supabase directamente.
+`professional_profiles.portfolio` conserva URLs HTTPS legacy y metadata nueva
+con `path`. Al leer, el repositorio transforma únicamente las rutas del bucket
+público en URLs públicas. Mock mantiene el mismo contrato de agregar/eliminar
+de forma determinista.
 
 ## Privacidad de verificación profesional
 
@@ -86,6 +89,15 @@ que vuelve a validar el rol en servidor. Los RPC de discovery y perfil público
 no unen ni devuelven la tabla privada. Esta tabla no se publica en Realtime;
 las aprobaciones continúan actualizando `professional_profiles` y mantienen el
 comportamiento observable existente.
+
+Los archivos viven en `professional-verification`, bucket privado. Owner puede
+cargar, listar y eliminar solo mientras no esté verificado; Admin genera bajo
+demanda una URL firmada de 60 segundos para revisión. Esa URL no entra al modelo
+persistido, logs ni RPCs. Triggers de integridad exigen que cada metadata nueva
+corresponda a un objeto real de la carpeta propietaria y preservan sin alterar
+metadata legacy ya existente.
+Una referencia heredada sin `path` sigue visible para trazabilidad, pero la UI
+no ofrece abrirla ni eliminar un archivo que Storage no administra.
 
 ## Seguridad
 

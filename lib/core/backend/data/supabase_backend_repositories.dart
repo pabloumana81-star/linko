@@ -25,6 +25,7 @@ import 'package:linko/features/requests/domain/models/conversation.dart';
 import 'package:linko/features/requests/data/request_workflow_supabase_mapper.dart';
 import 'package:linko/features/requests/domain/services/request_state_machine.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 class SupabaseAuthenticationRepository implements AuthenticationRepository {
   SupabaseAuthenticationRepository(
@@ -222,12 +223,14 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
   SupabaseProfessionalsRepository(this._client);
 
   final SupabaseClient _client;
+  static const portfolioBucket = 'professional-portfolio';
+  static const verificationBucket = 'professional-verification';
 
   @override
   Future<List<ProfessionalProfile>> getProfessionals() async {
     final rows = await _client.rpc('list_available_professionals') as List;
     return rows
-        .map((row) => _professional(Map<String, dynamic>.from(row as Map)))
+        .map((row) => _mapProfessional(Map<String, dynamic>.from(row as Map)))
         .toList(growable: false);
   }
 
@@ -249,7 +252,7 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
   Future<ProfessionalProfile?> getOwnProfessionalProfile() async {
     final row = await _client.rpc('get_own_professional_profile');
     if (row == null) return null;
-    return _professional(Map<String, dynamic>.from(row as Map));
+    return _mapProfessional(Map<String, dynamic>.from(row as Map));
   }
 
   @override
@@ -268,6 +271,117 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
         'p_coverage_area': update.coverageArea,
       },
     );
+  }
+
+  @override
+  Future<void> uploadOwnPortfolioImage(ProfessionalUploadFile file) async {
+    ProfessionalStorageRules.validatePortfolio(file);
+    final userId = _requireUserId();
+    final path = '$userId/${const Uuid().v4()}${_extension(file.mimeType)}';
+    await _client.storage
+        .from(portfolioBucket)
+        .uploadBinary(
+          path,
+          file.bytes,
+          fileOptions: FileOptions(contentType: file.mimeType, upsert: false),
+        );
+    try {
+      await _client.rpc(
+        'add_own_portfolio_object',
+        params: {
+          'p_path': path,
+          'p_name': file.name,
+          'p_mime_type': file.mimeType,
+          'p_size': file.bytes.length,
+        },
+      );
+    } catch (_) {
+      await _client.storage.from(portfolioBucket).remove([path]);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteOwnPortfolioImage(String imageUrl) async {
+    final path = _publicObjectPath(imageUrl, portfolioBucket);
+    if (path == null) {
+      await _client.rpc(
+        'remove_own_legacy_portfolio_url',
+        params: {'p_url': imageUrl},
+      );
+      return;
+    }
+    final userId = _requireUserId();
+    if (!path.startsWith('$userId/')) {
+      throw ArgumentError('La imagen no pertenece a este perfil.');
+    }
+    await _client.storage.from(portfolioBucket).remove([path]);
+    await _client.rpc('remove_own_portfolio_object', params: {'p_path': path});
+  }
+
+  @override
+  Future<List<ProfessionalVerificationDocument>>
+  getOwnVerificationDocuments() async {
+    final response = await _client.rpc('get_own_professional_verification');
+    if (response == null) return const [];
+    final data = Map<String, dynamic>.from(response as Map);
+    return _verificationDocuments(data['documents']);
+  }
+
+  @override
+  Future<void> uploadOwnVerificationDocument(
+    ProfessionalUploadFile file,
+  ) async {
+    ProfessionalStorageRules.validateVerification(file);
+    final userId = _requireUserId();
+    final path = '$userId/${const Uuid().v4()}${_extension(file.mimeType)}';
+    await _client.storage
+        .from(verificationBucket)
+        .uploadBinary(
+          path,
+          file.bytes,
+          fileOptions: FileOptions(contentType: file.mimeType, upsert: false),
+        );
+    try {
+      await _client.rpc(
+        'add_own_verification_document',
+        params: {
+          'p_path': path,
+          'p_name': file.name,
+          'p_mime_type': file.mimeType,
+          'p_size': file.bytes.length,
+        },
+      );
+    } catch (_) {
+      await _client.storage.from(verificationBucket).remove([path]);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteOwnVerificationDocument(String objectPath) async {
+    final userId = _requireUserId();
+    if (!objectPath.startsWith('$userId/')) {
+      throw ArgumentError('El documento no pertenece a este perfil.');
+    }
+    await _client.storage.from(verificationBucket).remove([objectPath]);
+    await _client.rpc(
+      'remove_own_verification_document',
+      params: {'p_path': objectPath},
+    );
+  }
+
+  ProfessionalProfile _mapProfessional(Map<String, dynamic> row) =>
+      _professional(
+        row,
+        portfolioUrl: (path) =>
+            _client.storage.from(portfolioBucket).getPublicUrl(path),
+      );
+
+  String _requireUserId() {
+    final id = _client.auth.currentUser?.id;
+    if (id == null) throw StateError('Debes iniciar sesión como profesional.');
+    return id;
   }
 
   @override
@@ -1088,7 +1202,10 @@ class SupabaseRatingsRepository implements RatingsRepository {
   }
 }
 
-ProfessionalProfile _professional(Map<String, dynamic> row) {
+ProfessionalProfile _professional(
+  Map<String, dynamic> row, {
+  String Function(String path)? portfolioUrl,
+}) {
   final reviews = (row['reviews'] as List? ?? const [])
       .map((item) => Map<String, dynamic>.from(item as Map))
       .map(
@@ -1114,24 +1231,66 @@ ProfessionalProfile _professional(Map<String, dynamic> row) {
     services: List<String>.from(row['services'] as List? ?? const []),
     experienceYears: (row['experience_years'] as num?)?.toInt() ?? 0,
     experienceDescription: row['experience_description'] as String? ?? '',
-    portfolio: _portfolioUrls(row['portfolio']),
+    portfolio: _portfolioUrls(row['portfolio'], portfolioUrl: portfolioUrl),
     completedJobsCount: (row['completed_jobs_count'] as num?)?.toInt() ?? 0,
     reviews: reviews,
     coverageArea: row['coverage_area'] as String? ?? '',
   );
 }
 
-List<String> _portfolioUrls(Object? value) {
+List<String> _portfolioUrls(
+  Object? value, {
+  String Function(String path)? portfolioUrl,
+}) {
   if (value is! List) return const [];
   return value
       .map((item) {
         if (item is String) return item;
-        if (item is Map) return item['url'] as String?;
+        if (item is Map) {
+          final path = item['path'] as String?;
+          if (path != null && portfolioUrl != null) return portfolioUrl(path);
+          return item['url'] as String?;
+        }
         return null;
       })
       .whereType<String>()
       .where((url) => url.startsWith('https://'))
       .toList(growable: false);
+}
+
+List<ProfessionalVerificationDocument> _verificationDocuments(Object? value) =>
+    (value as List? ?? const [])
+        .map(
+          (item) => item is Map
+              ? Map<String, dynamic>.from(item)
+              : <String, dynamic>{'name': 'Documento heredado'},
+        )
+        .map(
+          (item) => ProfessionalVerificationDocument(
+            path: item['path'] as String?,
+            name: item['name'] as String? ?? 'Documento heredado',
+            mimeType:
+                item['mime_type'] as String? ?? 'application/octet-stream',
+            size: (item['size'] as num?)?.toInt() ?? 0,
+          ),
+        )
+        .toList(growable: false);
+
+String _extension(String mimeType) => switch (mimeType) {
+  'image/jpeg' => '.jpg',
+  'image/png' => '.png',
+  'image/webp' => '.webp',
+  'application/pdf' => '.pdf',
+  _ => '',
+};
+
+String? _publicObjectPath(String url, String bucket) {
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.scheme != 'https') return null;
+  final segments = uri.pathSegments;
+  final index = segments.indexOf(bucket);
+  if (index < 0 || index == segments.length - 1) return null;
+  return segments.sublist(index + 1).join('/');
 }
 
 ServiceRating _rating(Map<String, dynamic> row) => ServiceRating(
