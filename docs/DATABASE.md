@@ -24,11 +24,12 @@ Las migraciones se aplican en orden lexicográfico:
 20. `202608080004_auth_onboarding_default.sql`
 21. `202608080005_production_professional_profiles.sql`
 22. `202608080006_preserve_professional_display_name.sql`
+23. `202608090001_harden_professional_verification_privacy.sql`
 
 Tablas principales: `profiles`, `professional_profiles`, `service_requests`,
 `conversations`, `messages`, `quotations`, `request_events`, `ratings`,
-`reports`, `admin_audit_logs`, `admin_professional_audit_log` y
-`admin_request_audit_log`.
+`reports`, `professional_verification_submissions`, `admin_audit_logs`,
+`admin_professional_audit_log` y `admin_request_audit_log`.
 
 `profiles.id` comparte la identidad de `auth.users`. El trigger
 `handle_new_auth_user_profile` y el upsert por clave primaria hacen idempotente
@@ -40,8 +41,8 @@ cuenta actualiza `profiles`; verificar un profesional actualiza
 `professional_profiles`; dashboard y detalle agregan solicitudes, ratings,
 reportes y auditoría persistidos.
 
-La gestión profesional persiste categorías, cobertura, experiencia, portafolio
-y documentos de verificación en `professional_profiles`. Aprobaciones,
+La gestión profesional persiste categorías, cobertura, experiencia y portafolio
+en `professional_profiles`. Aprobaciones,
 rechazos, solicitudes de información y cambios de suspensión se ejecutan con
 `perform_admin_professional_action`; el RPC valida el rol admin y registra tanto
 la auditoría profesional detallada como la entrada global en
@@ -67,6 +68,24 @@ límites MIME/tamaño y políticas por carpeta de propietario.
 `202608080006` garantiza que editar campos profesionales no sobrescriba
 `display_name`: el nombre general se usa al crear la ficha, pero una ficha
 existente conserva su nombre hasta que exista un flujo explícito para editarlo.
+
+`202608090001` copia `verification_documents` a la tabla privada
+`professional_verification_submissions`, valida conteo y equivalencia JSON y
+solo después elimina la columna pública. Una discrepancia aborta la transacción.
+La FK uno-a-uno usa `on delete cascade`; hay índice por `updated_at` y RLS.
+
+Permisos de verificación privada:
+
+- propietario: `select`, `insert` y actualización de documentos/metadatos propios;
+- Admin con `profiles.role = 'admin'`: solo lectura;
+- customer, profesional no relacionado, `anon` y `public`: sin lectura;
+- aprobación/rechazo: solo `perform_admin_professional_action`, que conserva
+  `verification_status` en la tabla pública y registra auditoría.
+
+`get_own_professional_verification()` y
+`submit_own_professional_verification()` no aceptan un ID objetivo: usan
+`auth.uid()`. `get_admin_professional_detail()` lee la tabla privada después de
+validar Admin. Ningún RPC público devuelve documentos, metadata o motivos.
 
 El descubrimiento de la aplicación principal usa
 `list_available_professionals`, que solo devuelve profesionales verificados y

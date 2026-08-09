@@ -42,6 +42,7 @@ void main() {
       final adminClient = SupabaseClient(_url, _anonKey);
       final customerClient = SupabaseClient(_url, _anonKey);
       final professionalClient = SupabaseClient(_url, _anonKey);
+      final unrelatedProfessionalClient = SupabaseClient(_url, _anonKey);
       final createdUserIds = <String>[];
       String? requestId;
       StreamIterator<RequestStatus>? customerStatuses;
@@ -82,12 +83,20 @@ void main() {
           'professional',
           AppMode.professional,
         );
+        final unrelatedProfessionalUser = await createUser(
+          'unrelated_professional',
+          AppMode.professional,
+        );
         await customerClient.auth.signInWithPassword(
           email: '${prefix}_customer@example.invalid',
           password: password,
         );
         await professionalClient.auth.signInWithPassword(
           email: '${prefix}_professional@example.invalid',
+          password: password,
+        );
+        await unrelatedProfessionalClient.auth.signInWithPassword(
+          email: '${prefix}_unrelated_professional@example.invalid',
           password: password,
         );
 
@@ -117,6 +126,46 @@ void main() {
           'skills': ['qa'],
           'verification_status': 'pending',
         });
+        await unrelatedProfessionalClient.from('professional_profiles').insert({
+          'id': unrelatedProfessionalUser.id,
+          'display_name': '${prefix}_unrelated',
+          'profession': 'Certificación aislada',
+          'verification_status': 'pending',
+        });
+        final privateDocumentName = '${prefix}_private_document';
+        await professionalClient.rpc(
+          'submit_own_professional_verification',
+          params: {
+            'p_documents': [
+              {'name': privateDocumentName, 'type': 'identity'},
+            ],
+            'p_submission_metadata': {'source': 'qa'},
+          },
+        );
+        final ownerVerification = await professionalClient
+            .from('professional_verification_submissions')
+            .select('professional_id, documents, submission_metadata')
+            .eq('professional_id', professionalUser.id);
+        expect(ownerVerification, hasLength(1));
+        expect(
+          ownerVerification.single['professional_id'],
+          professionalUser.id,
+        );
+        final customerVerification = await customerClient
+            .from('professional_verification_submissions')
+            .select('professional_id')
+            .eq('professional_id', professionalUser.id);
+        expect(customerVerification, isEmpty);
+        final unrelatedVerification = await unrelatedProfessionalClient
+            .from('professional_verification_submissions')
+            .select('professional_id')
+            .eq('professional_id', professionalUser.id);
+        expect(unrelatedVerification, isEmpty);
+        final adminVerification = await adminClient
+            .from('professional_verification_submissions')
+            .select('professional_id')
+            .eq('professional_id', professionalUser.id);
+        expect(adminVerification, hasLength(1));
 
         final adminUsers = SupabaseAdminUsersRepository(adminClient);
         final adminProfessionals = SupabaseAdminProfessionalsRepository(
@@ -127,6 +176,12 @@ void main() {
         final customerProfessionals = SupabaseProfessionalsRepository(
           customerClient,
         );
+        final publicRows =
+            await customerClient.rpc('list_available_professionals') as List;
+        for (final row in publicRows.cast<Map>()) {
+          expect(row.containsKey('verification_documents'), isFalse);
+          expect(row.containsKey('submission_metadata'), isFalse);
+        }
         final professionalProfessionals = SupabaseProfessionalsRepository(
           professionalClient,
         );
@@ -175,6 +230,12 @@ void main() {
         );
 
         await adminProfessionals.approveVerification(professionalUser.id);
+        final adminProfessionalDetail = await adminProfessionals
+            .getProfessional(professionalUser.id);
+        expect(
+          adminProfessionalDetail?.verificationDocuments,
+          contains(privateDocumentName),
+        );
         final discovered = await _waitForProfessional(
           discovery,
           professionalUser.id,
@@ -573,6 +634,7 @@ void main() {
         await adminClient.dispose();
         await customerClient.dispose();
         await professionalClient.dispose();
+        await unrelatedProfessionalClient.dispose();
         await service.dispose();
       }
     },

@@ -2,9 +2,9 @@
 
 ## Fase actual
 
-Professional Profile — Real Production Data. El perfil profesional principal
-usa información persistida y agregados transaccionales en Supabase, y permite
-al profesional mantener sus campos editables sin crear una fuente paralela.
+Harden Professional Verification Privacy. Los documentos y metadatos privados
+de verificación están separados del perfil público mediante una tabla con RLS
+de propietario/Admin, sin alterar discovery ni el estado público verificado.
 
 ## Módulos completados
 
@@ -36,6 +36,9 @@ al profesional mantener sus campos editables sin crear una fuente paralela.
   desde `ratings` y `service_requests`.
 - El perfil profesional propio se crea o actualiza mediante un RPC que valida
   `auth.uid()` y el modo profesional; el cliente nunca escribe otro perfil.
+- `professional_verification_submissions` conserva material privado fuera de
+  `professional_profiles`: solo el propietario puede enviarlo/modificarlo y
+  solo propietario o Admin autorizado pueden leerlo.
 
 ## Estado de QA
 
@@ -70,6 +73,11 @@ al profesional mantener sus campos editables sin crear una fuente paralela.
   - Análisis y QA raíz (131 pruebas + integración macOS): **PASS**.
   - QA Admin (57 pruebas; opt-in omitido por diseño): **PASS**.
   - Edición/autorización, Main/Admin, Realtime y limpieza E2E: **PASS**.
+- Harden Professional Verification Privacy, 9 de agosto de 2026:
+  - Migración privada con preservación validada: **APLICADA**.
+  - QA raíz (135 pruebas + integración macOS): **PASS**.
+  - QA Admin (58 pruebas; opt-in omitido por diseño): **PASS**.
+  - RLS propietario/Admin, discovery, aprobación, Realtime y E2E: **PASS**.
 
 ## Trabajo restante
 

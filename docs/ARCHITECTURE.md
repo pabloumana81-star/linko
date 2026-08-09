@@ -60,6 +60,21 @@ acepta únicamente URLs HTTPS al leer, pero no permite cargas todavía: no exist
 un bucket de Storage ni políticas de objetos versionadas y no se introdujo un
 atajo inseguro.
 
+## Privacidad de verificación profesional
+
+`professional_profiles.verification_status` permanece público porque discovery,
+el distintivo y Realtime dependen de él. Documentos y metadatos de verificación
+viven en `professional_verification_submissions`, fuera de la tabla que clientes
+autenticados pueden descubrir. RLS permite lectura al propietario y a usuarios
+con `profiles.role = 'admin'`; solo el propietario puede insertar o actualizar.
+
+El propietario usa RPCs sin parámetro de usuario, ligados a `auth.uid()`. Admin
+recibe documentos exclusivamente a través de `get_admin_professional_detail()`,
+que vuelve a validar el rol en servidor. Los RPC de discovery y perfil público
+no unen ni devuelven la tabla privada. Esta tabla no se publica en Realtime;
+las aprobaciones continúan actualizando `professional_profiles` y mantienen el
+comportamiento observable existente.
+
 ## Seguridad
 
 Los clientes reciben solo la anon/publishable key. RLS está habilitado y los

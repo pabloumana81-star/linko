@@ -274,6 +274,14 @@ Esto puede causar un despliegue incompleto o diagnósticos equivocados.
 
 ## Bajo
 
+### ✅ S-01 — Documentos de verificación expuestos por RLS de discovery — Completado
+
+`verification_documents` se añadió históricamente a `professional_profiles`
+después de crear una política de lectura para cualquier autenticado. La
+migración `202608090001` preserva esos datos en una tabla privada, elimina la
+columna pública y restringe lectura a propietario/Admin y escritura al dueño.
+Discovery conserva únicamente `verification_status`.
+
 ### B-01 — Marcador temporal explícito
 
 - `lib/core/backend/backend_repository_factory.dart:37` contiene “Temporary synchronous bridge”.

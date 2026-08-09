@@ -109,3 +109,17 @@ Certificación del 8 de agosto de 2026: `flutter analyze`, 131 pruebas raíz,
 integración MVP macOS, 57 pruebas Admin y el E2E Supabase real aprobaron. La
 certificación real también confirmó rechazo de edición por un customer,
 sincronización de los campos profesionales y limpieza aislada.
+
+## Privacidad de verificación
+
+`test/professional_verification_privacy_test.dart` valida copia antes de borrar,
+RLS propietario/Admin, escritura solo propia y ausencia de campos privados en
+discovery. Admin verifica que su detalle use la tabla protegida. El E2E real
+confirma que customer y profesional no relacionado obtienen cero filas, el
+propietario lee la suya, Admin puede revisarla y la aprobación conserva
+discovery, Realtime y el flujo completo.
+
+Certificación del 9 de agosto de 2026: análisis sin incidencias, 135 pruebas
+raíz, integración MVP macOS, 58 pruebas Admin, lint del esquema y E2E Supabase
+real aprobaron. El test Admin real opt-in permanece omitido dentro de su QA
+normal porque la certificación raíz ya cubre el backend enlazado y su limpieza.

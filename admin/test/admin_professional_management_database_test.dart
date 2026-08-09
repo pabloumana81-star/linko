@@ -5,12 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   late String migration;
   late String productionMigration;
+  late String privacyMigration;
   setUpAll(() async {
     migration = await File(
       '../supabase/migrations/202608030008_create_admin_professional_management.sql',
     ).readAsString();
     productionMigration = await File(
       '../supabase/migrations/202608040002_harden_admin_professionals.sql',
+    ).readAsString();
+    privacyMigration = await File(
+      '../supabase/migrations/202608090001_harden_professional_verification_privacy.sql',
     ).readAsString();
   });
 
@@ -47,5 +51,16 @@ void main() {
     ]) {
       expect(productionMigration, contains(field));
     }
+  });
+
+  test('Admin verification reads the protected submission table', () {
+    expect(
+      privacyMigration,
+      contains('left join public.professional_verification_submissions'),
+    );
+    expect(privacyMigration, contains("profile.role = 'admin'"));
+    expect(privacyMigration, contains('coalesce(submission.documents'));
+    expect(privacyMigration, contains('drop column verification_documents'));
+    expect(privacyMigration.toLowerCase(), isNot(contains('service_role')));
   });
 }
