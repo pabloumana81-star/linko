@@ -4,6 +4,7 @@ import 'package:linko/app/app_mode.dart';
 import 'package:linko/features/auth/presentation/auth_controller.dart';
 import 'package:linko/features/home/presentation/widgets/bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/widgets/professional_bottom_navigation_widget.dart';
+import 'package:linko/features/home/presentation/professional_profile_editor.dart';
 
 class ModeProfileScreen extends ConsumerWidget {
   const ModeProfileScreen({
@@ -114,6 +115,10 @@ class ModeProfileScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                if (!isCustomer) ...[
+                  const SizedBox(height: 28),
+                  const ProfessionalProfileEditor(),
+                ],
                 if (onSignOut != null) ...[
                   const SizedBox(height: 20),
                   OutlinedButton.icon(

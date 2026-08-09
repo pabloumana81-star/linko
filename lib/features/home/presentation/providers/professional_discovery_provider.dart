@@ -38,4 +38,22 @@ ProfessionalProfileData professionalProfileDataFromDomain(
   rating: profile.rating,
   reviewCount: profile.reviewCount,
   location: profile.location,
+  avatarUrl: profile.avatarUrl,
+  biography: profile.biography,
+  services: profile.services,
+  experienceYears: profile.experienceYears,
+  experienceDescription: profile.experienceDescription,
+  portfolio: profile.portfolio,
+  completedJobsCount: profile.completedJobsCount,
+  reviews: profile.reviews
+      .map(
+        (review) => ProfessionalReviewData(
+          stars: review.stars,
+          comment: review.comment,
+          createdAt: review.createdAt,
+        ),
+      )
+      .toList(growable: false),
+  coverageArea: profile.coverageArea,
+  isVerified: profile.isVerified,
 );

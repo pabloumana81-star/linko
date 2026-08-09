@@ -71,11 +71,20 @@ class ProfessionalProfileScreen extends StatelessWidget {
                     CircleAvatar(
                       radius: 58,
                       backgroundColor: colorScheme.primaryContainer,
-                      child: Icon(
-                        Icons.person_rounded,
-                        size: 62,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
+                      backgroundImage:
+                          professional.avatarUrl == null ||
+                              professional.avatarUrl!.isEmpty
+                          ? null
+                          : NetworkImage(professional.avatarUrl!),
+                      child:
+                          professional.avatarUrl == null ||
+                              professional.avatarUrl!.isEmpty
+                          ? Icon(
+                              Icons.person_rounded,
+                              size: 62,
+                              color: colorScheme.onPrimaryContainer,
+                            )
+                          : null,
                     ),
                     const SizedBox(height: 18),
                     Text(
@@ -107,35 +116,39 @@ class ProfessionalProfileScreen extends StatelessWidget {
                               '(${professional.reviewCount} reseñas)',
                           iconColor: LinkoColors.warning,
                         ),
-                        _ProfileDetail(
-                          icon: Icons.location_on_outlined,
-                          label: professional.location,
-                        ),
+                        if (professional.location.isNotEmpty)
+                          _ProfileDetail(
+                            icon: Icons.location_on_outlined,
+                            label: professional.location,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.verified_rounded,
-                          size: 20,
-                          color: colorScheme.primary,
-                        ),
-                        const SizedBox(width: 7),
-                        Text(
-                          'Profesional verificado',
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
+                    if (professional.isVerified || showMockDetails)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.verified_rounded,
+                            size: 20,
+                            color: colorScheme.primary,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 7),
+                          Text(
+                            'Profesional verificado',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
                 const SizedBox(height: 28),
-                if (completedJobsCount != null || showMockDetails)
+                if (completedJobsCount != null ||
+                    professional.experienceYears > 0 ||
+                    showMockDetails)
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
@@ -150,6 +163,12 @@ class ProfessionalProfileScreen extends StatelessWidget {
                         TrustIndicator(
                           icon: Icons.task_alt_rounded,
                           label: '$completedJobsCount servicios completados',
+                        ),
+                      if (!showMockDetails && professional.experienceYears > 0)
+                        TrustIndicator(
+                          icon: Icons.workspace_premium_outlined,
+                          label:
+                              '${professional.experienceYears} años de experiencia',
                         ),
                       if (showMockDetails)
                         const TrustIndicator(
@@ -214,6 +233,80 @@ class ProfessionalProfileScreen extends StatelessWidget {
                     if (index != _reviews.length - 1)
                       const SizedBox(height: 10),
                   ],
+                ] else ...[
+                  const SizedBox(height: 36),
+                  const _ProfileSectionTitle(label: 'Acerca de'),
+                  const SizedBox(height: 12),
+                  Text(
+                    professional.biography.isEmpty
+                        ? 'Este profesional aún no ha agregado una biografía.'
+                        : professional.biography,
+                    key: const ValueKey('professional-biography'),
+                    style: textTheme.bodyLarge?.copyWith(height: 1.5),
+                  ),
+                  const SizedBox(height: 32),
+                  const _ProfileSectionTitle(label: 'Servicios'),
+                  const SizedBox(height: 12),
+                  if (professional.services.isEmpty)
+                    const Text(
+                      'Este profesional aún no ha agregado servicios.',
+                      key: ValueKey('professional-services-empty'),
+                    )
+                  else
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final service in professional.services)
+                          ServiceChip(label: service),
+                      ],
+                    ),
+                  const SizedBox(height: 32),
+                  const _ProfileSectionTitle(label: 'Experiencia'),
+                  const SizedBox(height: 12),
+                  Text(
+                    professional.experienceDescription.isEmpty
+                        ? 'Este profesional aún no ha agregado información de experiencia.'
+                        : professional.experienceDescription,
+                    key: const ValueKey('professional-experience'),
+                    style: textTheme.bodyLarge?.copyWith(height: 1.5),
+                  ),
+                  if (professional.coverageArea.isNotEmpty) ...[
+                    const SizedBox(height: 32),
+                    const _ProfileSectionTitle(label: 'Área de cobertura'),
+                    const SizedBox(height: 12),
+                    Text(professional.coverageArea),
+                  ],
+                  const SizedBox(height: 32),
+                  const _ProfileSectionTitle(label: 'Trabajos realizados'),
+                  const SizedBox(height: 14),
+                  if (professional.portfolio.isEmpty)
+                    const Text(
+                      'Este profesional aún no ha agregado trabajos a su portafolio.',
+                      key: ValueKey('professional-portfolio-empty'),
+                    )
+                  else
+                    _PortfolioGrid(urls: professional.portfolio),
+                  const SizedBox(height: 32),
+                  const _ProfileSectionTitle(label: 'Reseñas'),
+                  const SizedBox(height: 10),
+                  if (professional.reviews.isEmpty)
+                    const Text(
+                      'Este profesional aún no tiene reseñas.',
+                      key: ValueKey('professional-reviews-empty'),
+                    )
+                  else
+                    for (final review in professional.reviews) ...[
+                      ReviewCard(
+                        clientName: 'Cliente LinkO',
+                        rating: review.stars.toDouble(),
+                        comment: review.comment?.trim().isNotEmpty == true
+                            ? review.comment!.trim()
+                            : 'Calificación sin comentario.',
+                        date: _reviewDate(review.createdAt),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                 ],
               ],
             ),
@@ -242,6 +335,42 @@ class ProfessionalProfileScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+String _reviewDate(DateTime value) {
+  final day = value.day.toString().padLeft(2, '0');
+  final month = value.month.toString().padLeft(2, '0');
+  return '$day/$month/${value.year}';
+}
+
+class _PortfolioGrid extends StatelessWidget {
+  const _PortfolioGrid({required this.urls});
+
+  final List<String> urls;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: urls.length,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: constraints.maxWidth >= 700 ? 3 : 1,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 4 / 3,
+      ),
+      itemBuilder: (context, index) => ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Image.network(
+          urls[index],
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              const WorkGalleryItem(label: 'Imagen no disponible'),
+        ),
+      ),
+    ),
+  );
 }
 
 class _ProfileSectionTitle extends StatelessWidget {

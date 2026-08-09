@@ -22,6 +22,8 @@ Las migraciones se aplican en orden lexicográfico:
 18. `202608080001_service_requests_replica_identity.sql`
 19. `202608080002_sync_rating_summary.sql`
 20. `202608080004_auth_onboarding_default.sql`
+21. `202608080005_production_professional_profiles.sql`
+22. `202608080006_preserve_professional_display_name.sql`
 
 Tablas principales: `profiles`, `professional_profiles`, `service_requests`,
 `conversations`, `messages`, `quotations`, `request_events`, `ratings`,
@@ -44,6 +46,27 @@ rechazos, solicitudes de información y cambios de suspensión se ejecutan con
 `perform_admin_professional_action`; el RPC valida el rol admin y registra tanto
 la auditoría profesional detallada como la entrada global en
 `admin_audit_logs`. Rechazar o pedir información requiere un motivo.
+
+`202608080005` añade `biography` y `experience_description` con valores vacíos
+seguros para cuentas existentes. Categorías, cobertura, años de experiencia y
+portfolio reutilizan columnas existentes. `list_available_professionals()`
+calcula promedio/conteo de ratings y trabajos completados en cada lectura;
+ninguno se duplica como nuevo campo. Las reseñas públicas incluyen estrellas,
+comentario y fecha, pero no identidad ni datos privados del cliente.
+
+`get_own_professional_profile()` permite cargar perfiles pendientes del usuario
+actual. `update_own_professional_profile()` usa `security definer`, valida
+`auth.uid()` y `profiles.active_mode = 'professional'`, limita años y cantidad
+de servicios y hace un upsert únicamente sobre el ID autenticado. Sus permisos
+se revocan a `public`/`anon` y se conceden a `authenticated`.
+
+No existe aún una migración de Supabase Storage. `portfolio` conserva JSON para
+URLs HTTPS previamente administradas; habilitar uploads exige crear un bucket,
+límites MIME/tamaño y políticas por carpeta de propietario.
+
+`202608080006` garantiza que editar campos profesionales no sobrescriba
+`display_name`: el nombre general se usa al crear la ficha, pero una ficha
+existente conserva su nombre hasta que exista un flujo explícito para editarlo.
 
 El descubrimiento de la aplicación principal usa
 `list_available_professionals`, que solo devuelve profesionales verificados y

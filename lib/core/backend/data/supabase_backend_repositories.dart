@@ -244,6 +244,31 @@ class SupabaseProfessionalsRepository implements ProfessionalsRepository {
   }
 
   @override
+  Future<ProfessionalProfile?> getOwnProfessionalProfile() async {
+    final row = await _client.rpc('get_own_professional_profile');
+    if (row == null) return null;
+    return _professional(Map<String, dynamic>.from(row as Map));
+  }
+
+  @override
+  Future<void> updateOwnProfessionalProfile(
+    ProfessionalProfileUpdate update,
+  ) async {
+    await _client.rpc(
+      'update_own_professional_profile',
+      params: {
+        'p_profession': update.profession,
+        'p_location': update.location,
+        'p_biography': update.biography,
+        'p_services': update.services,
+        'p_experience_years': update.experienceYears,
+        'p_experience_description': update.experienceDescription,
+        'p_coverage_area': update.coverageArea,
+      },
+    );
+  }
+
+  @override
   Stream<List<ProfessionalProfile>> watchProfessionals() {
     late final StreamController<List<ProfessionalProfile>> controller;
     late final RealtimeChannel channel;
@@ -1062,6 +1087,16 @@ class SupabaseRatingsRepository implements RatingsRepository {
 }
 
 ProfessionalProfile _professional(Map<String, dynamic> row) {
+  final reviews = (row['reviews'] as List? ?? const [])
+      .map((item) => Map<String, dynamic>.from(item as Map))
+      .map(
+        (item) => ProfessionalReview(
+          stars: (item['stars'] as num).toInt(),
+          comment: item['comment'] as String?,
+          createdAt: DateTime.parse(item['created_at'] as String),
+        ),
+      )
+      .toList(growable: false);
   return ProfessionalProfile(
     id: row['id'] as String,
     user: AppUser(id: row['id'] as String, name: row['display_name'] as String),
@@ -1072,7 +1107,29 @@ ProfessionalProfile _professional(Map<String, dynamic> row) {
     isVerified: row['verification_status'] == null
         ? true
         : row['verification_status'] == 'verified',
+    avatarUrl: row['avatar_url'] as String?,
+    biography: row['biography'] as String? ?? '',
+    services: List<String>.from(row['services'] as List? ?? const []),
+    experienceYears: (row['experience_years'] as num?)?.toInt() ?? 0,
+    experienceDescription: row['experience_description'] as String? ?? '',
+    portfolio: _portfolioUrls(row['portfolio']),
+    completedJobsCount: (row['completed_jobs_count'] as num?)?.toInt() ?? 0,
+    reviews: reviews,
+    coverageArea: row['coverage_area'] as String? ?? '',
   );
+}
+
+List<String> _portfolioUrls(Object? value) {
+  if (value is! List) return const [];
+  return value
+      .map((item) {
+        if (item is String) return item;
+        if (item is Map) return item['url'] as String?;
+        return null;
+      })
+      .whereType<String>()
+      .where((url) => url.startsWith('https://'))
+      .toList(growable: false);
 }
 
 ServiceRating _rating(Map<String, dynamic> row) => ServiceRating(

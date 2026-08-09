@@ -98,3 +98,14 @@ Certificación del 8 de agosto de 2026: análisis, 125 pruebas raíz, integraci�
 MVP macOS, 57 pruebas Admin y `./scripts/qa_supabase.sh` aprobaron. El E2E real
 confirmó lookup por ID del profesional verificado sin afectar Realtime ni la
 limpieza aislada.
+
+`test/professional_profile_production_data_test.dart` cubre mapeo completo,
+persistencia de campos editables, rechazo del servidor, modo mock, estados
+vacíos y render de reseñas/conteos/portfolio reales. El E2E Supabase actualiza
+el perfil autenticado, rechaza un intento customer y confirma que discovery
+recibe los mismos datos después de la verificación.
+
+Certificación del 8 de agosto de 2026: `flutter analyze`, 131 pruebas raíz,
+integración MVP macOS, 57 pruebas Admin y el E2E Supabase real aprobaron. La
+certificación real también confirmó rechazo de edición por un customer,
+sincronización de los campos profesionales y limpieza aislada.

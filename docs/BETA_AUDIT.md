@@ -298,7 +298,7 @@ Esto ya produjo coexistencia de providers mock/persistidos. Encapsular la invali
 
 Confirmar si solo son compatibilidad de pruebas; retirar gradualmente para evitar “repositorios duplicados” nominales.
 
-### ✅ B-05 — Estados de pantallas estáticas no aplican todavía, pero deben quedar contractuales — Parcialmente completado
+### ✅ B-05 — Estados de pantallas estáticas no aplican todavía, pero deben quedar contractuales — Completado para perfil profesional
 
 Resolución del perfil profesional: la ruta ofrece loading, no encontrado y
 error, y oculta detalles demostrativos cuando usa Supabase. Otras pantallas
@@ -308,6 +308,8 @@ históricas de este hallazgo se evalúan en sus hitos correspondientes.
   `professionals_results_screen.dart` consumen el provider de discovery.
 - `professional_profile_route.dart` concentra loading/error/not-found del
   perfil; `professional_profile_screen.dart` recibe solo datos resueltos.
+- Los campos de producción ausentes muestran estados vacíos explícitos y las
+  reseñas/conteos proceden de datos transaccionales, sin contenido demo.
 
 ### B-06 — No hay guardas de ruta centralizadas
 

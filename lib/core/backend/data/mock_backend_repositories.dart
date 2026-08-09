@@ -14,6 +14,7 @@ import 'package:linko/core/backend/data/professional_availability_store.dart';
 import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
 import 'package:linko/features/requests/domain/models/conversation.dart';
+import 'package:linko/features/requests/domain/models/app_user.dart';
 import 'package:linko/features/requests/domain/models/professional_profile.dart';
 import 'package:linko/features/requests/domain/models/quotation.dart';
 import 'package:linko/features/requests/domain/models/request_state.dart';
@@ -155,6 +156,7 @@ class MockProfessionalsRepository implements ProfessionalsRepository {
 
   final RequestRepository _requests;
   final ProfessionalAvailabilityStore _availability;
+  ProfessionalProfile? _ownProfile;
 
   @override
   Future<List<ProfessionalProfile>> getProfessionals() async {
@@ -191,6 +193,40 @@ class MockProfessionalsRepository implements ProfessionalsRepository {
       }
     }
     return null;
+  }
+
+  @override
+  Future<ProfessionalProfile?> getOwnProfessionalProfile() async {
+    if (_ownProfile != null) return _ownProfile;
+    final professionals = await getProfessionals();
+    return professionals.isEmpty ? null : professionals.first;
+  }
+
+  @override
+  Future<void> updateOwnProfessionalProfile(
+    ProfessionalProfileUpdate update,
+  ) async {
+    final current = await getOwnProfessionalProfile();
+    _ownProfile = ProfessionalProfile(
+      id: current?.id ?? 'mock-own-professional',
+      user:
+          current?.user ??
+          const AppUser(id: 'mock-own-professional', name: 'Profesional LinkO'),
+      profession: update.profession,
+      rating: current?.rating ?? 0,
+      reviewCount: current?.reviewCount ?? 0,
+      location: update.location,
+      isVerified: current?.isVerified ?? false,
+      avatarUrl: current?.avatarUrl,
+      biography: update.biography,
+      services: List.unmodifiable(update.services),
+      experienceYears: update.experienceYears,
+      experienceDescription: update.experienceDescription,
+      portfolio: current?.portfolio ?? const [],
+      completedJobsCount: current?.completedJobsCount ?? 0,
+      reviews: current?.reviews ?? const [],
+      coverageArea: update.coverageArea,
+    );
   }
 
   @override

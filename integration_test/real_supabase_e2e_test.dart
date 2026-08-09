@@ -127,6 +127,38 @@ void main() {
         final customerProfessionals = SupabaseProfessionalsRepository(
           customerClient,
         );
+        final professionalProfessionals = SupabaseProfessionalsRepository(
+          professionalClient,
+        );
+        await professionalProfessionals.updateOwnProfessionalProfile(
+          ProfessionalProfileUpdate(
+            profession: 'Certificación QA',
+            location: 'San José',
+            biography: '${prefix}_biography',
+            services: const ['QA E2E', 'Sincronización'],
+            experienceYears: 6,
+            experienceDescription: '${prefix}_experience',
+            coverageArea: 'GAM QA',
+          ),
+        );
+        final ownProfessional = await professionalProfessionals
+            .getOwnProfessionalProfile();
+        expect(ownProfessional?.biography, '${prefix}_biography');
+        expect(ownProfessional?.services, contains('QA E2E'));
+        expect(
+          () => customerProfessionals.updateOwnProfessionalProfile(
+            const ProfessionalProfileUpdate(
+              profession: 'No autorizado',
+              location: '',
+              biography: '',
+              services: [],
+              experienceYears: 0,
+              experienceDescription: '',
+              coverageArea: '',
+            ),
+          ),
+          throwsA(isA<PostgrestException>()),
+        );
         final discovery = StreamIterator(
           customerProfessionals.watchProfessionals(),
         );
@@ -155,6 +187,9 @@ void main() {
             .getProfessionalById(professionalUser.id);
         expect(directProfessional?.id, professionalUser.id);
         expect(directProfessional?.user.name, prefix);
+        expect(directProfessional?.biography, '${prefix}_biography');
+        expect(directProfessional?.services, contains('QA E2E'));
+        expect(directProfessional?.experienceYears, 6);
         await discovery.cancel();
 
         final users = await adminUsers.listUsers(

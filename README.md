@@ -33,6 +33,11 @@ En Supabase, discovery y rutas directas de perfiles profesionales cargan datos
 persistidos por ID. El catálogo demostrativo se conserva únicamente con
 `BACKEND_MODE=mock`.
 
+El perfil muestra biografía, servicios, experiencia, cobertura y portfolio
+persistidos. Promedio, reseñas y trabajos completados se derivan de operaciones
+reales. Los profesionales mantienen sus datos desde su pantalla de Perfil; la
+carga de fotos permanece deshabilitada hasta configurar Supabase Storage.
+
 ## Validación
 
 ```sh

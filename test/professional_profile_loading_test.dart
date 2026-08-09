@@ -104,7 +104,15 @@ void main() {
     expect(repository.requestedIds, [_profile.id]);
     expect(find.text('Perfil Supabase real'), findsOneWidget);
     expect(find.text('4.6 (12 reseñas)'), findsOneWidget);
-    expect(find.text('Acerca de'), findsNothing);
+    expect(find.text('Acerca de'), findsOneWidget);
+    expect(
+      find.text('Este profesional aún no ha agregado una biografía.'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Profesional con experiencia en instalaciones'),
+      findsNothing,
+    );
   });
 
   testWidgets(
@@ -304,6 +312,14 @@ class _ProfessionalsRepository implements ProfessionalsRepository {
     requestedIds.add(professionalId);
     return onLookup(professionalId);
   }
+
+  @override
+  Future<ProfessionalProfile?> getOwnProfessionalProfile() async => null;
+
+  @override
+  Future<void> updateOwnProfessionalProfile(
+    ProfessionalProfileUpdate update,
+  ) async {}
 
   @override
   Future<List<ProfessionalProfile>> getProfessionals() async => const [];

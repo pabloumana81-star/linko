@@ -42,10 +42,23 @@ que reutiliza `list_available_professionals()` y sus reglas de cuenta activa y
 verificación. La UI no consulta Supabase directamente y distingue loading,
 ausencia y error.
 
-`placeholderProfessionals` pertenece exclusivamente al backend mock. Los
-detalles demostrativos del perfil —biografía, servicios, galería y reseñas— se
-muestran solo en mock; Supabase muestra únicamente campos persistidos hasta que
-el contrato principal incorpore esos datos reales.
+`placeholderProfessionals` pertenece exclusivamente al backend mock. En
+Supabase, `list_available_professionals()` devuelve biografía, servicios,
+experiencia, cobertura y portfolio persistidos, junto con rating, reseñas y
+trabajos completados calculados desde `ratings` y `service_requests`. El RPC no
+expone identidad, correo ni ID del cliente que emitió una reseña.
+
+La pantalla de perfil del modo profesional consume
+`ownProfessionalProfileProvider`. El guardado pasa por
+`ProfessionalProfileManagementController` y
+`ProfessionalsRepository.updateOwnProfessionalProfile`; el widget no consulta
+Supabase. `update_own_professional_profile()` valida `auth.uid()`, exige que la
+cuenta esté en modo profesional y solo modifica campos editables propios.
+
+`professional_profiles.portfolio` conserva el contrato JSON existente. La app
+acepta únicamente URLs HTTPS al leer, pero no permite cargas todavía: no existe
+un bucket de Storage ni políticas de objetos versionadas y no se introdujo un
+atajo inseguro.
 
 ## Seguridad
 

@@ -2,9 +2,9 @@
 
 ## Fase actual
 
-Production UX & Operations Closure — Phase 1. La carga de perfiles
-profesionales y sus rutas directas ya usan repositorios reales en Supabase; el
-backend compartido, autenticación y Backoffice conservan su certificación.
+Professional Profile — Real Production Data. El perfil profesional principal
+usa información persistida y agregados transaccionales en Supabase, y permite
+al profesional mantener sus campos editables sin crear una fuente paralela.
 
 ## Módulos completados
 
@@ -31,6 +31,11 @@ backend compartido, autenticación y Backoffice conservan su certificación.
   `ProfessionalsRepository.getProfessionalById` cuando Supabase está activo.
 - IDs inexistentes y fallos de backend muestran estados controlados en español;
   ningún profesional placeholder sustituye datos Supabase.
+- Biografía, servicios, experiencia, cobertura y portfolio forman parte del
+  contrato profesional real. Rating, reseñas y trabajos completados se calculan
+  desde `ratings` y `service_requests`.
+- El perfil profesional propio se crea o actualiza mediante un RPC que valida
+  `auth.uid()` y el modo profesional; el cliente nunca escribe otro perfil.
 
 ## Estado de QA
 
@@ -60,6 +65,11 @@ backend compartido, autenticación y Backoffice conservan su certificación.
   - QA raíz (125 pruebas + integración macOS): **PASS**.
   - QA Admin (57 pruebas; opt-in omitido por diseño): **PASS**.
   - Lookup real Supabase y regresión Main/Admin/Realtime: **PASS**.
+- Professional Profile — Real Production Data, 8 de agosto de 2026:
+  - Migraciones de perfil real y edición propia: **APLICADAS**.
+  - Análisis y QA raíz (131 pruebas + integración macOS): **PASS**.
+  - QA Admin (57 pruebas; opt-in omitido por diseño): **PASS**.
+  - Edición/autorización, Main/Admin, Realtime y limpieza E2E: **PASS**.
 
 ## Trabajo restante
 
@@ -67,9 +77,9 @@ backend compartido, autenticación y Backoffice conservan su certificación.
   definan sus opciones operativas.
 - Completar acciones operativas de resolución de reportes y gestión avanzada de
   solicitudes; actualmente estos módulos ofrecen datos reales y seguimiento.
-- Incorporar biografía, servicios, portafolio, experiencia y reseñas reales al
-  perfil principal; hasta existir ese contrato no se muestran detalles
-  ficticios en Supabase.
+- Configurar un bucket de Supabase Storage, políticas de objetos y
+  transformación de imágenes antes de habilitar carga de portfolio desde el
+  cliente. El contrato de URLs persistidas ya puede leerlas.
 - Certificar externamente Google, Apple y entrega de Magic Link con credenciales,
   dominios, plantillas y cuentas reales; el código está completo, pero los
   proveedores aún no están certificados.

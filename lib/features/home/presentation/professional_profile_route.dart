@@ -56,7 +56,7 @@ class ProfessionalProfileRoute extends ConsumerWidget {
         if (!isMock) {
           return ProfessionalProfileScreen(
             professional: professional,
-            completedJobsCount: null,
+            completedJobsCount: professional.completedJobsCount,
             showMockDetails: false,
             onRequestService: () => onRequestService(professional),
           );
