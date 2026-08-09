@@ -6,6 +6,51 @@ import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/core/backend/repositories/authentication_repository.dart';
 
 void main() {
+  test('production runners use the final LinkO application identity', () {
+    final androidGradle = File(
+      'android/app/build.gradle.kts',
+    ).readAsStringSync();
+    final androidActivity = File(
+      'android/app/src/main/kotlin/com/linko/app/MainActivity.kt',
+    ).readAsStringSync();
+    final iosProject = File(
+      'ios/Runner.xcodeproj/project.pbxproj',
+    ).readAsStringSync();
+    final macosConfig = File(
+      'macos/Runner/Configs/AppInfo.xcconfig',
+    ).readAsStringSync();
+    final macosProject = File(
+      'macos/Runner.xcodeproj/project.pbxproj',
+    ).readAsStringSync();
+    final linuxConfig = File('linux/CMakeLists.txt').readAsStringSync();
+
+    expect(androidGradle, contains('namespace = "com.linko.app"'));
+    expect(androidGradle, contains('applicationId = "com.linko.app"'));
+    expect(androidActivity, contains('package com.linko.app'));
+    expect(iosProject, contains('PRODUCT_BUNDLE_IDENTIFIER = com.linko.app;'));
+    expect(
+      iosProject,
+      contains('PRODUCT_BUNDLE_IDENTIFIER = com.linko.app.RunnerTests;'),
+    );
+    expect(macosConfig, contains('PRODUCT_BUNDLE_IDENTIFIER = com.linko.app'));
+    expect(
+      macosProject,
+      contains('PRODUCT_BUNDLE_IDENTIFIER = com.linko.app.RunnerTests;'),
+    );
+    expect(linuxConfig, contains('set(APPLICATION_ID "com.linko.app")'));
+
+    for (final productionFile in [
+      androidGradle,
+      androidActivity,
+      iosProject,
+      macosConfig,
+      macosProject,
+      linuxConfig,
+    ]) {
+      expect(productionFile, isNot(contains('com.example.linko')));
+    }
+  });
+
   test('mobile and desktop runners register the authentication callback', () {
     final android = File(
       'android/app/src/main/AndroidManifest.xml',

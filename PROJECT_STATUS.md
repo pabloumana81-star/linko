@@ -2,9 +2,9 @@
 
 ## Fase actual
 
-Production Authentication Provider Certification. La arquitectura Auth está
-endurecida y automatizada hasta el límite del repositorio; la certificación real
-de Google, Apple y entrega Magic Link permanece en el límite externo.
+Production Application Identity. Android, iOS y macOS usan `com.linko.app` y
+conservan el callback Supabase independiente; falta registrar y firmar esta
+identidad en las consolas externas.
 
 ## Módulos completados
 
@@ -43,6 +43,8 @@ de Google, Apple y entrega Magic Link permanece en el límite externo.
 - Redirects Auth restringidos al origen web actual o callback nativo exacto;
   sesiones persistidas se validan contra Supabase y los diagnósticos redactan
   tokens sin perder contexto ni stack traces.
+- Identidad de producción `com.linko.app` alineada en Android, iOS y macOS;
+  targets Apple de pruebas usan `com.linko.app.RunnerTests`.
 
 ## Estado de QA
 
@@ -94,6 +96,11 @@ de Google, Apple y entrega Magic Link permanece en el límite externo.
   - E2E Supabase y lint enlazado: **PASS**.
   - Google/Apple/Magic Link real: **MANUAL CERTIFICATION REQUIRED**.
   - Ajustes públicos Supabase: Email habilitado; Google y Apple no habilitados.
+- Production Application Identity, 9 de agosto de 2026:
+  - Android/iOS/macOS y RunnerTests: **CODE COMPLETE / AUTOMATED TESTED**.
+  - QA raíz (145 pruebas + integración macOS): **PASS**.
+  - Build APK debug con `com.linko.app`: **PASS**.
+  - QA Admin (65 pruebas) y E2E Supabase real: **PASS**.
 
 ## Trabajo restante
 
@@ -107,7 +114,7 @@ de Google, Apple y entrega Magic Link permanece en el límite externo.
 - Certificar externamente Google, Apple y entrega de Magic Link con credenciales,
   dominios, plantillas y cuentas reales; el código está completo, pero los
   proveedores aún no están certificados.
-- Sustituir `com.example.linko` por los bundle/application IDs de distribución y
-  configurar firma/capacidades antes de certificar dispositivos Apple/Android.
+- Registrar `com.linko.app` y configurar firma/capacidades antes de certificar
+  dispositivos Apple/Android; el repositorio no contiene credenciales de firma.
 - Revalidar RLS y Realtime después de cada migración futura.
 - Completar pruebas manuales de accesibilidad y compatibilidad en los navegadores soportados.

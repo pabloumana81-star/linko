@@ -26,6 +26,12 @@ Los redirects se originan exclusivamente en configuración compilada: web usa
 antes de aceptar identidad. Diagnósticos conservan contexto y stack trace, pero
 redactan access, refresh e ID tokens y cabeceras Authorization/API key.
 
+La identidad nativa compartida es `com.linko.app` para Android, iOS, macOS y el
+runner Linux.
+Android alinea `applicationId`, namespace y paquete Kotlin; Apple alinea Runner
+y RunnerTests. El esquema OAuth `io.supabase.linko` es independiente del bundle
+ID para permitir el callback estable entre plataformas.
+
 ## Sincronización profesional
 
 Las acciones admin modifican `profiles.account_status` y

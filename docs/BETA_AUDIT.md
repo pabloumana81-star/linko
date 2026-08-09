@@ -296,10 +296,11 @@ integridad del estado, sincronización y limpieza.
 
 Google, Apple y Magic Link tienen arquitectura y regresiones automatizadas,
 pero no existe evidencia de un consent screen/inbox/callback real completado.
-Además, los runners conservan `com.example.linko` como identificador, por lo que
-la configuración de distribución y Apple Developer/Google debe realizarse antes
-de beta. El código ya restringe redirects al origen web actual o callback nativo
-exacto, valida sesiones persistidas contra Auth y redacta tokens diagnósticos.
+Los runners ya usan `com.linko.app` y los tests `com.linko.app.RunnerTests`, sin
+alterar el callback. Todavía deben crearse/registrarse esos IDs y su firma en las
+consolas externas antes de beta. El código restringe redirects al origen web
+actual o callback nativo exacto, valida sesiones persistidas contra Auth y
+redacta tokens diagnósticos.
 
 ### B-01 — Marcador temporal explícito
 

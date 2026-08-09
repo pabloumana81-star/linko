@@ -93,6 +93,17 @@ integración MVP macOS, 65 pruebas Admin, E2E Supabase real y lint enlazado
 aprobaron. No se ejecutó consentimiento Google/Apple ni entrega de correo, por
 lo que esos proveedores continúan **MANUAL CERTIFICATION REQUIRED**.
 
+`test/auth_platform_configuration_test.dart` también certifica estáticamente
+que Android, iOS y macOS usan `com.linko.app`, que RunnerTests usa el sufijo
+correspondiente y que el callback `io.supabase.linko://login-callback/` no
+cambió. La búsqueda posterior permite el identificador provisional únicamente
+dentro de una aserción negativa de regresión.
+
+Certificación del 9 de agosto de 2026: análisis sin incidencias, 145 pruebas
+raíz, integración macOS, APK debug Android, 65 pruebas Admin y E2E Supabase real
+aprobaron con `com.linko.app`. La firma de distribución no forma parte de este
+PASS y continúa como configuración manual.
+
 Última ejecución del 8 de agosto de 2026: `flutter analyze`, `./qa.sh`,
 `cd admin && ./qa.sh` y `./scripts/qa_supabase.sh` aprobaron. La certificación
 de proveedores externos permanece separada de este PASS automatizado.

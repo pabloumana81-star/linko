@@ -76,10 +76,11 @@ En Supabase Dashboard:
 Los Client Secrets y archivos `.p8` pertenecen a los dashboards/gestores de
 secretos, nunca a `.env` ni al cliente Flutter.
 
-Antes de configurar Google o Apple deben sustituirse los identificadores
-provisionales `com.example.linko` en Android, iOS y macOS por los identificadores
-de distribución elegidos por el propietario del producto. El repositorio no
-puede decidir esos valores ni el equipo de firma.
+Android, iOS y macOS usan la identidad de producción `com.linko.app`; sus
+targets de pruebas usan `com.linko.app.RunnerTests`. Esta identidad no reemplaza
+el callback OAuth, que permanece deliberadamente separado como
+`io.supabase.linko://login-callback/`. Equipo, certificados y provisioning
+profiles continúan siendo configuración externa.
 
 ## Matriz de certificación
 
