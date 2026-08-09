@@ -64,10 +64,25 @@ class UnexpectedErrorDiagnostic {
   Map<String, Object?> toJson() => {
     'kind': 'unexpected_error',
     'context': context,
-    'error': error.toString(),
-    'stackTrace': stackTrace.toString(),
+    'error': _redactAuthenticationSecrets(error.toString()),
+    'stackTrace': _redactAuthenticationSecrets(stackTrace.toString()),
     'timestamp': timestamp.toUtc().toIso8601String(),
   };
+}
+
+String _redactAuthenticationSecrets(String value) {
+  var redacted = value.replaceAllMapped(
+    RegExp(r'(bearer\s+)[A-Za-z0-9._~+/-]+=*', caseSensitive: false),
+    (match) => '${match.group(1)}[REDACTED]',
+  );
+  redacted = redacted.replaceAllMapped(
+    RegExp(
+      r'''(access_token|refresh_token|id_token|authorization|apikey)([\s"':=]+)([^\s&,"'}]+)''',
+      caseSensitive: false,
+    ),
+    (match) => '${match.group(1)}${match.group(2)}[REDACTED]',
+  );
+  return redacted;
 }
 
 class BackendStartupDiagnostic {

@@ -82,6 +82,17 @@ ejecutar Google, Apple y Magic Link en web, Android, iOS y macOS, incluyendo
 cancelación, error, usuario existente y usuario nuevo. Consulta
 `docs/AUTHENTICATION.md` para la configuración exacta.
 
+`test/auth_platform_configuration_test.dart` cubre el callback exacto y rechazo
+de redirects externos; `test/auth_session_recovery_test.dart` cubre callback e
+invalidez de Magic Link además de recuperación/cambio/logout; y
+`test/diagnostics_test.dart` comprueba redacción de tokens. Son pruebas de código
+y no se presentan como certificación real de proveedor.
+
+Ejecución del 9 de agosto de 2026: análisis sin incidencias, 144 pruebas raíz,
+integración MVP macOS, 65 pruebas Admin, E2E Supabase real y lint enlazado
+aprobaron. No se ejecutó consentimiento Google/Apple ni entrega de correo, por
+lo que esos proveedores continúan **MANUAL CERTIFICATION REQUIRED**.
+
 Última ejecución del 8 de agosto de 2026: `flutter analyze`, `./qa.sh`,
 `cd admin && ./qa.sh` y `./scripts/qa_supabase.sh` aprobaron. La certificación
 de proveedores externos permanece separada de este PASS automatizado.

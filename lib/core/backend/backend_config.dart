@@ -1,3 +1,6 @@
+import 'package:linko/core/backend/auth_redirect_policy.dart';
+import 'package:linko/core/backend/repositories/authentication_repository.dart';
+
 enum BackendMode { mock, supabase }
 
 class BackendConfig {
@@ -63,6 +66,11 @@ class BackendConfig {
       throw const BackendConfigurationException(
         'SUPABASE_ANON_KEY es obligatoria en modo Supabase.',
       );
+    }
+    try {
+      AuthRedirectPolicy.validate(authRedirectUrl, AuthRedirectTarget.native);
+    } on AuthenticationLaunchException catch (error) {
+      throw BackendConfigurationException(error.message);
     }
   }
 }

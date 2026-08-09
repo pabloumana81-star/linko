@@ -292,6 +292,15 @@ antes del cierre. La función histórica de corrección arbitraria ya no puede s
 ejecutada por clientes autenticados. El E2E real confirma autorización negativa,
 integridad del estado, sincronización y limpieza.
 
+### A-13 — Certificación externa de proveedores Auth pendiente
+
+Google, Apple y Magic Link tienen arquitectura y regresiones automatizadas,
+pero no existe evidencia de un consent screen/inbox/callback real completado.
+Además, los runners conservan `com.example.linko` como identificador, por lo que
+la configuración de distribución y Apple Developer/Google debe realizarse antes
+de beta. El código ya restringe redirects al origen web actual o callback nativo
+exacto, valida sesiones persistidas contra Auth y redacta tokens diagnósticos.
+
 ### B-01 — Marcador temporal explícito
 
 - `lib/core/backend/backend_repository_factory.dart:37` contiene “Temporary synchronous bridge”.

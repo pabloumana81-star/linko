@@ -29,6 +29,8 @@ identidad Supabase reemplaza explícitamente al invitado.
   solicita contraseña.
 - En web, el retorno usa el origen actual. En Android, iOS y macOS usa
   `AUTH_REDIRECT_URL`, actualmente `io.supabase.linko://login-callback/`.
+- `AuthRedirectPolicy` exige un origen web limpio o exactamente el esquema y
+  host nativos de LinkO; rechaza paths, query, fragmentos y destinos externos.
 - Si el usuario cierra o cancela el proveedor, la pantalla de acceso queda
   operativa. Errores del proveedor se muestran en español y se reportan sin
   tokens ni credenciales.
@@ -41,8 +43,9 @@ completarlo mediante el perfil/onboarding.
 ## Sesión y rutas
 
 `supabase_flutter` persiste la sesión por plataforma. Al arrancar, LinkO lee
-`currentSession`; si está expirada, exige un refresh válido antes de cargar el
-perfil. `signedOut`, refresh inválido, logout y cambio de cuenta limpian o
+`currentSession`; si está expirada, exige un refresh válido y siempre valida el
+usuario contra Supabase Auth antes de cargar el perfil. `signedOut`, sesión o
+refresh inválido, logout y cambio de cuenta limpian o
 reemplazan el perfil observado. Una ruta funcional nunca conserva UI
 autenticada después de perder la sesión.
 
@@ -55,8 +58,9 @@ y el `upsert` por `id` impiden perfiles duplicados respetando RLS.
 
 En Supabase Dashboard:
 
-1. En Authentication > URL Configuration añade la URL web desplegada y
-   `io.supabase.linko://login-callback/**` a Redirect URLs.
+1. En Authentication > URL Configuration configura el dominio web definitivo
+   como Site URL y agrega exactamente ese origen y
+   `io.supabase.linko://login-callback/` a Redirect URLs. No uses `/**`.
 2. Habilita Email y configura la plantilla Magic Link para usar la URL de
    redirección solicitada.
 3. Habilita Google con el Client ID y Client Secret creados en Google Cloud.
@@ -72,9 +76,34 @@ En Supabase Dashboard:
 Los Client Secrets y archivos `.p8` pertenecen a los dashboards/gestores de
 secretos, nunca a `.env` ni al cliente Flutter.
 
+Antes de configurar Google o Apple deben sustituirse los identificadores
+provisionales `com.example.linko` en Android, iOS y macOS por los identificadores
+de distribución elegidos por el propietario del producto. El repositorio no
+puede decidir esos valores ni el equipo de firma.
+
+## Matriz de certificación
+
+- Google: **CODE COMPLETE / AUTOMATED TESTED**. Configuración y autenticación
+  real no certificables hasta confirmar credenciales, consent screen, orígenes
+  y callbacks en Supabase/Google.
+- Apple: **CODE COMPLETE / AUTOMATED TESTED**. Configuración y autenticación
+  real bloqueadas por App IDs/Services ID, equipo, clave y secreto externos.
+- Magic Link: **CODE COMPLETE / AUTOMATED TESTED**. Entrega y callback reales
+  requieren plantilla/SMTP/dominio e inbox controlado.
+- Sesión, onboarding, logout, cambio de cuenta, guest y rutas protegidas:
+  **AUTOMATED TESTED**; el E2E Supabase valida Auth y perfiles con fixtures, pero
+  no reemplaza una pantalla real de proveedor.
+
+La CLI confirmó un proyecto enlazado saludable y la `.env` local contiene el
+modo Supabase y callback esperado sin imprimir valores. El endpoint público de
+ajustes Auth confirma Email habilitado y Google/Apple no habilitados. La CLI y
+ese endpoint no exponen SMTP, plantillas ni allowlist de redirects; deben
+comprobarse en Dashboard o mediante una credencial Management API de solo
+lectura proporcionada explícitamente.
+
 ## Estado de certificación
 
 La arquitectura, recuperación, rutas, deep links y pruebas deterministas están
-**CODE COMPLETE**. Google, Apple y la entrega real de Magic Link permanecen
-**PROVIDER CERTIFIED pendiente** hasta validar consent/cancel/error y callback
-en cada dominio, dispositivo y cuenta de producción configurados externamente.
+**CODE COMPLETE / AUTOMATED TESTED**. Ningún proveedor está marcado como PASS:
+Google, Apple y la entrega real de Magic Link requieren certificación manual en
+el dominio y dispositivos de beta.

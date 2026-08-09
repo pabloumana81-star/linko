@@ -2,8 +2,9 @@
 
 ## Fase actual
 
-Admin Operations Closure. Reportes y solicitudes cuentan con las operaciones
-mínimas de beta protegidas por RPC, motivos obligatorios y auditoría persistida.
+Production Authentication Provider Certification. La arquitectura Auth está
+endurecida y automatizada hasta el límite del repositorio; la certificación real
+de Google, Apple y entrega Magic Link permanece en el límite externo.
 
 ## Módulos completados
 
@@ -39,6 +40,9 @@ mínimas de beta protegidas por RPC, motivos obligatorios y auditoría persistid
 - `professional_verification_submissions` conserva material privado fuera de
   `professional_profiles`: solo el propietario puede enviarlo/modificarlo y
   solo propietario o Admin autorizado pueden leerlo.
+- Redirects Auth restringidos al origen web actual o callback nativo exacto;
+  sesiones persistidas se validan contra Supabase y los diagnósticos redactan
+  tokens sin perder contexto ni stack traces.
 
 ## Estado de QA
 
@@ -83,6 +87,13 @@ mínimas de beta protegidas por RPC, motivos obligatorios y auditoría persistid
   - QA raíz (138 pruebas + integración macOS): **PASS**.
   - QA Admin (65 pruebas; 1 opt-in omitida por diseño): **PASS**.
   - Lint de esquema, autorización Admin/no-Admin, auditoría, sincronización y E2E real: **PASS**.
+- Production Authentication Provider Certification, 9 de agosto de 2026:
+  - Redirect/session/token hardening: **CODE COMPLETE / AUTOMATED TESTED**.
+  - QA raíz (144 pruebas + integración macOS): **PASS**.
+  - QA Admin (65 pruebas; 1 opt-in omitida por diseño): **PASS**.
+  - E2E Supabase y lint enlazado: **PASS**.
+  - Google/Apple/Magic Link real: **MANUAL CERTIFICATION REQUIRED**.
+  - Ajustes públicos Supabase: Email habilitado; Google y Apple no habilitados.
 
 ## Trabajo restante
 
@@ -96,5 +107,7 @@ mínimas de beta protegidas por RPC, motivos obligatorios y auditoría persistid
 - Certificar externamente Google, Apple y entrega de Magic Link con credenciales,
   dominios, plantillas y cuentas reales; el código está completo, pero los
   proveedores aún no están certificados.
+- Sustituir `com.example.linko` por los bundle/application IDs de distribución y
+  configurar firma/capacidades antes de certificar dispositivos Apple/Android.
 - Revalidar RLS y Realtime después de cada migración futura.
 - Completar pruebas manuales de accesibilidad y compatibilidad en los navegadores soportados.

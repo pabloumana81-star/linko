@@ -1,6 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:linko/core/backend/auth_redirect_policy.dart';
+import 'package:linko/core/backend/backend_config.dart';
+import 'package:linko/core/backend/repositories/authentication_repository.dart';
 
 void main() {
   test('mobile and desktop runners register the authentication callback', () {
@@ -14,7 +17,61 @@ void main() {
     expect(android, contains('android:host="login-callback"'));
     expect(ios, contains('<string>io.supabase.linko</string>'));
     expect(macos, contains('<string>io.supabase.linko</string>'));
+    expect(
+      File('.env.example').readAsStringSync(),
+      contains('AUTH_REDIRECT_URL=io.supabase.linko://login-callback/'),
+    );
   });
+
+  test('native callback only accepts the exact LinkO scheme and host', () {
+    expect(
+      () => AuthRedirectPolicy.validate(
+        'io.supabase.linko://login-callback/',
+        AuthRedirectTarget.native,
+      ),
+      returnsNormally,
+    );
+    for (final unsafe in [
+      'https://externo.example/callback',
+      'io.supabase.linko://otro-host/',
+      'io.supabase.linko://login-callback/?access_token=secret',
+      'otro.esquema://login-callback/',
+    ]) {
+      expect(
+        () => AuthRedirectPolicy.validate(unsafe, AuthRedirectTarget.native),
+        throwsA(isA<AuthenticationLaunchException>()),
+      );
+    }
+  });
+
+  test('web callback accepts only a clean current origin', () {
+    expect(
+      () => AuthRedirectPolicy.validate(
+        'https://app.linko.example',
+        AuthRedirectTarget.web,
+      ),
+      returnsNormally,
+    );
+    expect(
+      () => AuthRedirectPolicy.validate(
+        'https://app.linko.example/auth?next=https://externo.example',
+        AuthRedirectTarget.web,
+      ),
+      throwsA(isA<AuthenticationLaunchException>()),
+    );
+  });
+
+  test(
+    'Supabase configuration requires the native callback without fallback',
+    () {
+      const config = BackendConfig(
+        mode: BackendMode.supabase,
+        supabaseUrl: 'https://project.supabase.co',
+        supabaseAnonKey: 'public-key',
+      );
+      expect(config.validate, throwsA(isA<BackendConfigurationException>()));
+    },
+  );
 
   test(
     'new Supabase profiles require onboarding without changing old rows',

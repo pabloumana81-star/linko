@@ -46,6 +46,7 @@ void main() {
       mode: BackendMode.supabase,
       supabaseUrl: 'https://linko-test.supabase.co',
       supabaseAnonKey: 'public-test-anon-key',
+      authRedirectUrl: 'io.supabase.linko://login-callback/',
     );
     final client = SupabaseClient(config.supabaseUrl, config.supabaseAnonKey);
 
@@ -90,6 +91,7 @@ void main() {
             mode: BackendMode.supabase,
             supabaseUrl: 'https://linko-test.supabase.co',
             supabaseAnonKey: 'public-test-anon-key',
+            authRedirectUrl: 'io.supabase.linko://login-callback/',
           ),
         );
 

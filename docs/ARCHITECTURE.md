@@ -20,6 +20,12 @@ como fuente de rol/onboarding. OAuth y Magic Link finalizan por callback y
 `onAuthStateChange`; el guard de navegación reconcilia expiración, logout y
 cambio de cuenta. Los detalles están en `docs/AUTHENTICATION.md`.
 
+Los redirects se originan exclusivamente en configuración compilada: web usa
+`Uri.base.origin` y nativo exige `io.supabase.linko://login-callback/` mediante
+`AuthRedirectPolicy`. La sesión persistida se valida contra `/auth/v1/user`
+antes de aceptar identidad. Diagnósticos conservan contexto y stack trace, pero
+redactan access, refresh e ID tokens y cabeceras Authorization/API key.
+
 ## Sincronización profesional
 
 Las acciones admin modifican `profiles.account_status` y

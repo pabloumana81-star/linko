@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:linko/app/app_mode.dart';
+import 'package:linko/core/backend/auth_redirect_policy.dart';
 import 'package:linko/core/backend/repositories/authentication_repository.dart';
 import 'package:linko/core/backend/repositories/conversations_repository.dart';
 import 'package:linko/core/backend/repositories/professionals_repository.dart';
@@ -26,10 +27,15 @@ import 'package:linko/features/requests/domain/services/request_state_machine.da
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAuthenticationRepository implements AuthenticationRepository {
-  SupabaseAuthenticationRepository(this._client, {this.redirectTo});
+  SupabaseAuthenticationRepository(
+    this._client, {
+    required this.redirectTo,
+    required this.redirectTarget,
+  });
 
   final SupabaseClient _client;
-  final String? redirectTo;
+  final String redirectTo;
+  final AuthRedirectTarget redirectTarget;
 
   @override
   Stream<AppUserProfile?> authStateChanges() => _client.auth.onAuthStateChange
@@ -44,7 +50,8 @@ class SupabaseAuthenticationRepository implements AuthenticationRepository {
     if (session.isExpired) {
       session = (await _client.auth.refreshSession()).session;
     }
-    final user = session?.user;
+    if (session == null) return null;
+    final user = (await _client.auth.getUser(session.accessToken)).user;
     return user == null ? null : _appUserProfile(user);
   }
 
@@ -89,12 +96,7 @@ class SupabaseAuthenticationRepository implements AuthenticationRepository {
   Future<void> signOut() => _client.auth.signOut();
 
   void _validateRedirect() {
-    final uri = Uri.tryParse(redirectTo ?? '');
-    if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
-      throw const AuthenticationLaunchException(
-        'La URL de retorno de autenticación no está configurada.',
-      );
-    }
+    AuthRedirectPolicy.validate(redirectTo, redirectTarget);
   }
 
   AppUserProfile _appUserProfile(User user) {

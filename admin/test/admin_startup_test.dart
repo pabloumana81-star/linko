@@ -154,4 +154,5 @@ const _supabaseConfig = BackendConfig(
   mode: BackendMode.supabase,
   supabaseUrl: 'https://project.supabase.co',
   supabaseAnonKey: 'anon-key',
+  authRedirectUrl: 'io.supabase.linko://login-callback/',
 );

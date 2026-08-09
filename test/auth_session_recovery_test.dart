@@ -121,6 +121,41 @@ void main() {
     expect(container.read(authControllerProvider).user?.id, _customer.id);
   });
 
+  test('Magic Link callback restores a session and existing profile', () async {
+    final auth = _ControllableAuthenticationRepository();
+    final existing = _customer.copyWith(displayName: 'Nombre persistido');
+    final profiles = _MemoryProfileRepository([existing]);
+    final container = _container(auth, profiles: profiles);
+    addTearDown(container.dispose);
+    await container.read(authControllerProvider.notifier).restoreSession();
+
+    auth.authenticateAs(_customer.copyWith(displayName: 'Metadata temporal'));
+    await _flush();
+
+    final state = container.read(authControllerProvider);
+    expect(state.status, AuthStatus.authenticated);
+    expect(state.user?.displayName, 'Nombre persistido');
+  });
+
+  test(
+    'invalid Magic Link leaves a controlled unauthenticated state',
+    () async {
+      final auth = _ControllableAuthenticationRepository(
+        restoreError: const AuthenticationLaunchException(
+          'El enlace de acceso venció o no es válido.',
+        ),
+      );
+      final container = _container(auth);
+      addTearDown(container.dispose);
+
+      await container.read(authControllerProvider.notifier).restoreSession();
+
+      final state = container.read(authControllerProvider);
+      expect(state.status, AuthStatus.unauthenticated);
+      expect(state.error, isA<AuthenticationLaunchException>());
+    },
+  );
+
   test(
     'OAuth cancellation leaves a usable Spanish authentication state',
     () async {

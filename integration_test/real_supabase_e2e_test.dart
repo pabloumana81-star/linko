@@ -29,6 +29,7 @@ const _enabled = bool.fromEnvironment('RUN_SUPABASE_E2E');
 const _mode = String.fromEnvironment('BACKEND_MODE');
 const _url = String.fromEnvironment('SUPABASE_URL');
 const _anonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+const _authRedirectUrl = String.fromEnvironment('AUTH_REDIRECT_URL');
 const _serviceKey = String.fromEnvironment('SUPABASE_TEST_SERVICE_ROLE_KEY');
 const _linkedProjectRef = String.fromEnvironment('SUPABASE_LINKED_PROJECT_REF');
 
@@ -732,6 +733,7 @@ void _validateEnvironment() {
     modeValue: _mode,
     supabaseUrl: _url,
     supabaseAnonKey: _anonKey,
+    authRedirectUrl: _authRedirectUrl,
   );
   config.validate();
   expect(_serviceKey, isNotEmpty, reason: 'Falta la credencial aislada de QA.');

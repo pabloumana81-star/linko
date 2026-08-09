@@ -174,6 +174,7 @@ void main() {
             mode: BackendMode.supabase,
             supabaseUrl: 'https://example.supabase.co',
             supabaseAnonKey: 'anon-key',
+            authRedirectUrl: 'io.supabase.linko://login-callback/',
           ),
         ),
         supabaseClientProvider.overrideWithValue(client),

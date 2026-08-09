@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:linko/core/backend/auth_redirect_policy.dart';
 import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/core/backend/data/mock_backend_repositories.dart';
 import 'package:linko/core/backend/data/account_status_store.dart';
@@ -85,6 +86,9 @@ class BackendRepositoryFactory {
       authentication: SupabaseAuthenticationRepository(
         supabaseClient,
         redirectTo: kIsWeb ? Uri.base.origin : config.authRedirectUrl,
+        redirectTarget: kIsWeb
+            ? AuthRedirectTarget.web
+            : AuthRedirectTarget.native,
       ),
       professionals: SupabaseProfessionalsRepository(supabaseClient),
       profile: ProfileRepositorySupabase(supabaseClient),

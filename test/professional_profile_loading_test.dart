@@ -286,6 +286,7 @@ const _supabaseConfig = BackendConfig(
   mode: BackendMode.supabase,
   supabaseUrl: 'https://linko-profile-test.supabase.co',
   supabaseAnonKey: 'public-test-key',
+  authRedirectUrl: 'io.supabase.linko://login-callback/',
 );
 
 const _profile = ProfessionalProfile(

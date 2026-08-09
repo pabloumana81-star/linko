@@ -105,6 +105,27 @@ void main() {
       expect(record.containsKey('supabaseUrl'), isFalse);
       expect(record.containsKey('supabaseAnonKey'), isFalse);
     });
+
+    test('authentication tokens are redacted from errors and stack traces', () {
+      final sink = _MemorySink();
+      final diagnostics = DiagnosticsService(sink: sink);
+
+      diagnostics.unexpectedError(
+        StateError(
+          'access_token=token-visible refresh_token: refresh-visible '
+          'Authorization: Bearer bearer-visible',
+        ),
+        StackTrace.fromString('id_token="identity-visible"'),
+        context: 'auth_callback',
+      );
+
+      final serialized = sink.records.single.toString();
+      expect(serialized, isNot(contains('token-visible')));
+      expect(serialized, isNot(contains('refresh-visible')));
+      expect(serialized, isNot(contains('bearer-visible')));
+      expect(serialized, isNot(contains('identity-visible')));
+      expect(serialized, contains('[REDACTED]'));
+    });
   });
 }
 
