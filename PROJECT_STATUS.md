@@ -2,10 +2,10 @@
 
 ## Fase actual
 
-Production Mobile End-to-End Certification. El ciclo customer/professional,
-RLS, Realtime y Storage está certificado contra el proyecto Supabase enlazado
-con actores aislados y cleanup. Los proveedores Auth y la conducta propia del
-SO continúan separados como validación externa/física.
+External Beta Launch Preparation. La certificación técnica customer/
+professional, RLS, Realtime y Storage está completa contra el proyecto Supabase
+enlazado. El estado actual es **NO-GO** hasta completar distribución, proveedores
+Auth reales, matriz física y requisitos legales/soporte externos.
 
 ## Módulos completados
 
@@ -163,6 +163,23 @@ SO continúan separados como validación externa/física.
   - Google/Apple/Magic Link reales, instalación en dispositivos, interrupción
     de red del SO, background/resume real y selectores nativos: **NO
     EJECUTADOS; requieren certificación externa/física**.
+- External Beta Launch Preparation, 11 de agosto de 2026:
+  - Checklist operativo, guía de testers, plantilla S0–S3 y criterios GO/NO-GO:
+    **DOCUMENTADOS** en `docs/BETA_LAUNCH_CHECKLIST.md`,
+    `docs/BETA_TESTER_GUIDE.md`, `docs/BETA_BUG_REPORT_TEMPLATE.md` y
+    `docs/BETA_GO_NO_GO.md`.
+  - Técnicamente certificado: QA completa, E2E Supabase real, RLS, Realtime,
+    Storage, cleanup aislado y AAB Android firmado.
+  - Bloqueos externos: Play Internal/Closed Testing, TestFlight/iOS firmado,
+    Google/Apple/Magic Link reales, información legal/privacidad/soporte y
+    enrollment/verificación de cuentas developer.
+  - Pruebas manuales: rutas customer/professional, cold start/callback,
+    background/resume, red, picker, teclado/safe areas y accesibilidad en
+    Android/iPhone físicos.
+  - Versionado auditado: Main y Admin `1.0.0+1`; Android e iOS Main consumen
+    correctamente nombre/build. Antes del primer upload se debe aprobar la
+    versión de beta y reservar un build único creciente; no se incrementó sin
+    una decisión de release.
 
 ## Trabajo restante
 
