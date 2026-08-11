@@ -16,3 +16,6 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - run: ./scripts/audit_repository.sh
+      - name: Compile web without production credentials
+        run: flutter build web --release --dart-define=BACKEND_MODE=mock

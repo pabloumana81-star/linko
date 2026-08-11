@@ -125,6 +125,16 @@ datos viejos ni en un spinner infinito; ofrecen mensaje español y reintento.
 El estado de navegación puede optimizar una pantalla, pero no reemplaza al
 repositorio Supabase como fuente de verdad.
 
+## Despliegue web
+
+Main y Admin producen bundles independientes y no comparten router ni
+`index.html`. La configuración Supabase es compile-time y nunca se sirve como
+asset `.env`. El hosting aplica HTTPS, el contrato de headers de
+`deployment/security_headers.example` y fallback SPA al `index.html` del bundle
+correcto. Scripts de release/health check viven fuera de presentación y no
+alteran repositorios ni lógica de dominio. Los detalles operativos están en
+`docs/DEPLOYMENT.md`.
+
 ## Operaciones administrativas
 
 Reports y Requests mantienen contratos de repositorio compartidos, con

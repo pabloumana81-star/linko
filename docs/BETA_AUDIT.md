@@ -53,6 +53,25 @@ pudo foreground la app; debe repetirse en una sesión GUI antes del candidato.
 El APK usa temporalmente `file_picker 10.3.10`; migrar a Built-in Kotlin queda
 como deuda de compatibilidad del toolchain, no como bloqueo funcional actual.
 
+## Actualización: Production Deployment Foundation — 11 de agosto de 2026
+
+El repositorio no contenía un proveedor de hosting, fallback SPA versionado,
+wrapper de producción ni health check post-deploy. Se añadió un contrato
+agnóstico que exige Supabase sin fallback, build reproducible, HTTPS, headers
+compatibles con Flutter/CanvasKit, rutas directas, auditoría de secretos y
+rollback de aplicación separado del esquema.
+
+Esto prepara el artefacto pero no selecciona dominio/proveedor. Antes de beta
+externa siguen siendo obligatorios: aplicar y verificar el contrato en hosting,
+registrar orígenes Auth reales, certificar proveedores passwordless y completar
+el checklist autenticado/browser/dispositivo. CI secret-free prueba compilación
+en mock; no se etiqueta falsamente como certificación productiva.
+
+Validación del hito: contratos focalizados, 162 pruebas Main, 67 Admin, Chrome,
+builds release Main/Admin, APK, lint y E2E Supabase real PASS. La ejecución
+contra un URL publicado permanece pendiente por ausencia deliberada de hosting;
+macOS GUI tampoco completó por fallo de foreground del entorno.
+
 ## Crítico
 
 ### ✅ C-01 — La creación Supabase envía identificadores que no son UUID — Completado

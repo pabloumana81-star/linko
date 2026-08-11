@@ -19,3 +19,5 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - name: Compile Admin web without production credentials
+        run: flutter build web --release --dart-define=BACKEND_MODE=mock

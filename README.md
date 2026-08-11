@@ -52,6 +52,12 @@ cd ..
 ./scripts/qa_supabase.sh # opt-in; requiere proyecto Supabase enlazado
 ```
 
+El build web de producción se crea desde la raíz con
+`./scripts/build_web_release.sh`. Valida la configuración pública, ejecuta
+análisis/tests y nunca imprime sus valores. Consulta
+[Despliegue web](docs/DEPLOYMENT.md) para fallback SPA, headers, health check y
+rollback.
+
 Antes de desplegar web, construye ambas aplicaciones con el archivo de entorno
 de release y configura el hosting definitivo con HTTPS y headers de seguridad.
 El repositorio no inventa dominio, credenciales OAuth ni configuración de
@@ -65,4 +71,5 @@ firma; esos valores se certifican en el entorno externo elegido.
 - [Autenticación passwordless](docs/AUTHENTICATION.md)
 - [Bootstrap](docs/BOOTSTRAP.md)
 - [Recuperación](docs/RECOVERY.md)
+- [Despliegue web](docs/DEPLOYMENT.md)
 - [Backoffice](admin/README.md)

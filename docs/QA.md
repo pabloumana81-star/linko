@@ -237,3 +237,30 @@ clase Kotlin con el template AGP 9 en modo KGP, mientras activar Built-in Kotlin
 rompía `app_links`/tooling. La versión fijada compila y conserva el selector de
 archivos, aunque Gradle advierte que KGP será incompatible en una versión futura
 de Flutter. Debe revisarse cuando ambos plugins soporten Built-in Kotlin estable.
+
+## Production Deployment Foundation
+
+`test/deployment_contract_test.dart` valida el wrapper de producción, los
+headers obligatorios, el fallback SPA, rutas reconstruibles, `.env.example`,
+ignores y auditoría de artefactos. No duplica la validación funcional de
+`BackendConfig`; esa permanece en `test/backend_foundation_test.dart`.
+
+Comandos adicionales:
+
+```sh
+./scripts/audit_repository.sh
+./scripts/build_web_release.sh          # requiere .env Supabase válido
+./scripts/post_deploy_check.sh https://origen-real-de-beta
+```
+
+CI construye Main/Admin en mock explícito para certificar compilación sin
+secrets. Un build de producción solo queda certificado al ejecutar el wrapper
+con configuración pública válida. El health check HTTP no reemplaza el checklist
+autenticado ni `./scripts/qa_supabase.sh`; consulta `docs/DEPLOYMENT.md`.
+
+Certificación del 11 de agosto de 2026: `git diff --check`, auditoría, analyze,
+162 pruebas raíz, 67 Admin (+1 opt-in omitida), 6 smoke Chrome, build web crudo,
+wrapper Supabase, builds release Main/Admin, APK debug, E2E real (41 s) y lint
+enlazado aprobaron. La integración macOS compiló pero no pudo foreground la app
+en el host (`open returned 1`) y no se cuenta PASS. `post_deploy_check.sh` no se
+ejecutó porque todavía no existe un origen real de deployment.

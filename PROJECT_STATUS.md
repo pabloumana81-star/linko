@@ -2,11 +2,10 @@
 
 ## Fase actual
 
-Beta Release Readiness. Los flujos principales y Admin tienen cobertura
-responsiva automatizada en navegador, los fallos asíncronos críticos muestran
-estados controlados y los diagnósticos redactan credenciales, enlaces de acceso
-y URLs firmadas. La certificación real Supabase continúa separada del smoke web
-mock y conserva Realtime, RLS y cleanup aislado.
+Production Deployment Foundation. El despliegue web mantiene un contrato
+agnóstico de configuración, build reproducible, headers, fallback SPA, health
+check y rollback. CI valida compilación sin secretos; la certificación real
+Supabase permanece protegida y separada del smoke web mock.
 
 ## Módulos completados
 
@@ -57,6 +56,10 @@ mock y conserva Realtime, RLS y cleanup aislado.
   adaptan a 320/390/768/1440 px y texto ampliado sin desbordamientos conocidos.
 - El callback web exige HTTPS salvo localhost de desarrollo; el callback nativo
   permanece `io.supabase.linko://login-callback/`.
+- El wrapper de release exige `BACKEND_MODE=supabase`, configuración pública
+  completa y callback exacto; no imprime valores ni rastrea el artefacto.
+- Hosting debe implementar HTTPS, headers versionados y fallback de todas las
+  rutas GoRouter hacia el `index.html` de la aplicación correspondiente.
 
 ## Estado de QA
 
@@ -129,6 +132,16 @@ mock y conserva Realtime, RLS y cleanup aislado.
   - Integración GUI macOS: **NO COMPLETÓ EN ESTE ENTORNO**; compiló la app pero
     el launcher devolvió `open returned 1` dos veces. No se contabiliza PASS.
   - La certificación de proveedores, dispositivos y hosting sigue siendo manual.
+- Production Deployment Foundation, 11 de agosto de 2026:
+  - Contrato de configuración, headers, SPA, health check y rollback:
+    **CODE COMPLETE / AUTOMATED TESTED**.
+  - Analyze y 162 pruebas raíz: **PASS**.
+  - QA Admin (67 + 1 opt-in omitida), Chrome Main/Admin y builds web release
+    Main/Admin con configuración compartida: **PASS**.
+  - APK debug, lint Supabase y E2E real Main/Admin/Realtime/Storage/cleanup:
+    **PASS**.
+  - Integración GUI macOS: **NO COMPLETÓ EN ESTE ENTORNO** (`open returned 1`).
+  - Health check contra URL publicado: **PENDIENTE DE HOSTING/DOMINIO REAL**.
 
 ## Trabajo restante
 

@@ -1,0 +1,4 @@
+# Regla conceptual; tradúcela a la sintaxis del hosting elegido.
+# Los archivos existentes se sirven normalmente. Cualquier otra ruta de la app
+# devuelve /index.html con HTTP 200 para que GoRouter reconstruya la pantalla.
+/*  /index.html  200

@@ -110,3 +110,8 @@ La arquitectura, recuperación, rutas, deep links y pruebas deterministas están
 **CODE COMPLETE / AUTOMATED TESTED**. Ningún proveedor está marcado como PASS:
 Google, Apple y la entrega real de Magic Link requieren certificación manual en
 el dominio y dispositivos de beta.
+
+Para web, cada origen real de Main/Admin debe registrarse explícitamente en
+Supabase Auth y los proveedores antes de desplegar. El fallback SPA debe devolver
+su propio `index.html` para callbacks/rutas y producción debe usar HTTPS. El
+repositorio no define un dominio provisional; consulta `docs/DEPLOYMENT.md`.

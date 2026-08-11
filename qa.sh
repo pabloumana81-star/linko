@@ -5,6 +5,7 @@ set -eu
 cd "$(dirname "$0")"
 
 flutter analyze
+./scripts/audit_repository.sh
 flutter test --dart-define=BACKEND_MODE=mock test/diagnostics_test.dart
 flutter test --dart-define=BACKEND_MODE=mock
 flutter test --dart-define=BACKEND_MODE=mock integration_test/full_mvp_flow_test.dart -d macos
