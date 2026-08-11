@@ -1,0 +1,6 @@
+# Copia este archivo como android/key.properties y completa los valores solo
+# en tu entorno seguro. Ambos archivos de firma están ignorados por Git.
+storeFile=/ruta/segura/linko-upload-key.jks
+storePassword=REEMPLAZAR_LOCALMENTE
+keyAlias=linko
+keyPassword=REEMPLAZAR_LOCALMENTE

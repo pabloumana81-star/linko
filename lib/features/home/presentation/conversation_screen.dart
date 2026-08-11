@@ -65,7 +65,8 @@ class ConversationScreen extends StatefulWidget {
   State<ConversationScreen> createState() => _ConversationScreenState();
 }
 
-class _ConversationScreenState extends State<ConversationScreen> {
+class _ConversationScreenState extends State<ConversationScreen>
+    with WidgetsBindingObserver {
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   late final List<ConversationMessage> _messages;
@@ -74,6 +75,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   StreamSubscription<ConversationConnectionStatus>? _connectionSubscription;
   String? _conversationId;
   bool _loading = false;
+  Future<void>? _realtimeInitialization;
   bool _sending = false;
   Object? _loadError;
   ConversationConnectionStatus _connectionStatus =
@@ -82,6 +84,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _messages = List.of(
       widget.initialMessages.where(
         (message) => message.requestId == widget.requestId,
@@ -105,6 +108,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     final conversationId = _conversationId;
     unawaited(_messageSubscription?.cancel());
     unawaited(_connectionSubscription?.cancel());
@@ -116,6 +120,17 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _inputController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.realtime != null) {
+      unawaited(_restartRealtimeAfterInitialization());
+    }
+  }
+
+  Future<void> _restartRealtimeAfterInitialization() async {
+    if (mounted) await _initializeRealtime();
   }
 
   void _scrollToBottom({bool animated = false}) {
@@ -134,7 +149,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  Future<void> _initializeRealtime() async {
+  Future<void> _initializeRealtime() {
+    final initialization = (_realtimeInitialization ?? Future<void>.value())
+        .then((_) => _performRealtimeInitialization());
+    _realtimeInitialization = initialization;
+    return initialization;
+  }
+
+  Future<void> _performRealtimeInitialization() async {
     final config = widget.realtime!;
     try {
       final previousConversationId = _conversationId;

@@ -220,6 +220,9 @@ cd ..
 flutter build web --release --dart-define-from-file=.env
 (cd admin && flutter build web --release --dart-define-from-file=../.env)
 flutter build apk --debug --dart-define=BACKEND_MODE=mock
+flutter build apk --release --dart-define-from-file=.env
+flutter build appbundle --release --dart-define-from-file=.env
+flutter build ios --release --no-codesign --dart-define-from-file=.env
 supabase db lint --linked
 ./scripts/qa_supabase.sh
 git diff --check
@@ -244,6 +247,24 @@ de Flutter. Debe revisarse cuando ambos plugins soporten Built-in Kotlin estable
 headers obligatorios, el fallback SPA, rutas reconstruibles, `.env.example`,
 ignores y auditoría de artefactos. No duplica la validación funcional de
 `BackendConfig`; esa permanece en `test/backend_foundation_test.dart`.
+
+## Mobile Beta Readiness
+
+`test/auth_platform_configuration_test.dart` verifica identidad, callback,
+ausencia de permisos amplios y que release Android no use la firma debug.
+`test/mobile_file_selection_test.dart` cubre cancelación, selector no disponible
+y archivos ilegibles a 320×568. `test/realtime_chat_test.dart` prueba que resume
+reemplaza la suscripción sin duplicarla; `test/web_beta_smoke_test.dart` mantiene
+la matriz compacta y texto ampliado. Los builds release validan compilación,
+pero firma, instalación, providers y lifecycle del SO se certifican manualmente
+según `docs/MOBILE_BETA.md`.
+
+Ejecución móvil del 11 de agosto de 2026: 168 pruebas raíz, 67 Admin (+1
+opt-in), integración MVP macOS y E2E Supabase real PASS; schema lint sin
+errores. APK release 60.7 MB y AAB release 59.0 MB compilaron sin firma y se
+verificaron como unsigned. iOS release sin codesign no compiló porque el host
+carece del platform SDK iOS 26.5; se debe instalar ese componente de Xcode antes
+de repetirlo.
 
 Comandos adicionales:
 

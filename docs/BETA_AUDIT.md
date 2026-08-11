@@ -40,6 +40,11 @@ Matriz de salida:
 | B — recomendado durante beta | Parcial | Monitoreo/alertas de producción, prueba UI E2E contra un deployment Supabase controlado y validación de recuperación ante fallos de red reales. |
 | C — posterior a beta | Puede esperar | Configuración Admin funcional, reapertura de reportes si producto la requiere, transformación/cuotas avanzadas de imágenes y optimizaciones de Realtime para alto volumen. |
 
+La preparación móvil elimina la firma debug de release Android, mantiene
+selección de archivos sin permisos amplios y reconecta chat Realtime al volver
+del background. Firma de distribución, pruebas físicas y proveedores continúan
+en nivel A externo; consulta `MOBILE_BETA.md`.
+
 Baseline recomendado de hosting (configuración externa, no inventada aquí):
 redirección HTTP→HTTPS, HSTS una vez validado el dominio, CSP compatible con
 Flutter/Supabase/proveedores habilitados, `frame-ancestors`,

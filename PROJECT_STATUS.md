@@ -50,6 +50,11 @@ Supabase permanece protegida y separada del smoke web mock.
   rutas por propietario y compatibilidad con URLs HTTPS anteriores.
 - Carga privada de documentos de verificación; solo owner y Admin autorizado
   pueden leerlos, y Admin usa enlaces firmados temporales no persistidos.
+- Preparación móvil de código: release Android ya no usa firma debug y admite
+  configuración local ignorada para la firma de distribución; Android/iOS
+  conservan el callback nativo sin permisos amplios. Chat Realtime recrea una
+  única suscripción al reanudar y el selector de archivos controla cancelación,
+  indisponibilidad y resultados ilegibles. Véase `docs/MOBILE_BETA.md`.
 - Triggers de integridad bloquean metadata Storage fabricada y cambios de
   documentos después de una aprobación sin reescribir filas existentes.
 - Arranque, selección de rol, Home, discovery, perfil y navegación Admin se
@@ -156,6 +161,13 @@ Supabase permanece protegida y separada del smoke web mock.
   proveedores aún no están certificados.
 - Registrar `com.linko.app` y configurar firma/capacidades antes de certificar
   dispositivos Apple/Android; el repositorio no contiene credenciales de firma.
+- Ejecutar la matriz física Android/iOS de `docs/MOBILE_BETA.md`; los tests de
+  widgets y builds no certifican proveedores, interrupciones del sistema ni
+  distribución desde las tiendas.
+- Mobile Beta Readiness automatizado: analyze, Main/Admin, lint y E2E Supabase,
+  APK/AAB release sin firma PASS. iOS unsigned está bloqueado exclusivamente
+  porque Xcode no tiene instalado el platform SDK iOS 26.5; firma y dispositivos
+  continúan pendientes externos.
 - Revalidar RLS y Realtime después de cada migración futura.
 - Completar pruebas manuales de accesibilidad con lector de pantalla, contraste
   y compatibilidad en la matriz real de navegadores/dispositivos soportados.

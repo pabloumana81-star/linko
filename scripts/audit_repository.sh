@@ -18,7 +18,8 @@ if [ -n "$tracked_forbidden" ]; then
 fi
 
 if git grep -Il -E 'sb_secret_|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' -- \
-  ':!.env.example' ':!docs/**' ':!test/**' ':!integration_test/**' >/dev/null; then
+  ':!.env.example' ':!docs/**' ':!test/**' ':!integration_test/**' \
+  ':!scripts/audit_repository.sh' >/dev/null; then
   printf '%s\n' 'Se detectó un patrón de credencial privada en archivos rastreados.' >&2
   exit 1
 fi

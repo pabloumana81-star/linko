@@ -84,6 +84,12 @@ el callback OAuth, que permanece deliberadamente separado como
 `io.supabase.linko://login-callback/`. Equipo, certificados y provisioning
 profiles continúan siendo configuración externa.
 
+Android recibe el callback en una actividad `singleTop`; iOS lo recibe mediante
+el esquema declarado en `CFBundleURLTypes`. El SDK de Supabase conserva y
+restaura la sesión tanto en cold start como al volver del proveedor. Estas
+declaraciones prueban la mecánica, no sustituyen la certificación con cuentas y
+dispositivos reales descrita en `MOBILE_BETA.md`.
+
 ## Matriz de certificación
 
 - Google: **CODE COMPLETE / AUTOMATED TESTED**. Configuración y autenticación

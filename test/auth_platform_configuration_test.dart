@@ -68,6 +68,38 @@ void main() {
     );
   });
 
+  test('Android release never uses a debug signing identity', () {
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+    final ignored = File('android/.gitignore').readAsStringSync();
+    final example = File('android/key.properties.example').readAsStringSync();
+
+    expect(gradle, isNot(contains('getByName("debug")')));
+    expect(gradle, contains('rootProject.file("key.properties")'));
+    expect(gradle, contains('signingConfigs.getByName("release")'));
+    expect(ignored, contains('key.properties'));
+    expect(ignored, contains('**/*.jks'));
+    expect(example, isNot(contains('storePassword=android')));
+  });
+
+  test('mobile manifests request no broad media or storage permissions', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+    final ios = File('ios/Runner/Info.plist').readAsStringSync();
+
+    expect(manifest, contains('android.permission.INTERNET'));
+    for (final permission in [
+      'READ_EXTERNAL_STORAGE',
+      'WRITE_EXTERNAL_STORAGE',
+      'READ_MEDIA_IMAGES',
+      'CAMERA',
+    ]) {
+      expect(manifest, isNot(contains(permission)));
+    }
+    expect(ios, isNot(contains('NSPhotoLibraryUsageDescription')));
+    expect(ios, isNot(contains('NSCameraUsageDescription')));
+  });
+
   test('native callback only accepts the exact LinkO scheme and host', () {
     expect(
       () => AuthRedirectPolicy.validate(

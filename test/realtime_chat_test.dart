@@ -250,6 +250,66 @@ void main() {
     expect(find.text('No pudimos cargar la conversación.'), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
   });
+
+  testWidgets('resuming the app safely recreates the realtime subscription', (
+    tester,
+  ) async {
+    final store = MockRequestRepository();
+    final request = store.getProfessionalRequests('professional-carlos').first;
+    final repository = _CountingConversationRepository(store);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ConversationScreen(
+          requestId: request.id,
+          counterpartName: request.professional.user.name,
+          serviceName: request.serviceName,
+          requestStatus: RequestState.pending,
+          perspective: ConversationPerspective.customer,
+          initialMessages: const [],
+          realtime: ConversationRealtimeConfig(
+            repository: repository,
+            customerId: request.customer.id,
+            professionalId: request.professional.user.id,
+            senderId: request.customer.id,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    expect(repository.openCount, 1);
+
+    final dynamic screenState = tester.state(find.byType(ConversationScreen));
+    screenState.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.openCount, 2);
+    expect(find.text('En línea'), findsOneWidget);
+  });
+}
+
+class _CountingConversationRepository extends MockConversationsRepository {
+  _CountingConversationRepository(super.requests);
+
+  int openCount = 0;
+
+  @override
+  Future<Conversation> getOrCreateConversation({
+    required String serviceRequestId,
+    required String customerId,
+    required String professionalId,
+  }) {
+    openCount += 1;
+    return super.getOrCreateConversation(
+      serviceRequestId: serviceRequestId,
+      customerId: customerId,
+      professionalId: professionalId,
+    );
+  }
 }
 
 class _FailingSendRepository extends MockConversationsRepository {

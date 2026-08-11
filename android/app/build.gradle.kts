@@ -1,8 +1,21 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+val releaseSigningFile = rootProject.file("key.properties")
+val releaseSigning = Properties()
+if (releaseSigningFile.exists()) {
+    FileInputStream(releaseSigningFile).use(releaseSigning::load)
+}
+
+fun requiredSigningValue(name: String): String =
+    releaseSigning.getProperty(name)?.takeIf { it.isNotBlank() }
+        ?: throw GradleException("La configuración local de firma Android está incompleta.")
 
 android {
     namespace = "com.linko.app"
@@ -25,11 +38,24 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (releaseSigningFile.exists()) {
+            create("release") {
+                keyAlias = requiredSigningValue("keyAlias")
+                keyPassword = requiredSigningValue("keyPassword")
+                storeFile = file(requiredSigningValue("storeFile"))
+                storePassword = requiredSigningValue("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // CI may validate an unsigned artifact. Distribution builds are signed
+            // only when the untracked android/key.properties is present.
+            if (releaseSigningFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }

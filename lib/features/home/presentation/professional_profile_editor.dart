@@ -7,8 +7,17 @@ import 'package:linko/core/backend/repositories/professionals_repository.dart';
 import 'package:linko/features/home/presentation/providers/professional_profile_management_provider.dart';
 import 'package:linko/features/requests/domain/models/professional_profile.dart';
 
+typedef ProfessionalFilePicker =
+    Future<FilePickerResult?> Function({
+      required FileType type,
+      required List<String> allowedExtensions,
+      required bool withData,
+    });
+
 class ProfessionalProfileEditor extends ConsumerStatefulWidget {
-  const ProfessionalProfileEditor({super.key});
+  const ProfessionalProfileEditor({this.pickFiles, super.key});
+
+  final ProfessionalFilePicker? pickFiles;
 
   @override
   ConsumerState<ProfessionalProfileEditor> createState() =>
@@ -95,9 +104,7 @@ class _ProfessionalProfileEditorState
   }
 
   Future<void> _pickPortfolioImage() async {
-    final file = await _pickFile(
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
-    );
+    final file = await _pickFileSafely(const ['jpg', 'jpeg', 'png', 'webp']);
     if (file == null) return;
     await _runStorageAction(
       () =>
@@ -107,9 +114,13 @@ class _ProfessionalProfileEditorState
   }
 
   Future<void> _pickVerificationDocument() async {
-    final file = await _pickFile(
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
-    );
+    final file = await _pickFileSafely(const [
+      'jpg',
+      'jpeg',
+      'png',
+      'webp',
+      'pdf',
+    ]);
     if (file == null) return;
     await _runStorageAction(
       () => ref
@@ -119,22 +130,37 @@ class _ProfessionalProfileEditorState
     );
   }
 
-  Future<ProfessionalUploadFile?> _pickFile({
-    required List<String> allowedExtensions,
-  }) async {
-    final selection = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: allowedExtensions,
-      withData: true,
-    );
-    final selected = selection?.files.single;
-    final bytes = selected?.bytes;
-    if (selected == null || bytes == null) return null;
-    return ProfessionalUploadFile(
-      name: selected.name,
-      mimeType: _mimeType(selected.extension),
-      bytes: Uint8List.fromList(bytes),
-    );
+  Future<ProfessionalUploadFile?> _pickFileSafely(
+    List<String> allowedExtensions,
+  ) async {
+    try {
+      final selection =
+          await (widget.pickFiles ?? FilePicker.platform.pickFiles)(
+            type: FileType.custom,
+            allowedExtensions: allowedExtensions,
+            withData: true,
+          );
+      final selected = selection?.files.single;
+      final bytes = selected?.bytes;
+      if (selected == null) return null;
+      if (bytes == null) {
+        throw StateError('Archivo sin contenido disponible.');
+      }
+      return ProfessionalUploadFile(
+        name: selected.name,
+        mimeType: _mimeType(selected.extension),
+        bytes: Uint8List.fromList(bytes),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No pudimos abrir el archivo seleccionado.'),
+          ),
+        );
+      }
+      return null;
+    }
   }
 
   Future<void> _runStorageAction(

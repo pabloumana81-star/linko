@@ -72,4 +72,5 @@ firma; esos valores se certifican en el entorno externo elegido.
 - [Bootstrap](docs/BOOTSTRAP.md)
 - [Recuperación](docs/RECOVERY.md)
 - [Despliegue web](docs/DEPLOYMENT.md)
+- [Preparación móvil para beta](docs/MOBILE_BETA.md)
 - [Backoffice](admin/README.md)

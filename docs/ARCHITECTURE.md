@@ -32,6 +32,13 @@ Android alinea `applicationId`, namespace y paquete Kotlin; Apple alinea Runner
 y RunnerTests. El esquema OAuth `io.supabase.linko` es independiente del bundle
 ID para permitir el callback estable entre plataformas.
 
+En Android, release nunca reutiliza el certificado debug: Gradle carga la firma
+solo desde `android/key.properties`, que no se versiona, y permite validar un
+artefacto sin firma cuando esa configuración externa aún no existe. En móvil se
+usa el selector documental del sistema sin permisos amplios. El chat observa el
+ciclo de vida y reemplaza su canal Realtime al reanudar, conservando una sola
+suscripción y sin polling. La matriz operativa está en `docs/MOBILE_BETA.md`.
+
 ## Sincronización profesional
 
 Las acciones admin modifican `profiles.account_status` y
