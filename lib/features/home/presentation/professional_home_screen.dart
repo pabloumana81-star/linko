@@ -79,6 +79,7 @@ class ProfessionalHomeScreen extends ConsumerWidget {
         builder: (context, constraints) {
           final horizontalPadding = constraints.maxWidth >= 720 ? 40.0 : 20.0;
           final requestColumns = constraints.maxWidth >= 1000 ? 3 : 1;
+          final textScaler = MediaQuery.textScalerOf(context);
 
           return SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
@@ -106,35 +107,30 @@ class ProfessionalHomeScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    SizedBox(
-                      height: 136,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: ProfessionalDashboardMetricCard(
-                              label: 'Solicitudes nuevas',
-                              value: newCount,
-                              icon: Icons.inbox_outlined,
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: ProfessionalDashboardMetricCard(
-                              label: 'Cotizaciones enviadas',
-                              value: quotedCount,
-                              icon: Icons.send_outlined,
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: ProfessionalDashboardMetricCard(
-                              label: 'Servicios activos',
-                              value: 1,
-                              icon: Icons.home_repair_service_outlined,
-                            ),
-                          ),
-                        ],
-                      ),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: constraints.maxWidth >= 900 ? 3 : 1,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      mainAxisExtent: textScaler.scale(136),
+                      children: [
+                        ProfessionalDashboardMetricCard(
+                          label: 'Solicitudes nuevas',
+                          value: newCount,
+                          icon: Icons.inbox_outlined,
+                        ),
+                        ProfessionalDashboardMetricCard(
+                          label: 'Cotizaciones enviadas',
+                          value: quotedCount,
+                          icon: Icons.send_outlined,
+                        ),
+                        const ProfessionalDashboardMetricCard(
+                          label: 'Servicios activos',
+                          value: 1,
+                          icon: Icons.home_repair_service_outlined,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 32),
                     Text(
@@ -152,7 +148,7 @@ class ProfessionalHomeScreen extends ConsumerWidget {
                         crossAxisCount: requestColumns,
                         crossAxisSpacing: 14,
                         mainAxisSpacing: 14,
-                        mainAxisExtent: 252,
+                        mainAxisExtent: textScaler.scale(400),
                       ),
                       itemBuilder: (context, index) {
                         final request = requests[index];

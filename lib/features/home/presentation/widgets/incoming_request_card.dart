@@ -110,9 +110,13 @@ class _RequestMetadata extends StatelessWidget {
       children: [
         Icon(icon, size: 17, color: color),
         const SizedBox(width: 5),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
+        Flexible(
+          child: Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: color),
+          ),
         ),
       ],
     );

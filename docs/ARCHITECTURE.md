@@ -106,6 +106,25 @@ RPC administrativos validan `profiles.role = 'admin'`. Las service-role keys no
 forman parte de ninguna aplicación; la certificación real puede usar una clave
 de test exclusivamente para crear y limpiar fixtures aislados.
 
+La inicialización de Flutter, Supabase y `runApp` ocurre dentro de una misma
+zona protegida. Los errores inesperados conservan stack trace en diagnóstico,
+pero antes de reportarse se redactan tokens OAuth/JWT, claves API, códigos de
+callback, firmas y parámetros de URLs firmadas. En modo Supabase, una sesión o
+configuración ausente nunca sustituye IDs ni repositorios mock.
+
+## Presentación para beta
+
+Las pantallas principales usan scroll, `LayoutBuilder`, grids adaptativos y
+alturas que respetan `TextScaler`. La navegación Admin cambia de rail de
+escritorio a drawer compacto. Los componentes interactivos de autenticación
+publican etiquetas semánticas y mantienen recorrido de foco por teclado.
+
+Los estados persistidos distinguen carga, ausencia y fallo. En particular,
+detalle, cotización y timeline de solicitudes no convierten un error de red en
+datos viejos ni en un spinner infinito; ofrecen mensaje español y reintento.
+El estado de navegación puede optimizar una pantalla, pero no reemplaza al
+repositorio Supabase como fuente de verdad.
+
 ## Operaciones administrativas
 
 Reports y Requests mantienen contratos de repositorio compartidos, con

@@ -122,7 +122,7 @@ class _ProfessionalProfileEditorState
   Future<ProfessionalUploadFile?> _pickFile({
     required List<String> allowedExtensions,
   }) async {
-    final selection = await FilePicker.pickFiles(
+    final selection = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: allowedExtensions,
       withData: true,

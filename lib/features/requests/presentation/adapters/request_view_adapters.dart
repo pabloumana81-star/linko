@@ -52,7 +52,7 @@ extension ServiceRequestViewAdapter on ServiceRequest {
   };
 
   String get _updatedLabel {
-    final difference = DateTime(2026, 7, 27).difference(updatedAt);
+    final difference = DateTime.now().difference(updatedAt);
     if (difference.inDays > 0) {
       return 'Actualizada hace ${difference.inDays} días';
     }

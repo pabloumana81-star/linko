@@ -61,7 +61,11 @@ final realtimeQuotationProvider = StreamProvider.family<Quotation?, String>(
 String _requestActorId(Ref ref, String mockId) {
   final backendMode = ref.watch(backendRepositoriesProvider).mode;
   if (backendMode == BackendMode.mock) return mockId;
-  return ref.watch(authControllerProvider).user?.id ?? mockId;
+  final userId = ref.watch(authControllerProvider).user?.id;
+  if (userId == null) {
+    throw StateError('Debes iniciar sesión para consultar solicitudes.');
+  }
+  return userId;
 }
 
 final persistedCustomerRequestsProvider = StreamProvider<List<ServiceRequest>>((

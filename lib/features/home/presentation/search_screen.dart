@@ -75,6 +75,7 @@ class SearchScreen extends ConsumerWidget {
             >= 720 => 2,
             _ => 1,
           };
+          final textScaler = MediaQuery.textScalerOf(context);
 
           return SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
@@ -113,11 +114,7 @@ class SearchScreen extends ConsumerWidget {
                         crossAxisCount: categoryColumns,
                         crossAxisSpacing: 14,
                         mainAxisSpacing: 14,
-                        childAspectRatio: switch (categoryColumns) {
-                          2 => 1.45,
-                          4 => 1.3,
-                          _ => 1.2,
-                        },
+                        mainAxisExtent: textScaler.scale(112),
                       ),
                       itemBuilder: (context, index) {
                         final category = _categories[index];
@@ -144,7 +141,7 @@ class SearchScreen extends ConsumerWidget {
                           crossAxisCount: resultColumns,
                           crossAxisSpacing: 18,
                           mainAxisSpacing: 18,
-                          mainAxisExtent: 252,
+                          mainAxisExtent: textScaler.scale(300),
                         ),
                         itemBuilder: (context, index) {
                           final professional = items[index];

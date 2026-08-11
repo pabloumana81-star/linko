@@ -102,4 +102,56 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Acceso restringido'), findsOneWidget);
   });
+
+  testWidgets('admin compact navigation supports enlarged text', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 700));
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    addTearDown(() async {
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+      await tester.binding.setSurfaceSize(null);
+    });
+    final router = createAdminRouter();
+    addTearDown(router.dispose);
+    final admin = AppUserProfile(
+      id: 'admin-compact',
+      displayName: 'Admin Compacto',
+      email: 'admin-compact@linko.test',
+      avatarUrl: null,
+      activeMode: AppMode.customer,
+      role: UserRole.admin,
+      createdAt: DateTime.utc(2026),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authenticationRepositoryProvider.overrideWithValue(
+            MockAuthenticationRepository(initialUser: admin),
+          ),
+        ],
+        child: LinkoAdminApp(router: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('admin-section-dashboard')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('admin-navigation-rail')), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byIcon(Icons.menu));
+    await tester.pumpAndSettle();
+    final drawer = find.byKey(const ValueKey('admin-navigation-drawer'));
+    expect(drawer, findsOneWidget);
+    await tester.tap(
+      find.descendant(of: drawer, matching: find.text('Usuarios')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('admin-section-users')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

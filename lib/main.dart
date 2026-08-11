@@ -12,11 +12,11 @@ import 'package:linko/core/diagnostics/global_error_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
   final diagnostics = DiagnosticsService();
-  GlobalErrorHandler(diagnostics).install();
   await runZonedGuarded(
     () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      GlobalErrorHandler(diagnostics).install();
       late final BackendConfig config;
       try {
         config = BackendConfig.fromEnvironment();

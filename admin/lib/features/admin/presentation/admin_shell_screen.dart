@@ -92,11 +92,6 @@ class _AdminDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     return NavigationDrawer(
       key: const ValueKey('admin-navigation-drawer'),
-      selectedIndex: AdminSection.values.indexOf(section),
-      onDestinationSelected: (index) {
-        Navigator.of(context).pop();
-        context.go(AdminSection.values[index].path);
-      },
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(28, 24, 16, 12),
@@ -106,10 +101,14 @@ class _AdminDrawer extends StatelessWidget {
           ),
         ),
         for (final item in AdminSection.values)
-          NavigationDrawerDestination(
-            icon: Icon(item.icon),
-            selectedIcon: Icon(item.selectedIcon),
-            label: Text(item.label),
+          ListTile(
+            selected: item == section,
+            leading: Icon(item == section ? item.selectedIcon : item.icon),
+            title: Text(item.label),
+            onTap: () {
+              Navigator.of(context).pop();
+              context.go(item.path);
+            },
           ),
       ],
     );

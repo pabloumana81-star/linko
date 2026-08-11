@@ -3,10 +3,9 @@
     "short_name": "LinkO",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#F8FAFC",
+    "theme_color": "#173F5F",
+    "description": "LinkO conecta clientes con profesionales de confianza.",
     "prefer_related_applications": false,
     "icons": [
         {

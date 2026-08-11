@@ -40,8 +40,8 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
         return AlertDialog(
           title: const Text('Rechazar solicitud'),
           content: const Text(
-            '¿Seguro que deseas rechazar esta solicitud? Esta acción solo '
-            'actualizará el estado local.',
+            '¿Seguro que deseas rechazar esta solicitud? La solicitud quedará '
+            'cancelada para ambas partes.',
           ),
           actions: [
             TextButton(
@@ -86,24 +86,39 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    var currentRequest =
-        ref.watch(backendRepositoriesProvider).mode == BackendMode.mock
-        ? ref
-              .watch(professionalRequestFlowProvider)
-              .requests
-              .firstWhere(
-                (item) => item.id == request.id,
-                orElse: () => request,
-              )
-        : ref
-                  .watch(persistedRequestDetailProvider(request.id))
-                  .value
-                  ?.toIncomingRequest() ??
-              request;
-    if (ref.watch(backendRepositoriesProvider).mode == BackendMode.supabase) {
-      final realtimeStatus = ref
-          .watch(realtimeRequestStatusProvider(request.id))
-          .value;
+    final mode = ref.watch(backendRepositoriesProvider).mode;
+    late IncomingServiceRequest currentRequest;
+    if (mode == BackendMode.mock) {
+      currentRequest = ref
+          .watch(professionalRequestFlowProvider)
+          .requests
+          .firstWhere((item) => item.id == request.id, orElse: () => request);
+    } else {
+      final persisted = ref.watch(persistedRequestDetailProvider(request.id));
+      if (persisted.isLoading) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      if (persisted.hasError) {
+        return _ProfessionalRequestLoadError(
+          onRetry: () =>
+              ref.invalidate(persistedRequestDetailProvider(request.id)),
+        );
+      }
+      final storedRequest = persisted.value;
+      if (storedRequest == null) {
+        return const Scaffold(
+          body: Center(child: Text('No se encontró la solicitud.')),
+        );
+      }
+      currentRequest = storedRequest.toIncomingRequest();
+      final realtime = ref.watch(realtimeRequestStatusProvider(request.id));
+      if (realtime.hasError) {
+        return _ProfessionalRequestLoadError(
+          onRetry: () =>
+              ref.invalidate(realtimeRequestStatusProvider(request.id)),
+        );
+      }
+      final realtimeStatus = realtime.value;
       if (realtimeStatus != null) {
         currentRequest = currentRequest.copyWith(status: realtimeStatus);
       }
@@ -250,4 +265,30 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
         break;
     }
   }
+}
+
+class _ProfessionalRequestLoadError extends StatelessWidget {
+  const _ProfessionalRequestLoadError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'No pudimos cargar la solicitud.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(onPressed: onRetry, child: const Text('Reintentar')),
+          ],
+        ),
+      ),
+    ),
+  );
 }

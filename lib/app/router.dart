@@ -236,6 +236,30 @@ void _invalidateScheduleData(ProviderContainer container, String requestId) {
     ..invalidate(professionalRequestFlowProvider);
 }
 
+Future<void> _runWorkflowAction(
+  BuildContext context,
+  Future<void> operation,
+  VoidCallback onSuccess,
+) async {
+  final diagnostics = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(diagnosticsServiceProvider);
+  try {
+    await operation;
+    onSuccess();
+  } catch (error, stackTrace) {
+    diagnostics.unexpectedError(error, stackTrace, context: 'workflow_action');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No pudimos completar la acción. Intenta nuevamente.'),
+        ),
+      );
+    }
+  }
+}
+
 void _popOrGo(BuildContext context, String fallbackLocation) {
   final navigator = Navigator.of(context);
   if (navigator.canPop()) {
@@ -542,26 +566,30 @@ final GoRouter appRouter = GoRouter(
                 context,
                 listen: false,
               );
-              container
-                  .read(requestWorkflowControllerProvider)
-                  .startWork(selectedRequest.id)
-                  .then(
-                    (_) =>
-                        _invalidateScheduleData(container, selectedRequest.id),
-                  );
+              unawaited(
+                _runWorkflowAction(
+                  context,
+                  container
+                      .read(requestWorkflowControllerProvider)
+                      .startWork(selectedRequest.id),
+                  () => _invalidateScheduleData(container, selectedRequest.id),
+                ),
+              );
             },
             onMarkJobCompleted: (selectedRequest) {
               final container = ProviderScope.containerOf(
                 context,
                 listen: false,
               );
-              container
-                  .read(requestWorkflowControllerProvider)
-                  .completeWork(selectedRequest.id)
-                  .then(
-                    (_) =>
-                        _invalidateScheduleData(container, selectedRequest.id),
-                  );
+              unawaited(
+                _runWorkflowAction(
+                  context,
+                  container
+                      .read(requestWorkflowControllerProvider)
+                      .completeWork(selectedRequest.id),
+                  () => _invalidateScheduleData(container, selectedRequest.id),
+                ),
+              );
             },
             onOpenConversation: (selectedRequest) {
               context.pushNamed(
@@ -652,12 +680,15 @@ final GoRouter appRouter = GoRouter(
                     context,
                     listen: false,
                   );
-                  container
-                      .read(requestWorkflowControllerProvider)
-                      .proposeSchedule(request.id, scheduleLabel)
-                      .then(
-                        (_) => _invalidateScheduleData(container, request.id),
-                      );
+                  unawaited(
+                    _runWorkflowAction(
+                      context,
+                      container
+                          .read(requestWorkflowControllerProvider)
+                          .proposeSchedule(request.id, scheduleLabel),
+                      () => _invalidateScheduleData(container, request.id),
+                    ),
+                  );
                 },
               );
             },
@@ -1072,10 +1103,56 @@ final GoRouter appRouter = GoRouter(
             var resolvedRequest = serviceRequest;
             final isMock =
                 ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
+            final realtimeStatusState = isMock
+                ? null
+                : ref.watch(realtimeRequestStatusProvider(requestId));
+            final realtimeQuotationState = isMock
+                ? null
+                : ref.watch(realtimeQuotationProvider(requestId));
+            final realtimeTimelineState = isMock
+                ? null
+                : ref.watch(realtimeTimelineProvider(requestId));
+            if ((realtimeStatusState?.hasError ?? false) ||
+                (realtimeQuotationState?.hasError ?? false) ||
+                (realtimeTimelineState?.hasError ?? false)) {
+              return Scaffold(
+                body: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Perdimos la sincronización de la solicitud.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: () {
+                            ref
+                              ..invalidate(
+                                realtimeRequestStatusProvider(requestId),
+                              )
+                              ..invalidate(realtimeQuotationProvider(requestId))
+                              ..invalidate(realtimeTimelineProvider(requestId));
+                          },
+                          child: const Text('Reconectar'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
             if (!isMock) {
-              final realtimeStatus = ref
-                  .watch(realtimeRequestStatusProvider(requestId))
-                  .value;
+              if ((realtimeStatusState?.isLoading ?? false) ||
+                  (realtimeQuotationState?.isLoading ?? false) ||
+                  (realtimeTimelineState?.isLoading ?? false)) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              final realtimeStatus = realtimeStatusState?.value;
               if (realtimeStatus != null) {
                 resolvedRequest = resolvedRequest.copyWith(
                   state: realtimeStatus,
@@ -1085,15 +1162,14 @@ final GoRouter appRouter = GoRouter(
             final request = resolvedRequest.toCustomerRequest();
             final quotation = isMock
                 ? ref.watch(quotationProvider(requestId))
-                : ref.watch(realtimeQuotationProvider(requestId)).value;
+                : realtimeQuotationState?.value;
             final messages = ref.watch(conversationProvider(requestId));
             return CustomerRequestDetailScreen(
               request: request,
               onBack: () => _popOrGo(context, AppRoutes.customerRequests),
               timelineEvents: isMock
                   ? ref.watch(timelineProvider(requestId))
-                  : ref.watch(realtimeTimelineProvider(requestId)).value ??
-                        const [],
+                  : realtimeTimelineState?.value ?? const [],
               scheduledDateLabel: _scheduledDateLabel(messages),
               onSubmitRating: (stars, comment) async {
                 final container = ProviderScope.containerOf(
@@ -1166,15 +1242,69 @@ final GoRouter appRouter = GoRouter(
           builder: (context, ref, child) {
             final isMock =
                 ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
-            final request = isMock
-                ? ref.watch(requestDetailProvider(requestId))
-                : ref.watch(persistedRequestDetailProvider(requestId)).value;
-            final quotation = isMock
-                ? ref.watch(quotationProvider(requestId))
-                : ref.watch(realtimeQuotationProvider(requestId)).value;
+            ServiceRequest? request;
+            Quotation? quotation;
+            if (isMock) {
+              request = ref.watch(requestDetailProvider(requestId));
+              quotation = ref.watch(quotationProvider(requestId));
+            } else {
+              final requestState = ref.watch(
+                persistedRequestDetailProvider(requestId),
+              );
+              final quotationState = ref.watch(
+                realtimeQuotationProvider(requestId),
+              );
+              if (requestState.isLoading || quotationState.isLoading) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (requestState.hasError || quotationState.hasError) {
+                return Scaffold(
+                  body: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'No pudimos cargar la cotización.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton(
+                            onPressed: () {
+                              ref
+                                ..invalidate(
+                                  persistedRequestDetailProvider(requestId),
+                                )
+                                ..invalidate(
+                                  realtimeQuotationProvider(requestId),
+                                );
+                            },
+                            child: const Text('Reintentar'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }
+              request = requestState.value;
+              quotation = quotationState.value;
+            }
             if (request == null || quotation == null) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+              return Scaffold(
+                appBar: AppBar(),
+                body: const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'No se encontró una cotización disponible.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
               );
             }
             return CustomerQuotationScreen(
@@ -1307,12 +1437,15 @@ final GoRouter appRouter = GoRouter(
                     context,
                     listen: false,
                   );
-                  container
-                      .read(requestWorkflowControllerProvider)
-                      .acceptSchedule(request.id, messageId)
-                      .then(
-                        (_) => _invalidateScheduleData(container, request.id),
-                      );
+                  unawaited(
+                    _runWorkflowAction(
+                      context,
+                      container
+                          .read(requestWorkflowControllerProvider)
+                          .acceptSchedule(request.id, messageId),
+                      () => _invalidateScheduleData(container, request.id),
+                    ),
+                  );
                 },
                 onRequestScheduleChange: (messageId) {
                   final container = ProviderScope.containerOf(
@@ -1329,12 +1462,15 @@ final GoRouter appRouter = GoRouter(
                     context,
                     listen: false,
                   );
-                  container
-                      .read(requestWorkflowControllerProvider)
-                      .requestRating(request.id)
-                      .then(
-                        (_) => _invalidateScheduleData(container, request.id),
-                      );
+                  unawaited(
+                    _runWorkflowAction(
+                      context,
+                      container
+                          .read(requestWorkflowControllerProvider)
+                          .requestRating(request.id),
+                      () => _invalidateScheduleData(container, request.id),
+                    ),
+                  );
                 },
                 onReportProblem: () {
                   final container = ProviderScope.containerOf(
@@ -1342,6 +1478,16 @@ final GoRouter appRouter = GoRouter(
                     listen: false,
                   );
                   final user = container.read(authControllerProvider).user;
+                  if (!isMock && user == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Debes iniciar sesión para reportar un problema.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
                   unawaited(
                     container
                         .read(reportsRepositoryProvider)

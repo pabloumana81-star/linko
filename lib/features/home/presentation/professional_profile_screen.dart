@@ -125,15 +125,16 @@ class ProfessionalProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     if (professional.isVerified || showMockDetails)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 7,
                         children: [
                           Icon(
                             Icons.verified_rounded,
                             size: 20,
                             color: colorScheme.primary,
                           ),
-                          const SizedBox(width: 7),
                           Text(
                             'Profesional verificado',
                             style: textTheme.bodyMedium?.copyWith(
@@ -409,9 +410,13 @@ class _ProfileDetail extends StatelessWidget {
       children: [
         Icon(icon, size: 19, color: iconColor ?? color),
         const SizedBox(width: 5),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color),
+        Flexible(
+          child: Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: color),
+          ),
         ),
       ],
     );

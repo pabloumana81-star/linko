@@ -29,8 +29,10 @@ identidad Supabase reemplaza explícitamente al invitado.
   solicita contraseña.
 - En web, el retorno usa el origen actual. En Android, iOS y macOS usa
   `AUTH_REDIRECT_URL`, actualmente `io.supabase.linko://login-callback/`.
-- `AuthRedirectPolicy` exige un origen web limpio o exactamente el esquema y
-  host nativos de LinkO; rechaza paths, query, fragmentos y destinos externos.
+- `AuthRedirectPolicy` exige HTTPS para orígenes web públicos. HTTP se acepta
+  únicamente para `localhost`, `127.0.0.1` o `::1` durante desarrollo. En
+  nativo exige exactamente el esquema y host de LinkO; rechaza paths, query,
+  fragmentos y destinos externos.
 - Si el usuario cierra o cancela el proveedor, la pantalla de acceso queda
   operativa. Errores del proveedor se muestran en español y se reportan sin
   tokens ni credenciales.

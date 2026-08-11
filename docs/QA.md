@@ -179,3 +179,61 @@ integración MVP macOS, 66 pruebas Admin, dry-run/aplicación de las migraciones
 `202608100001`/`202608100002`, lint enlazado y E2E Supabase real aprobaron.
 Mock mode conserva uploads deterministas y la suite real eliminó todos sus
 objetos y registros `qa_<timestamp>`.
+
+## Beta Release Readiness
+
+La validación rápida de navegador se ejecuta con:
+
+```sh
+./scripts/qa_web.sh
+```
+
+Este comando abre el motor Chrome de Flutter y ejecuta:
+
+- Main: inicio a 320, 390, 768 y 1440 px; etiquetas semánticas y foco de
+  teclado; guest/customer/discovery/perfil; guest/professional/perfil y
+  controles de Storage; texto ampliado hasta 200 %.
+- Admin: autorización, navegación desktop, bloqueo no-Admin, sincronización
+  mock compartida y drawer compacto a 320 px con texto al 160 %.
+
+El smoke Chrome usa explícitamente `BACKEND_MODE=mock` para ser reproducible y
+no demuestra una sesión Supabase dentro de un navegador real. Por separado,
+`./scripts/qa_supabase.sh` usa clientes Supabase autenticados y fixtures
+aislados para certificar repositorios Main/Admin, RLS, Realtime, workflow,
+Storage y cleanup. Ninguna de las dos suites reemplaza la certificación manual
+de consentimientos Google/Apple, entrega Magic Link, lectores de pantalla o la
+matriz de dispositivos/navegadores.
+
+La regresión de seguridad incluye configuración sin fallback, restricción de
+redirect HTTP, ausencia de IDs mock en Supabase y redacción de access/refresh/
+ID tokens, JWT, códigos OAuth/Magic Link, API keys, firmas y URLs firmadas. Los
+tests de rutas comprueban carga, no encontrado, error y reconexión controlada.
+
+Para un candidato de release también se ejecutan, sin imprimir `.env`:
+
+```sh
+flutter analyze
+./qa.sh
+cd admin && ./qa.sh
+cd ..
+./scripts/qa_web.sh
+flutter build web --release --dart-define-from-file=.env
+(cd admin && flutter build web --release --dart-define-from-file=../.env)
+flutter build apk --debug --dart-define=BACKEND_MODE=mock
+supabase db lint --linked
+./scripts/qa_supabase.sh
+git diff --check
+```
+
+Certificación del 9 de agosto de 2026: analyze, 157 pruebas raíz, 67 Admin
+(más una opt-in omitida), 6 smoke Chrome, ambos builds web release, APK debug,
+lint enlazado y E2E Supabase real aprobaron. El E2E real completó Main/Admin,
+Realtime, Storage y cleanup en 35 segundos. La integración GUI macOS compiló,
+pero no pudo lanzar/foreground la app (`open returned 1`) en dos intentos y fue
+interrumpida; queda explícitamente **no ejecutada con éxito**, no PASS.
+
+El APK requirió fijar `file_picker 10.3.10`: la línea 11.0.3 no compilaba su
+clase Kotlin con el template AGP 9 en modo KGP, mientras activar Built-in Kotlin
+rompía `app_links`/tooling. La versión fijada compila y conserva el selector de
+archivos, aunque Gradle advierte que KGP será incompatible en una versión futura
+de Flutter. Debe revisarse cuando ambos plugins soporten Built-in Kotlin estable.

@@ -25,7 +25,10 @@ class AuthRedirectPolicy {
     }
 
     final allowed = switch (target) {
-      AuthRedirectTarget.web => uri.scheme == 'https' || uri.scheme == 'http',
+      AuthRedirectTarget.web =>
+        uri.scheme == 'https' ||
+            (uri.scheme == 'http' &&
+                const {'localhost', '127.0.0.1', '::1'}.contains(uri.host)),
       AuthRedirectTarget.native =>
         uri.scheme == nativeScheme && uri.host == nativeHost && !uri.hasPort,
     };

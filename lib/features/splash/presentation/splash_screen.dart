@@ -32,45 +32,55 @@ class _LinkoSplashScreenState extends State<LinkoSplashScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 112,
-                  height: 112,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.handshake_rounded,
-                    size: 58,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: (constraints.maxHeight - 48).clamp(
+                  0,
+                  double.infinity,
                 ),
-                const SizedBox(height: 32),
-                Text(
-                  'LinkO',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 5,
-                  ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 112,
+                      height: 112,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.handshake_rounded,
+                        size: 58,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Text(
+                      'LinkO',
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 5,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Conectamos profesionales de confianza con quienes los necesitan.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w400,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Conectamos profesionales de confianza con quienes los necesitan.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w400,
-                    height: 1.5,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),

@@ -92,6 +92,27 @@ void main() {
   test('web callback accepts only a clean current origin', () {
     expect(
       () => AuthRedirectPolicy.validate(
+        'http://localhost:7357',
+        AuthRedirectTarget.web,
+      ),
+      returnsNormally,
+    );
+    expect(
+      () => AuthRedirectPolicy.validate(
+        'http://127.0.0.1:7357',
+        AuthRedirectTarget.web,
+      ),
+      returnsNormally,
+    );
+    expect(
+      () => AuthRedirectPolicy.validate(
+        'http://app.linko.example',
+        AuthRedirectTarget.web,
+      ),
+      throwsA(isA<AuthenticationLaunchException>()),
+    );
+    expect(
+      () => AuthRedirectPolicy.validate(
         'https://app.linko.example',
         AuthRedirectTarget.web,
       ),
@@ -104,6 +125,16 @@ void main() {
       ),
       throwsA(isA<AuthenticationLaunchException>()),
     );
+  });
+
+  test('web metadata has production copy and no forced mobile orientation', () {
+    final index = File('web/index.html').readAsStringSync();
+    final manifest = File('web/manifest.json').readAsStringSync();
+
+    expect(index, isNot(contains('A new Flutter project')));
+    expect(manifest, isNot(contains('A new Flutter project')));
+    expect(manifest, isNot(contains('portrait-primary')));
+    expect(index, contains('LinkO conecta clientes'));
   });
 
   test(

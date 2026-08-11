@@ -23,6 +23,36 @@ temporal y triggers rechazan metadata sin objeto real. QA mock, Admin, lint y
 E2E real con cleanup aprobaron. Las observaciones históricas posteriores deben
 interpretarse junto con `PROJECT_STATUS.md`.
 
+## Actualización: Beta Release Readiness — 9 de agosto de 2026
+
+La auditoría vigente corrigió desbordamientos reales a ancho compacto/texto
+ampliado en autenticación, splash, selección de rol, categorías, métricas,
+solicitudes, perfil profesional y drawer Admin. También cerró carga infinita o
+fallback obsoleto en detalle/cotización/timeline, eliminó sustitución de actores
+mock en Supabase, alineó la zona de arranque Flutter y amplió la redacción de
+diagnósticos. El callback web público ahora exige HTTPS.
+
+Matriz de salida:
+
+| Nivel | Estado | Condición |
+|---|---|---|
+| A — obligatorio antes de beta externa | Pendiente externo | Dominio/hosting HTTPS y headers; configuración y certificación Google/Apple/Magic Link; firma y pruebas en dispositivos; revisión manual básica con lector de pantalla y navegadores objetivo. |
+| B — recomendado durante beta | Parcial | Monitoreo/alertas de producción, prueba UI E2E contra un deployment Supabase controlado y validación de recuperación ante fallos de red reales. |
+| C — posterior a beta | Puede esperar | Configuración Admin funcional, reapertura de reportes si producto la requiere, transformación/cuotas avanzadas de imágenes y optimizaciones de Realtime para alto volumen. |
+
+Baseline recomendado de hosting (configuración externa, no inventada aquí):
+redirección HTTP→HTTPS, HSTS una vez validado el dominio, CSP compatible con
+Flutter/Supabase/proveedores habilitados, `frame-ancestors`,
+`X-Content-Type-Options: nosniff`, `Referrer-Policy` y una
+`Permissions-Policy` mínima. La lista exacta de orígenes debe construirse con
+el dominio y proveedores reales; no se debe usar un comodín para fingir cierre.
+
+QA final: 157 pruebas raíz, 67 Admin, 6 Chrome, builds web Main/Admin, APK,
+lint Supabase y E2E real PASS. La integración macOS no terminó porque el host no
+pudo foreground la app; debe repetirse en una sesión GUI antes del candidato.
+El APK usa temporalmente `file_picker 10.3.10`; migrar a Built-in Kotlin queda
+como deuda de compatibilidad del toolchain, no como bloqueo funcional actual.
+
 ## Crítico
 
 ### ✅ C-01 — La creación Supabase envía identificadores que no son UUID — Completado

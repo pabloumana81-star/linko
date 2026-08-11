@@ -77,10 +77,14 @@ String _redactAuthenticationSecrets(String value) {
   );
   redacted = redacted.replaceAllMapped(
     RegExp(
-      r'''(access_token|refresh_token|id_token|authorization|apikey)([\s"':=]+)([^\s&,"'}]+)''',
+      r'''(access_token|refresh_token|id_token|token_hash|token|code|authorization|apikey|api_key|signature)([\s"':=]+)([^\s&,"'}#]+)''',
       caseSensitive: false,
     ),
     (match) => '${match.group(1)}${match.group(2)}[REDACTED]',
+  );
+  redacted = redacted.replaceAll(
+    RegExp(r'eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}'),
+    '[REDACTED]',
   );
   return redacted;
 }

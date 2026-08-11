@@ -152,4 +152,33 @@ void main() {
       throwsA(isA<BackendConfigurationException>()),
     );
   });
+
+  test('Supabase request providers never substitute a mock actor', () async {
+    const config = BackendConfig(
+      mode: BackendMode.supabase,
+      supabaseUrl: 'https://linko-test.supabase.co',
+      supabaseAnonKey: 'public-test-anon-key',
+      authRedirectUrl: 'io.supabase.linko://login-callback/',
+    );
+    final client = SupabaseClient(config.supabaseUrl, config.supabaseAnonKey);
+    final container = ProviderContainer(
+      overrides: [
+        backendConfigProvider.overrideWithValue(config),
+        supabaseClientProvider.overrideWithValue(client),
+      ],
+    );
+    addTearDown(container.dispose);
+    addTearDown(client.dispose);
+
+    await expectLater(
+      container.read(persistedCustomerRequestsProvider.future),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('iniciar sesión'),
+        ),
+      ),
+    );
+  });
 }

@@ -186,14 +186,19 @@ class _AuthButton extends StatelessWidget {
       children: [
         SizedBox(width: 24, child: leading ?? Icon(icon, size: 22)),
         const SizedBox(width: 12),
-        Text(label),
+        Flexible(child: Text(label, textAlign: TextAlign.center)),
       ],
     );
-    return SizedBox(
-      height: 54,
-      child: primary
-          ? FilledButton(onPressed: onPressed, child: content)
-          : OutlinedButton(onPressed: onPressed, child: content),
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 54),
+        child: primary
+            ? FilledButton(onPressed: onPressed, child: content)
+            : OutlinedButton(onPressed: onPressed, child: content),
+      ),
     );
   }
 }

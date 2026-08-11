@@ -114,9 +114,7 @@ class _UserTypeCard extends StatefulWidget {
 }
 
 class _UserTypeCardState extends State<_UserTypeCard> {
-  static const _cardHeight = 376.0;
   static const _contentPadding = 28.0;
-  static const _titleHeight = 58.0;
 
   bool _isHovered = false;
   bool _isPressed = false;
@@ -126,8 +124,8 @@ class _UserTypeCardState extends State<_UserTypeCard> {
     final colorScheme = Theme.of(context).colorScheme;
     final scale = _isPressed ? 0.98 : (_isHovered ? 1.02 : 1.0);
 
-    return SizedBox(
-      height: _cardHeight,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 376),
       child: AnimatedScale(
         scale: scale,
         duration: const Duration(milliseconds: 160),
@@ -179,16 +177,11 @@ class _UserTypeCardState extends State<_UserTypeCard> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    SizedBox(
-                      height: _titleHeight,
-                      child: Text(
-                        widget.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w700,
-                        ),
+                    Text(
+                      widget.title,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -199,7 +192,6 @@ class _UserTypeCardState extends State<_UserTypeCard> {
                         height: 1.5,
                       ),
                     ),
-                    const Spacer(),
                   ],
                 ),
               ),

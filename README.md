@@ -48,8 +48,14 @@ solo mediante enlaces firmados temporales; las URLs firmadas nunca se persisten.
 ./qa.sh
 cd admin && ./qa.sh
 cd ..
+./scripts/qa_web.sh      # smoke real en Chrome con backend mock determinista
 ./scripts/qa_supabase.sh # opt-in; requiere proyecto Supabase enlazado
 ```
+
+Antes de desplegar web, construye ambas aplicaciones con el archivo de entorno
+de release y configura el hosting definitivo con HTTPS y headers de seguridad.
+El repositorio no inventa dominio, credenciales OAuth ni configuración de
+firma; esos valores se certifican en el entorno externo elegido.
 
 ## Documentación
 

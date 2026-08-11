@@ -126,6 +126,35 @@ void main() {
       expect(serialized, isNot(contains('identity-visible')));
       expect(serialized, contains('[REDACTED]'));
     });
+
+    test('signed URLs, Magic Links and standalone JWTs are redacted', () {
+      final sink = _MemorySink();
+      final diagnostics = DiagnosticsService(sink: sink);
+      const jwt =
+          'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyLXByaXZhdGUifQ.signaturePrivate';
+
+      diagnostics.unexpectedError(
+        StateError(
+          'https://project.supabase.co/storage/v1/object/sign/private/file.pdf'
+          '?token=signed-private&code=oauth-private&token_hash=magic-private '
+          '$jwt',
+        ),
+        StackTrace.fromString('signature=storage-private'),
+        context: 'secure_url',
+      );
+
+      final serialized = sink.records.single.toString();
+      for (final secret in [
+        'signed-private',
+        'oauth-private',
+        'magic-private',
+        'storage-private',
+        jwt,
+      ]) {
+        expect(serialized, isNot(contains(secret)));
+      }
+      expect(serialized, contains('[REDACTED]'));
+    });
   });
 }
 

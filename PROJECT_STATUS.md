@@ -2,9 +2,11 @@
 
 ## Fase actual
 
-Production Supabase Storage. Portafolios públicos y documentos de verificación
-privados usan buckets, RLS, metadata validada y cleanup certificado contra el
-proyecto enlazado.
+Beta Release Readiness. Los flujos principales y Admin tienen cobertura
+responsiva automatizada en navegador, los fallos asíncronos críticos muestran
+estados controlados y los diagnósticos redactan credenciales, enlaces de acceso
+y URLs firmadas. La certificación real Supabase continúa separada del smoke web
+mock y conserva Realtime, RLS y cleanup aislado.
 
 ## Módulos completados
 
@@ -51,6 +53,10 @@ proyecto enlazado.
   pueden leerlos, y Admin usa enlaces firmados temporales no persistidos.
 - Triggers de integridad bloquean metadata Storage fabricada y cambios de
   documentos después de una aprobación sin reescribir filas existentes.
+- Arranque, selección de rol, Home, discovery, perfil y navegación Admin se
+  adaptan a 320/390/768/1440 px y texto ampliado sin desbordamientos conocidos.
+- El callback web exige HTTPS salvo localhost de desarrollo; el callback nativo
+  permanece `io.supabase.linko://login-callback/`.
 
 ## Estado de QA
 
@@ -113,6 +119,16 @@ proyecto enlazado.
   - QA Admin (66 pruebas; 1 opt-in omitida por diseño): **PASS**.
   - Upload/lectura/eliminación, RLS cross-user, URL firmada Admin, lint y
     cleanup E2E real: **PASS**.
+- Beta Release Readiness, 9 de agosto de 2026:
+  - Smoke Chrome Main/Admin, tamaños representativos, texto ampliado, semántica
+    básica y navegación compacta: **PASS**.
+  - Configuración estricta, errores controlados y redacción ampliada:
+    **AUTOMATED TESTED**.
+  - `flutter analyze`, 157 pruebas raíz, 67 pruebas Admin, builds web Main/Admin,
+    APK debug, lint enlazado y E2E Supabase real: **PASS**.
+  - Integración GUI macOS: **NO COMPLETÓ EN ESTE ENTORNO**; compiló la app pero
+    el launcher devolvió `open returned 1` dos veces. No se contabiliza PASS.
+  - La certificación de proveedores, dispositivos y hosting sigue siendo manual.
 
 ## Trabajo restante
 
@@ -128,4 +144,10 @@ proyecto enlazado.
 - Registrar `com.linko.app` y configurar firma/capacidades antes de certificar
   dispositivos Apple/Android; el repositorio no contiene credenciales de firma.
 - Revalidar RLS y Realtime después de cada migración futura.
-- Completar pruebas manuales de accesibilidad y compatibilidad en los navegadores soportados.
+- Completar pruebas manuales de accesibilidad con lector de pantalla, contraste
+  y compatibilidad en la matriz real de navegadores/dispositivos soportados.
+- Configurar hosting web definitivo con HTTPS, headers de seguridad, dominio y
+  redirects Auth antes de publicar una beta externa.
+- Migrar `file_picker` a Built-in Kotlin cuando una versión estable sea
+  compatible con el resto de plugins AGP 9; `10.3.10` compila hoy con una
+  advertencia de deprecación futura, no con un error de release.
