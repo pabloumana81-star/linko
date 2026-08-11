@@ -255,16 +255,26 @@ ausencia de permisos amplios y que release Android no use la firma debug.
 `test/mobile_file_selection_test.dart` cubre cancelación, selector no disponible
 y archivos ilegibles a 320×568. `test/realtime_chat_test.dart` prueba que resume
 reemplaza la suscripción sin duplicarla; `test/web_beta_smoke_test.dart` mantiene
-la matriz compacta y texto ampliado. Los builds release validan compilación,
-pero firma, instalación, providers y lifecycle del SO se certifican manualmente
-según `docs/MOBILE_BETA.md`.
+la matriz compacta y texto ampliado. Los builds release validan compilación. La
+firma del AAB Android también se verifica localmente; instalación, Play Console,
+providers y lifecycle del SO se certifican manualmente según
+`docs/MOBILE_BETA.md`.
 
 Ejecución móvil del 11 de agosto de 2026: 168 pruebas raíz, 67 Admin (+1
 opt-in), integración MVP macOS y E2E Supabase real PASS; schema lint sin
-errores. APK release 60.7 MB y AAB release 59.0 MB compilaron sin firma y se
-verificaron como unsigned. Después de instalar el platform SDK iOS 26.5,
+errores. El APK release previo de 60.7 MB compiló sin firma. El comando
+`flutter build appbundle --release` pasó con firma de upload y generó exactamente
+`build/app/outputs/bundle/release/app-release.aab` (59.0 MB); la verificación con
+`jarsigner` terminó correctamente y el certificado expira el 2053-12-27. El
+alias es `linko-upload`; el keystore está fuera del repositorio en
+`/Users/Pablo/linko-upload-key.jks`, y `android/key.properties` permanece local.
+Ambos están protegidos por `.gitignore` y ninguna contraseña se documenta.
+Después de instalar el platform SDK iOS 26.5,
 `flutter build ios --release --no-codesign` pasó y generó
 `build/ios/iphoneos/Runner.app` (25.2 MB).
+
+La advertencia existente de `file_picker`/Built-in Kotlin sigue documentada
+como deuda no bloqueante del toolchain; no invalida este build release.
 
 Comandos adicionales:
 

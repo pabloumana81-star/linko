@@ -36,14 +36,15 @@ Matriz de salida:
 
 | Nivel | Estado | Condición |
 |---|---|---|
-| A — obligatorio antes de beta externa | Pendiente externo | Dominio/hosting HTTPS y headers; configuración y certificación Google/Apple/Magic Link; firma y pruebas en dispositivos; revisión manual básica con lector de pantalla y navegadores objetivo. |
+| A — obligatorio antes de beta externa | Pendiente externo | Dominio/hosting HTTPS y headers; configuración y certificación Google/Apple/Magic Link; Play Console, firma Apple y pruebas en dispositivos; revisión manual básica con lector de pantalla y navegadores objetivo. La firma de upload Android ya está configurada y verificada. |
 | B — recomendado durante beta | Parcial | Monitoreo/alertas de producción, prueba UI E2E contra un deployment Supabase controlado y validación de recuperación ante fallos de red reales. |
 | C — posterior a beta | Puede esperar | Configuración Admin funcional, reapertura de reportes si producto la requiere, transformación/cuotas avanzadas de imágenes y optimizaciones de Realtime para alto volumen. |
 
 La preparación móvil elimina la firma debug de release Android, mantiene
 selección de archivos sin permisos amplios y reconecta chat Realtime al volver
-del background. Firma de distribución, pruebas físicas y proveedores continúan
-en nivel A externo; consulta `MOBILE_BETA.md`.
+del background. El AAB de 59.0 MB está firmado con la upload key y su firma fue
+verificada con `jarsigner`; Play Console, firma Apple, pruebas físicas y
+proveedores continúan en nivel A externo. Consulta `MOBILE_BETA.md`.
 
 Baseline recomendado de hosting (configuración externa, no inventada aquí):
 redirección HTTP→HTTPS, HSTS una vez validado el dominio, CSP compatible con

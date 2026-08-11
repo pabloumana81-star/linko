@@ -23,10 +23,11 @@ consideran certificados solo por compilar.
   el selector del sistema, sin permisos amplios de almacenamiento, fotos o
   cámara.
 - El teclado usa `adjustResize` y el callback usa `singleTop`.
-- Release nunca usa la clave debug. Sin `android/key.properties` se puede
-  validar un artefacto release sin firma. Para distribución, copiar
-  `android/key.properties.example` a `android/key.properties`, completar los
-  cuatro valores en un entorno seguro y conservar el `.jks` fuera de Git.
+- Release nunca usa la clave debug. La firma de upload está configurada con el
+  alias `linko-upload`; el keystore permanece fuera del repositorio en
+  `/Users/Pablo/linko-upload-key.jks`. `android/key.properties` es local-only y,
+  al igual que cualquier `.jks`, está ignorado por Git. Las contraseñas no se
+  documentan ni se copian a source, CI o Git.
 
 ## iOS
 
@@ -67,7 +68,7 @@ persistirse.
 
 ## Configuración externa pendiente
 
-- Keystore/upload key y configuración Play Console.
+- Configuración y validación de la upload key en Play Console.
 - Apple Team, App ID/capability, certificados y provisioning profiles.
 - Credenciales y redirect allow-list de Google, Apple y correo en Supabase.
 - Dispositivos, cuentas reales y canales de distribución beta.
@@ -79,8 +80,11 @@ persistirse.
   foreground, pero el test terminó PASS).
 - QA Admin: PASS, 67 tests y 1 test opt-in omitido.
 - Supabase lint: PASS; E2E real Main/Admin/Realtime/Storage/cleanup: PASS.
-- Android APK release: PASS, 60.7 MB, sin firma; AAB release: PASS, 59.0 MB,
-  sin firma. Ninguno usa la clave debug.
+- Android APK release previo: PASS, 60.7 MB, sin firma. Android AAB release
+  firmado: PASS, 59.0 MB; artefacto exacto
+  `build/app/outputs/bundle/release/app-release.aab`. `jarsigner` verificó la
+  firma correctamente; el certificado expira el 27 de diciembre de 2053.
+  Ningún release usa la clave debug.
 - iOS release `--no-codesign`: PASS después de instalar el platform SDK iOS
   26.5. Resultado exacto: `Built build/ios/iphoneos/Runner.app (25.2MB)`.
 - `git diff --check` y auditoría de secretos/artefactos: PASS.

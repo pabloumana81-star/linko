@@ -159,16 +159,22 @@ Supabase permanece protegida y separada del smoke web mock.
 - Certificar externamente Google, Apple y entrega de Magic Link con credenciales,
   dominios, plantillas y cuentas reales; el código está completo, pero los
   proveedores aún no están certificados.
-- Registrar `com.linko.app` y configurar firma/capacidades antes de certificar
-  dispositivos Apple/Android; el repositorio no contiene credenciales de firma.
+- Registrar `com.linko.app` en las consolas y configurar firma/capacidades Apple
+  antes de certificar dispositivos. La firma de upload Android ya está
+  configurada y verificada; el repositorio no contiene credenciales de firma.
 - Ejecutar la matriz física Android/iOS de `docs/MOBILE_BETA.md`; los tests de
   widgets y builds no certifican proveedores, interrupciones del sistema ni
   distribución desde las tiendas.
-- Mobile Beta Readiness automatizado: analyze, Main/Admin, lint y E2E Supabase,
-  APK/AAB release sin firma PASS. Tras instalar el platform SDK iOS 26.5,
+- Mobile Beta Readiness automatizado: analyze, Main/Admin, lint y E2E Supabase
+  PASS. El AAB release Android firmado también pasa: 59.0 MB en
+  `build/app/outputs/bundle/release/app-release.aab`, con verificación
+  `jarsigner` correcta y certificado vigente hasta 2053-12-27. El keystore de
+  alias `linko-upload` vive fuera del repositorio en
+  `/Users/Pablo/linko-upload-key.jks`; `android/key.properties` es local-only y
+  ambos están protegidos de Git. Tras instalar el platform SDK iOS 26.5,
   `flutter build ios --release --no-codesign` también pasa y genera
-  `build/ios/iphoneos/Runner.app` (25.2 MB). Firma y dispositivos continúan
-  pendientes externos.
+  `build/ios/iphoneos/Runner.app` (25.2 MB). Play Console, firma Apple y pruebas
+  en dispositivos continúan pendientes externos.
 - Revalidar RLS y Realtime después de cada migración futura.
 - Completar pruebas manuales de accesibilidad con lector de pantalla, contraste
   y compatibilidad en la matriz real de navegadores/dispositivos soportados.
