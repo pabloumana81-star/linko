@@ -2,10 +2,10 @@
 
 ## Fase actual
 
-Production Deployment Foundation. El despliegue web mantiene un contrato
-agnóstico de configuración, build reproducible, headers, fallback SPA, health
-check y rollback. CI valida compilación sin secretos; la certificación real
-Supabase permanece protegida y separada del smoke web mock.
+Production Mobile End-to-End Certification. El ciclo customer/professional,
+RLS, Realtime y Storage está certificado contra el proyecto Supabase enlazado
+con actores aislados y cleanup. Los proveedores Auth y la conducta propia del
+SO continúan separados como validación externa/física.
 
 ## Módulos completados
 
@@ -147,6 +147,22 @@ Supabase permanece protegida y separada del smoke web mock.
     **PASS**.
   - Integración GUI macOS: **NO COMPLETÓ EN ESTE ENTORNO** (`open returned 1`).
   - Health check contra URL publicado: **PENDIENTE DE HOSTING/DOMINIO REAL**.
+- Production Mobile End-to-End Certification, 11 de agosto de 2026:
+  - Flujo real customer/professional, solicitud completa, conversación,
+    Realtime, perfil profesional, portafolio, verificación privada y cleanup:
+    **PASS** contra el Supabase de producción enlazado (51 s).
+  - RLS/aislamiento entre customer, professional, professional no relacionado y
+    Admin; ownership de Storage y privacidad de documentos: **PASS**.
+  - `flutter analyze`, auditoría, 168 pruebas Main, integración MVP macOS,
+    67 pruebas Admin (+1 opt-in omitida), Chrome Main/Admin y lint remoto:
+    **PASS**. El runner macOS mostró `open returned 1`, pero el test terminó
+    1/1 PASS; no equivale a certificación GUI física.
+  - AAB Android firmado: **PASS**, 59.0 MB, firma verificada. iOS release
+    `--no-codesign`: **PASS**, Runner.app 25.2 MB.
+  - Defectos de aplicación encontrados/corregidos: **ninguno**.
+  - Google/Apple/Magic Link reales, instalación en dispositivos, interrupción
+    de red del SO, background/resume real y selectores nativos: **NO
+    EJECUTADOS; requieren certificación externa/física**.
 
 ## Trabajo restante
 

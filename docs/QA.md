@@ -295,3 +295,32 @@ wrapper Supabase, builds release Main/Admin, APK debug, E2E real (41 s) y lint
 enlazado aprobaron. La integración macOS compiló pero no pudo foreground la app
 en el host (`open returned 1`) y no se cuenta PASS. `post_deploy_check.sh` no se
 ejecutó porque todavía no existe un origen real de deployment.
+
+## Production Mobile End-to-End Certification
+
+Ejecución del 11 de agosto de 2026:
+
+- `./scripts/qa_supabase.sh`: PASS en 51 s contra el proyecto enlazado. Cubrió
+  customer, professional, professional no relacionado y Admin; perfiles,
+  discovery, solicitud, estados/timeline, cotización, programación, trabajo,
+  confirmación, rating, conversación/mensajes, Realtime, portafolio,
+  verificación privada, RLS, Storage ownership, denegaciones cruzadas y cleanup.
+- `supabase db lint --linked`: PASS, `No schema errors found`.
+- `./qa.sh`: PASS; analyze sin incidencias, auditoría aprobada, 168 pruebas y
+  1 integración MVP macOS PASS. El launcher reportó `open returned 1`, pero el
+  runner completó 1/1 con exit 0; no se interpreta como prueba física de GUI.
+- `admin/qa.sh`: PASS; analyze sin incidencias, 67 pruebas PASS y 1 prueba real
+  opt-in omitida por diseño. La certificación real equivalente ya se ejecutó
+  desde la raíz.
+- `./scripts/qa_web.sh`: PASS; 3 smoke Main y 3 Admin en Chrome.
+- `flutter build appbundle --release --dart-define-from-file=.env`: PASS;
+  `build/app/outputs/bundle/release/app-release.aab` (59.0 MB), `jar verified`.
+- `flutter build ios --release --no-codesign --dart-define-from-file=.env`:
+  PASS; `build/ios/iphoneos/Runner.app` (25.2 MB).
+- Defectos encontrados y corregidos: ninguno; no se modificó aplicación,
+  esquema, RLS, credenciales ni `.env`.
+
+Autenticación de proveedor y conducta real del SO no se infieren de estas
+pruebas. Google/Apple/Magic Link, entrega de correo, instalación firmada,
+cold-start, background/resume, red interrumpida, picker, teclado/safe areas y
+accesibilidad requieren la matriz física de `MOBILE_BETA.md`.

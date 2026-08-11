@@ -78,6 +78,34 @@ builds release Main/Admin, APK, lint y E2E Supabase real PASS. La ejecución
 contra un URL publicado permanece pendiente por ausencia deliberada de hosting;
 macOS GUI tampoco completó por fallo de foreground del entorno.
 
+## Actualización: Production Mobile End-to-End Certification — 11 de agosto de 2026
+
+La certificación real del proyecto Supabase enlazado pasó en 51 segundos con
+actores customer, professional, professional no relacionado y Admin aislados.
+Completó el workflow transaccional, sincronización Realtime y chat, perfil y
+discovery profesional, portafolio, verificación privada, denegaciones RLS/
+Storage y cleanup. No encontró defectos de aplicación ni requirió cambios de
+código, esquema o políticas.
+
+La matriz completa también aprobó analyze, 168 pruebas Main, integración MVP
+macOS, 67 Admin (+1 opt-in omitida), 6 smoke Chrome, lint remoto sin errores,
+AAB Android firmado de 59.0 MB con firma verificada e iOS release
+`--no-codesign` de 25.2 MB. `file_picker` conserva la advertencia no bloqueante
+de migración futura a Built-in Kotlin.
+
+Clasificación restante:
+
+- A, requerido antes de beta externa: configurar/certificar proveedores reales
+  Google/Apple/Magic Link y correo; Play Console/TestFlight, firma Apple e
+  instalación en dispositivos; completar cold start, callback, red interrumpida,
+  background/resume, picker, teclado/safe areas, accesibilidad y ausencia de
+  secretos visibles en builds físicos; hosting/dominio HTTPS si participa web.
+- B, recomendado durante beta: monitoreo/alertas y observación de reconexión,
+  uploads y lifecycle bajo redes/dispositivos diversos.
+- C, puede seguir a beta: Configuración Admin funcional, reapertura de reportes
+  si producto la requiere, optimización/cuotas avanzadas de imágenes y mejoras
+  de Realtime para alto volumen.
+
 ## Crítico
 
 ### ✅ C-01 — La creación Supabase envía identificadores que no son UUID — Completado

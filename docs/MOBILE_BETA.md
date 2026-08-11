@@ -92,3 +92,35 @@ persistirse.
 La advertencia KGP de `file_picker 10.3.10` permanece como deuda de tooling:
 compila hoy, pero una versión futura de Flutter exigirá migrar el plugin a
 Built-in Kotlin.
+
+## Production Mobile End-to-End Certification — 11 de agosto de 2026
+
+La suite real contra el proyecto Supabase enlazado completó en 51 segundos el
+ciclo customer/professional: creación de actores y perfiles, edición del perfil
+profesional, aprobación y discovery, selección del profesional, solicitud,
+estados y timeline, cotización, programación, ejecución, confirmación, rating,
+conversación y mensajes. Customer y professional recibieron cambios Realtime
+sin polling y el cleanup aislado terminó correctamente.
+
+La misma ejecución usó customer, professional, professional no relacionado y
+Admin distintos. Confirmó RLS de solicitudes/datos privados, ownership de
+Storage, carga/lectura/eliminación de portafolio, privacidad de verificación,
+rechazo de uploads cruzados y metadata fabricada, y revisión Admin mediante URL
+firmada temporal no registrada. No se debilitó RLS ni se modificó `.env`.
+
+Las regresiones automatizadas también pasaron para sesión restaurada,
+expirada/inválida, logout/login, cambio de cuenta, guest, onboarding,
+cancelación/indisponibilidad del selector, errores de upload/backend, registro
+ausente, reanudación sin suscripciones duplicadas, reconexión y layouts
+compactos/texto ampliado. No se encontraron defectos de aplicación y no fue
+necesario modificar código.
+
+Builds del candidato: AAB Android firmado PASS en
+`build/app/outputs/bundle/release/app-release.aab` (59.0 MB), con `jar verified`;
+iOS release `--no-codesign` PASS en `build/ios/iphoneos/Runner.app` (25.2 MB).
+La advertencia `file_picker`/Built-in Kotlin sigue siendo no bloqueante.
+
+Pendientes que esta ejecución no certifica: consentimiento y callback reales de
+Google/Apple/Magic Link, entrega de correo, instalación Play/TestFlight, firma
+Apple, cold start/background/resume del SO, interrupción real de red, selector
+nativo, teclado/safe areas y accesibilidad en Android/iPhone físicos.
