@@ -262,9 +262,9 @@ según `docs/MOBILE_BETA.md`.
 Ejecución móvil del 11 de agosto de 2026: 168 pruebas raíz, 67 Admin (+1
 opt-in), integración MVP macOS y E2E Supabase real PASS; schema lint sin
 errores. APK release 60.7 MB y AAB release 59.0 MB compilaron sin firma y se
-verificaron como unsigned. iOS release sin codesign no compiló porque el host
-carece del platform SDK iOS 26.5; se debe instalar ese componente de Xcode antes
-de repetirlo.
+verificaron como unsigned. Después de instalar el platform SDK iOS 26.5,
+`flutter build ios --release --no-codesign` pasó y generó
+`build/ios/iphoneos/Runner.app` (25.2 MB).
 
 Comandos adicionales:
 

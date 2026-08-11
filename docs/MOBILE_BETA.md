@@ -81,8 +81,8 @@ persistirse.
 - Supabase lint: PASS; E2E real Main/Admin/Realtime/Storage/cleanup: PASS.
 - Android APK release: PASS, 60.7 MB, sin firma; AAB release: PASS, 59.0 MB,
   sin firma. Ninguno usa la clave debug.
-- iOS release `--no-codesign`: BLOCKED por el host, que no tiene instalado el
-  platform SDK iOS 26.5. El simulador está bloqueado por el mismo componente.
+- iOS release `--no-codesign`: PASS después de instalar el platform SDK iOS
+  26.5. Resultado exacto: `Built build/ios/iphoneos/Runner.app (25.2MB)`.
 - `git diff --check` y auditoría de secretos/artefactos: PASS.
 
 La advertencia KGP de `file_picker 10.3.10` permanece como deuda de tooling:

@@ -165,9 +165,10 @@ Supabase permanece protegida y separada del smoke web mock.
   widgets y builds no certifican proveedores, interrupciones del sistema ni
   distribución desde las tiendas.
 - Mobile Beta Readiness automatizado: analyze, Main/Admin, lint y E2E Supabase,
-  APK/AAB release sin firma PASS. iOS unsigned está bloqueado exclusivamente
-  porque Xcode no tiene instalado el platform SDK iOS 26.5; firma y dispositivos
-  continúan pendientes externos.
+  APK/AAB release sin firma PASS. Tras instalar el platform SDK iOS 26.5,
+  `flutter build ios --release --no-codesign` también pasa y genera
+  `build/ios/iphoneos/Runner.app` (25.2 MB). Firma y dispositivos continúan
+  pendientes externos.
 - Revalidar RLS y Realtime después de cada migración futura.
 - Completar pruebas manuales de accesibilidad con lector de pantalla, contraste
   y compatibilidad en la matriz real de navegadores/dispositivos soportados.
