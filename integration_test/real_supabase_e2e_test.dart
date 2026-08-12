@@ -111,6 +111,48 @@ void main() {
         final professionalProfiles = ProfileRepositorySupabase(
           professionalClient,
         );
+
+        Future<void> certifyOnboardingPersistence({
+          required SupabaseClient client,
+          required ProfileRepositorySupabase repository,
+          required User user,
+          required AppMode mode,
+        }) async {
+          final before = await client
+              .from('profiles')
+              .select('active_mode,onboarding_completed')
+              .eq('id', user.id)
+              .single();
+          expect(before['onboarding_completed'], isFalse);
+
+          await repository.updateProfile(
+            userId: user.id,
+            activeMode: mode,
+            onboardingCompleted: true,
+          );
+
+          final persisted = await client
+              .from('profiles')
+              .select('active_mode,onboarding_completed')
+              .eq('id', user.id)
+              .single();
+          expect(persisted['active_mode'], mode.name);
+          expect(persisted['onboarding_completed'], isTrue);
+        }
+
+        await certifyOnboardingPersistence(
+          client: customerClient,
+          repository: customerProfiles,
+          user: customerUser,
+          mode: AppMode.customer,
+        );
+        await certifyOnboardingPersistence(
+          client: professionalClient,
+          repository: professionalProfiles,
+          user: professionalUser,
+          mode: AppMode.professional,
+        );
+
         final customerProfile = await customerProfiles.getOrCreateProfile(
           _authProfile(customerUser, '${prefix}_customer', AppMode.customer),
         );

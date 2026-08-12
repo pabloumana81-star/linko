@@ -372,25 +372,47 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.userType,
       builder: (context, state) {
         return UserTypeScreen(
-          onCustomerSelected: () {
-            ProviderScope.containerOf(
-              context,
-              listen: false,
-            ).read(appModeProvider.notifier).select(AppMode.customer);
-            ProviderScope.containerOf(context, listen: false)
+          onCustomerSelected: () async {
+            final container = ProviderScope.containerOf(context, listen: false);
+            if (container.read(authControllerProvider).user == null) {
+              container.read(appModeProvider.notifier).select(AppMode.customer);
+              context.go(AppRoutes.guestHome);
+              return;
+            }
+            await container
                 .read(authControllerProvider.notifier)
                 .updateActiveMode(AppMode.customer);
-            context.go(AppRoutes.guestHome);
+            if (!context.mounted) return;
+            final auth = container.read(authControllerProvider);
+            if (auth.status == AuthStatus.authenticated &&
+                auth.user?.activeMode == AppMode.customer &&
+                auth.user?.onboardingCompleted == true) {
+              container.read(appModeProvider.notifier).select(AppMode.customer);
+              context.go(AppRoutes.guestHome);
+            }
           },
-          onProfessionalSelected: () {
-            ProviderScope.containerOf(
-              context,
-              listen: false,
-            ).read(appModeProvider.notifier).select(AppMode.professional);
-            ProviderScope.containerOf(context, listen: false)
+          onProfessionalSelected: () async {
+            final container = ProviderScope.containerOf(context, listen: false);
+            if (container.read(authControllerProvider).user == null) {
+              container
+                  .read(appModeProvider.notifier)
+                  .select(AppMode.professional);
+              context.go(AppRoutes.professionalHome);
+              return;
+            }
+            await container
                 .read(authControllerProvider.notifier)
                 .updateActiveMode(AppMode.professional);
-            context.go(AppRoutes.professionalHome);
+            if (!context.mounted) return;
+            final auth = container.read(authControllerProvider);
+            if (auth.status == AuthStatus.authenticated &&
+                auth.user?.activeMode == AppMode.professional &&
+                auth.user?.onboardingCompleted == true) {
+              container
+                  .read(appModeProvider.notifier)
+                  .select(AppMode.professional);
+              context.go(AppRoutes.professionalHome);
+            }
           },
         );
       },

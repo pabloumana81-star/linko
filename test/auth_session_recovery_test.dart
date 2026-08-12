@@ -199,6 +199,44 @@ void main() {
       );
     },
   );
+
+  for (final mode in AppMode.values) {
+    test(
+      'stale profile refresh cannot undo ${mode.name} onboarding persistence',
+      () async {
+        final pending = _customer.copyWith(onboardingCompleted: false);
+        final profiles = _RacingProfileRepository(pending);
+        final auth = _ControllableAuthenticationRepository(
+          initialUser: pending,
+        );
+        final container = _container(auth, profiles: profiles);
+        addTearDown(container.dispose);
+        await container.read(authControllerProvider.notifier).restoreSession();
+
+        final update = container
+            .read(authControllerProvider.notifier)
+            .updateActiveMode(mode);
+        await profiles.updateStarted.future;
+        profiles.emit(pending);
+        await _flush();
+
+        final duringMutation = container.read(authControllerProvider).user;
+        expect(duringMutation?.activeMode, mode);
+        expect(duringMutation?.onboardingCompleted, isTrue);
+
+        profiles.completeUpdate();
+        await update;
+        profiles.emit(pending);
+        await _flush();
+        profiles.emit(profiles.profile);
+        await _flush();
+
+        final persisted = container.read(authControllerProvider).user;
+        expect(persisted?.activeMode, mode);
+        expect(persisted?.onboardingCompleted, isTrue);
+      },
+    );
+  }
 }
 
 ProviderContainer _container(
@@ -320,5 +358,45 @@ class _MemoryProfileRepository implements ProfileRepository {
     );
     emit(updated);
     return updated;
+  }
+}
+
+class _RacingProfileRepository implements ProfileRepository {
+  _RacingProfileRepository(this.profile);
+
+  AppUserProfile profile;
+  final updateStarted = Completer<void>();
+  final _allowUpdate = Completer<void>();
+  final _stream = StreamController<AppUserProfile?>.broadcast(sync: true);
+
+  @override
+  Future<AppUserProfile> getOrCreateProfile(AppUserProfile authUser) async =>
+      profile;
+
+  @override
+  Stream<AppUserProfile?> watchProfile(String userId) => _stream.stream;
+
+  void emit(AppUserProfile value) => _stream.add(value);
+
+  void completeUpdate() => _allowUpdate.complete();
+
+  @override
+  Future<AppUserProfile> updateProfile({
+    required String userId,
+    String? displayName,
+    String? avatarUrl,
+    AppMode? activeMode,
+    bool? onboardingCompleted,
+  }) async {
+    if (!updateStarted.isCompleted) updateStarted.complete();
+    await _allowUpdate.future;
+    profile = profile.copyWith(
+      displayName: displayName,
+      avatarUrl: avatarUrl,
+      activeMode: activeMode,
+      onboardingCompleted: onboardingCompleted,
+      updatedAt: profile.updatedAt.add(const Duration(seconds: 1)),
+    );
+    return profile;
   }
 }

@@ -34,6 +34,8 @@ class AuthController extends Notifier<AuthState> {
   StreamSubscription<AppUserProfile?>? _profileSubscription;
   String? _watchedProfileId;
   int _profileLoadRevision = 0;
+  int _profileMutationRevision = 0;
+  int? _activeModeMutationRevision;
   Future<void>? _restoreOperation;
   bool _initialResolutionClaimed = false;
 
@@ -81,12 +83,16 @@ class AuthController extends Notifier<AuthState> {
   void continueAsGuest() {
     _initialResolutionClaimed = true;
     _profileLoadRevision++;
+    _activeModeMutationRevision = null;
+    _profileMutationRevision++;
     state = const AuthState.guest();
   }
 
   Future<void> updateActiveMode(AppMode mode) async {
     final user = state.user;
     if (user != null) {
+      final mutationRevision = ++_profileMutationRevision;
+      _activeModeMutationRevision = mutationRevision;
       state = AuthState.authenticated(
         user.copyWith(activeMode: mode, onboardingCompleted: true),
       );
@@ -98,14 +104,26 @@ class AuthController extends Notifier<AuthState> {
               activeMode: mode,
               onboardingCompleted: true,
             );
-        state = AuthState.authenticated(updated);
+        if (ref.mounted &&
+            _activeModeMutationRevision == mutationRevision &&
+            state.user?.id == user.id) {
+          _setProfileState(updated);
+        }
       } catch (error, stackTrace) {
         _report(error, stackTrace, 'auth_update_active_mode');
-        state = AuthState(
-          status: AuthStatus.authenticated,
-          user: user,
-          error: error,
-        );
+        if (ref.mounted &&
+            _activeModeMutationRevision == mutationRevision &&
+            state.user?.id == user.id) {
+          state = AuthState(
+            status: AuthStatus.authenticated,
+            user: user,
+            error: error,
+          );
+        }
+      } finally {
+        if (_activeModeMutationRevision == mutationRevision) {
+          _activeModeMutationRevision = null;
+        }
       }
     }
   }
@@ -150,6 +168,8 @@ class AuthController extends Notifier<AuthState> {
   Future<void> signOut() async {
     _initialResolutionClaimed = true;
     _profileLoadRevision++;
+    _activeModeMutationRevision = null;
+    _profileMutationRevision++;
     state = const AuthState.loading();
     try {
       await ref.read(authenticationRepositoryProvider).signOut();
@@ -189,6 +209,8 @@ class AuthController extends Notifier<AuthState> {
     if (authUser == null) {
       if (state.status == AuthStatus.guest) return;
       _profileLoadRevision++;
+      _activeModeMutationRevision = null;
+      _profileMutationRevision++;
       unawaited(_profileSubscription?.cancel());
       _profileSubscription = null;
       _watchedProfileId = null;
@@ -215,8 +237,9 @@ class AuthController extends Notifier<AuthState> {
             (updated) {
               if (ref.mounted &&
                   updated != null &&
-                  _watchedProfileId == updated.id) {
-                _setProfileState(updated);
+                  _watchedProfileId == updated.id &&
+                  _activeModeMutationRevision == null) {
+                _setProfileStateFromStream(updated);
               }
             },
             onError: (Object error, StackTrace stackTrace) => ref.mounted
@@ -237,6 +260,15 @@ class AuthController extends Notifier<AuthState> {
     state = profile.accountStatus == AccountStatus.suspended
         ? AuthState.suspended(profile)
         : AuthState.authenticated(profile);
+  }
+
+  void _setProfileStateFromStream(AppUserProfile profile) {
+    final current = state.user;
+    if (current?.id == profile.id &&
+        profile.updatedAt.isBefore(current!.updatedAt)) {
+      return;
+    }
+    _setProfileState(profile);
   }
 
   void _report(Object error, StackTrace stackTrace, String context) {
