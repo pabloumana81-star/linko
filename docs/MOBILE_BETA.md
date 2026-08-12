@@ -23,6 +23,10 @@ consideran certificados solo por compilar.
   el selector del sistema, sin permisos amplios de almacenamiento, fotos o
   cámara.
 - El teclado usa `adjustResize` y el callback usa `singleTop`.
+- El launcher usa la marca existente `Icons.handshake_rounded` en la paleta
+  LinkO. Android declara icono adaptive/round con foreground transparente,
+  fondo `#CCFBF1`, safe-zone y capa monochrome para launchers Pixel; conserva
+  mipmaps legacy para versiones anteriores.
 - Release nunca usa la clave debug. La firma de upload está configurada con el
   alias `linko-upload`; el keystore permanece fuera del repositorio en
   `/Users/Pablo/linko-upload-key.jks`. `android/key.properties` es local-only y,
@@ -32,6 +36,8 @@ consideran certificados solo por compilar.
 ## iOS
 
 - Runner usa `com.linko.app`; RunnerTests usa `com.linko.app.RunnerTests`.
+- `AppIcon.appiconset` contiene las 19 entradas iPhone/iPad/App Store requeridas
+  con la misma marca handshake y composición teal de Android.
 - No hay Team ID, certificado ni perfil de aprovisionamiento inventado.
 - No se declaran permisos de cámara o fototeca porque el producto usa el
   selector documental del sistema y no captura medios directamente.
@@ -124,3 +130,18 @@ Pendientes que esta ejecución no certifica: consentimiento y callback reales de
 Google/Apple/Magic Link, entrega de correo, instalación Play/TestFlight, firma
 Apple, cold start/background/resume del SO, interrupción real de red, selector
 nativo, teclado/safe areas y accesibilidad en Android/iPhone físicos.
+
+## Corrección de icono launcher — 11 de agosto de 2026
+
+La certificación física en Pixel 8 Pro con Android 17 detectó que el launcher
+mostraba el icono Flutter por defecto. La causa fue que los mipmaps Android y el
+catálogo AppIcon iOS seguían siendo los assets del template; Android tampoco
+tenía un recurso adaptive icon.
+
+Se reemplazaron exclusivamente los assets de launcher con la marca ya usada en
+Welcome/Splash: el glifo exacto `Icons.handshake_rounded` y los colores existentes
+`#0F766E`/`#CCFBF1`. Android incorpora foreground/background adaptive,
+`roundIcon`, monochrome y fallbacks legacy. iOS conserva todos los slots del
+catálogo con la misma composición. No cambiaron UI, IDs, backend, Auth, firma ni
+`.env`. La inspección visual final requiere desinstalar/reinstalar en el Pixel
+para invalidar cualquier caché del launcher.
