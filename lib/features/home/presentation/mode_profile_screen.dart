@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/app/app_mode.dart';
+import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/auth/presentation/auth_controller.dart';
+import 'package:linko/features/home/presentation/providers/customer_profile_provider.dart';
 import 'package:linko/features/home/presentation/widgets/bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/widgets/professional_bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/professional_profile_editor.dart';
 
-class ModeProfileScreen extends ConsumerWidget {
+class ModeProfileScreen extends ConsumerStatefulWidget {
   const ModeProfileScreen({
     required this.mode,
     required this.onChangeMode,
@@ -14,6 +16,7 @@ class ModeProfileScreen extends ConsumerWidget {
     required this.onRequestsSelected,
     this.onSearchSelected,
     this.onSignOut,
+    this.profileSnapshot,
     super.key,
   });
 
@@ -23,11 +26,68 @@ class ModeProfileScreen extends ConsumerWidget {
   final VoidCallback onRequestsSelected;
   final VoidCallback? onSearchSelected;
   final VoidCallback? onSignOut;
+  final AppUserProfile? profileSnapshot;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isCustomer = mode == AppMode.customer;
-    final profile = ref.watch(authControllerProvider).user;
+  ConsumerState<ModeProfileScreen> createState() => _ModeProfileScreenState();
+}
+
+class _ModeProfileScreenState extends ConsumerState<ModeProfileScreen>
+    with WidgetsBindingObserver {
+  AppUserProfile? _lastProfile;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastProfile = widget.profileSnapshot;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && widget.mode == AppMode.customer) {
+      ref.invalidate(customerProfileProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCustomer = widget.mode == AppMode.customer;
+    final authProfile =
+        widget.profileSnapshot ?? ref.watch(authControllerProvider).user;
+    if (authProfile != null && _lastProfile?.id != authProfile.id) {
+      _lastProfile = authProfile;
+    }
+    AppUserProfile? profile = _lastProfile ?? authProfile;
+    if (isCustomer && authProfile != null) {
+      final profileState = ref.watch(customerProfileProvider);
+      if (profileState.hasError) {
+        return _CustomerProfileStateScreen(
+          message: 'No pudimos cargar tu perfil.',
+          actionLabel: 'Reintentar',
+          onAction: () => ref.invalidate(customerProfileProvider),
+          onNavigate: widget.onHomeSelected,
+        );
+      }
+      if (profileState.hasValue) {
+        profile = profileState.value;
+        if (profile == null) {
+          return _CustomerProfileStateScreen(
+            message: 'No encontramos tu perfil de cliente.',
+            onNavigate: widget.onHomeSelected,
+          );
+        }
+        _lastProfile = profile;
+      } else if (profile == null) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+    }
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
@@ -105,7 +165,7 @@ class ModeProfileScreen extends ConsumerWidget {
                               ? 'switch-to-professional'
                               : 'switch-to-customer',
                         ),
-                        onPressed: onChangeMode,
+                        onPressed: widget.onChangeMode,
                         child: Text(
                           isCustomer
                               ? 'Cambiar a profesional'
@@ -119,11 +179,11 @@ class ModeProfileScreen extends ConsumerWidget {
                   const SizedBox(height: 28),
                   const ProfessionalProfileEditor(),
                 ],
-                if (onSignOut != null) ...[
+                if (widget.onSignOut != null) ...[
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
                     key: const ValueKey('auth-sign-out'),
-                    onPressed: onSignOut,
+                    onPressed: widget.onSignOut,
                     icon: const Icon(Icons.logout_rounded),
                     label: const Text('Cerrar sesión'),
                   ),
@@ -138,11 +198,11 @@ class ModeProfileScreen extends ConsumerWidget {
               selectedIndex: 3,
               onDestinationSelected: (index) {
                 if (index == 0) {
-                  onHomeSelected();
+                  widget.onHomeSelected();
                 } else if (index == 1) {
-                  onSearchSelected?.call();
+                  widget.onSearchSelected?.call();
                 } else if (index == 2) {
-                  onRequestsSelected();
+                  widget.onRequestsSelected();
                 }
               },
             )
@@ -150,12 +210,51 @@ class ModeProfileScreen extends ConsumerWidget {
               selectedIndex: 3,
               onDestinationSelected: (index) {
                 if (index == 0) {
-                  onHomeSelected();
+                  widget.onHomeSelected();
                 } else if (index == 1) {
-                  onRequestsSelected();
+                  widget.onRequestsSelected();
                 }
               },
             ),
     );
   }
+}
+
+class _CustomerProfileStateScreen extends StatelessWidget {
+  const _CustomerProfileStateScreen({
+    required this.message,
+    required this.onNavigate,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final VoidCallback onNavigate;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Perfil')),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
+            ],
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: onNavigate,
+              child: const Text('Volver al inicio'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

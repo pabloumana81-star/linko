@@ -95,25 +95,31 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
           .firstWhere((item) => item.id == request.id, orElse: () => request);
     } else {
       final persisted = ref.watch(persistedRequestDetailProvider(request.id));
-      if (persisted.isLoading) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      }
       if (persisted.hasError) {
         return _ProfessionalRequestLoadError(
+          onBack: onBack,
           onRetry: () =>
               ref.invalidate(persistedRequestDetailProvider(request.id)),
         );
       }
       final storedRequest = persisted.value;
-      if (storedRequest == null) {
-        return const Scaffold(
-          body: Center(child: Text('No se encontró la solicitud.')),
+      if (storedRequest == null && !persisted.isLoading) {
+        return Scaffold(
+          appBar: AppBar(
+            leading: BackButton(onPressed: onBack),
+            title: const Text('Detalle de solicitud'),
+          ),
+          body: const Center(child: Text('No se encontró la solicitud.')),
         );
       }
-      currentRequest = storedRequest.toIncomingRequest();
+      // The list route already owns a valid request snapshot. Keep rendering it
+      // while Supabase resolves or refreshes the authoritative detail instead
+      // of replacing the whole route with an unbounded loading surface.
+      currentRequest = storedRequest?.toIncomingRequest() ?? request;
       final realtime = ref.watch(realtimeRequestStatusProvider(request.id));
       if (realtime.hasError) {
         return _ProfessionalRequestLoadError(
+          onBack: onBack,
           onRetry: () =>
               ref.invalidate(realtimeRequestStatusProvider(request.id)),
         );
@@ -268,12 +274,20 @@ class ProfessionalRequestDetailScreen extends ConsumerWidget {
 }
 
 class _ProfessionalRequestLoadError extends StatelessWidget {
-  const _ProfessionalRequestLoadError({required this.onRetry});
+  const _ProfessionalRequestLoadError({
+    required this.onBack,
+    required this.onRetry,
+  });
 
+  final VoidCallback onBack;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      leading: BackButton(onPressed: onBack),
+      title: const Text('Detalle de solicitud'),
+    ),
     body: Center(
       child: Padding(
         padding: const EdgeInsets.all(24),

@@ -16,6 +16,7 @@ import 'package:linko/core/backend/repositories/professionals_repository.dart';
 import 'package:linko/features/home/presentation/data/placeholder_professionals.dart';
 import 'package:linko/features/home/presentation/models/professional_profile_data.dart';
 import 'package:linko/features/home/presentation/professional_profile_route.dart';
+import 'package:linko/features/home/presentation/providers/professional_discovery_provider.dart';
 import 'package:linko/features/requests/domain/models/app_user.dart';
 import 'package:linko/features/requests/domain/models/professional_profile.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -151,6 +152,43 @@ void main() {
     expect(find.text('Perfil Supabase real'), findsOneWidget);
     expect(find.text('Carlos Rodríguez'), findsNothing);
   });
+
+  testWidgets(
+    'Supabase profile retains the selected snapshot during lookup and refresh',
+    (tester) async {
+      final initialLoad = Completer<ProfessionalProfile?>();
+      final refresh = Completer<ProfessionalProfile?>();
+      final loads = <Completer<ProfessionalProfile?>>[initialLoad, refresh];
+      final repository = _ProfessionalsRepository(
+        onLookup: (_) => loads.removeAt(0).future,
+      );
+      await _pumpRoute(
+        tester,
+        repository: repository,
+        initial: professionalProfileDataFromDomain(_profile),
+        settle: false,
+      );
+
+      expect(find.text('Perfil Supabase real'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      initialLoad.complete(_profile);
+      await _pumpFrames(tester);
+      final context = tester.element(find.byType(ProfessionalProfileRoute));
+      ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).invalidate(professionalProfileByIdProvider(_profile.id));
+      await tester.pump();
+
+      expect(find.text('Perfil Supabase real'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      refresh.complete(_profile);
+      await _pumpFrames(tester);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('invalid professional ID shows a controlled Spanish state', (
     tester,

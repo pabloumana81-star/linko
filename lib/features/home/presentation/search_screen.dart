@@ -5,6 +5,7 @@ import 'package:linko/features/home/presentation/providers/professional_discover
 import 'package:linko/features/home/presentation/widgets/bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/widgets/category_card.dart';
 import 'package:linko/features/home/presentation/widgets/professional_card.dart';
+import 'package:linko/features/home/presentation/widgets/labeled_loading_indicator.dart';
 import 'package:linko/features/home/presentation/widgets/search_bar_widget.dart';
 import 'package:linko/features/home/presentation/widgets/search_chip_widget.dart';
 
@@ -129,8 +130,9 @@ class SearchScreen extends ConsumerWidget {
                     const _SearchSectionTitle(label: 'Resultados'),
                     const SizedBox(height: 16),
                     professionals.when(
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
+                      loading: () => const LabeledLoadingIndicator(
+                        label: 'Buscando profesionales…',
+                      ),
                       error: (_, _) =>
                           const Text('No pudimos cargar los profesionales.'),
                       data: (items) => GridView.builder(

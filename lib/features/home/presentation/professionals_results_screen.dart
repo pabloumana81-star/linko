@@ -7,6 +7,7 @@ import 'package:linko/features/home/presentation/providers/professional_discover
 import 'package:linko/features/home/presentation/widgets/filter_chip_widget.dart';
 import 'package:linko/features/home/presentation/widgets/professional_card_compact.dart';
 import 'package:linko/features/home/presentation/widgets/search_bar_widget.dart';
+import 'package:linko/features/home/presentation/widgets/labeled_loading_indicator.dart';
 
 class ProfessionalsResultsScreen extends ConsumerWidget {
   const ProfessionalsResultsScreen({
@@ -77,8 +78,9 @@ class ProfessionalsResultsScreen extends ConsumerWidget {
                     const SizedBox(height: 20),
                     Expanded(
                       child: professionals.when(
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
+                        loading: () => const LabeledLoadingIndicator(
+                          label: 'Buscando profesionales…',
+                        ),
                         error: (_, _) => const Center(
                           child: Text('No pudimos cargar los profesionales.'),
                         ),

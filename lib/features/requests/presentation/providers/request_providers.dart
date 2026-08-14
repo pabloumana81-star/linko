@@ -128,6 +128,15 @@ final conversationProvider = Provider.family<List<ConversationMessage>, String>(
   },
 );
 
+final requestConversationMessagesProvider =
+    FutureProvider.family<List<ConversationMessage>, String>((ref, requestId) {
+      final repositories = ref.watch(backendRepositoriesProvider);
+      if (repositories.mode == BackendMode.mock) {
+        return ref.watch(requestRepositoryProvider).getMessages(requestId);
+      }
+      return ref.watch(conversationsRepositoryProvider).getMessages(requestId);
+    });
+
 final timelineProvider = Provider.family<List<TimelineEvent>, String>((
   ref,
   requestId,

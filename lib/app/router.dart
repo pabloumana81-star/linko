@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,12 +26,14 @@ import 'package:linko/features/home/presentation/professional_profile_route.dart
 import 'package:linko/features/home/presentation/professional_request_detail_screen.dart';
 import 'package:linko/features/home/presentation/professional_requests_screen.dart';
 import 'package:linko/features/home/presentation/providers/professional_requests_provider.dart';
+import 'package:linko/features/home/presentation/providers/professional_discovery_provider.dart';
 import 'package:linko/features/home/presentation/professionals_results_screen.dart';
 import 'package:linko/features/home/presentation/quotation_form_screen.dart';
 import 'package:linko/features/home/presentation/quotation_review_screen.dart';
 import 'package:linko/features/home/presentation/quotation_success_screen.dart';
 import 'package:linko/features/home/presentation/request_service_screen.dart';
 import 'package:linko/features/home/presentation/request_success_screen.dart';
+import 'package:linko/features/home/presentation/widgets/labeled_loading_indicator.dart';
 import 'package:linko/features/home/presentation/search_screen.dart';
 import 'package:linko/features/splash/presentation/splash_screen.dart';
 import 'package:linko/features/requests/presentation/adapters/request_view_adapters.dart';
@@ -119,8 +122,22 @@ Widget _incomingRequestRoute(
             loading: () => const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             ),
-            error: (_, _) => const Scaffold(
-              body: Center(child: Text('No pudimos cargar la solicitud.')),
+            error: (_, _) => Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('No pudimos cargar la solicitud.'),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () => ref.invalidate(
+                        persistedRequestDetailProvider(requestId),
+                      ),
+                      child: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              ),
             ),
             data: (request) => request == null
                 ? const _MissingRequestScreen()
@@ -128,6 +145,32 @@ Widget _incomingRequestRoute(
           );
     },
   );
+}
+
+class _DevelopmentRouteObserver extends NavigatorObserver {
+  void _log(String action, Route<dynamic>? route) {
+    if (!kDebugMode) return;
+    final name = route?.settings.name ?? 'unnamed';
+    debugPrint('linko_navigation action=$action route=$name');
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _log('push', route);
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _log('pop', route);
+    super.didPop(route, previousRoute);
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    _log('replace', newRoute);
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+  }
 }
 
 ServiceCategory _serviceCategoryFor(String profession) {
@@ -187,6 +230,387 @@ class _MissingRequestScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: Text('No se encontró la solicitud.')));
+}
+
+class _HiringRouteState extends StatelessWidget {
+  const _HiringRouteState({
+    required this.title,
+    this.message,
+    this.onRetry,
+    this.loading = false,
+  });
+
+  final String title;
+  final String? message;
+  final VoidCallback? onRetry;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title)),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (loading) ...[
+              const CircularProgressIndicator(),
+              const SizedBox(height: 12),
+              const Text('Cargando…'),
+            ] else if (message != null)
+              Text(message!, textAlign: TextAlign.center),
+            if (onRetry != null) ...[
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: onRetry,
+                child: const Text('Reintentar'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+enum _CustomerRequestDetailBranch { loading, content, notFound, error }
+
+class _CustomerRequestDetailRoute extends ConsumerStatefulWidget {
+  const _CustomerRequestDetailRoute({
+    required this.requestId,
+    this.initialRequest,
+  });
+
+  final String requestId;
+  final CustomerServiceRequest? initialRequest;
+
+  @override
+  ConsumerState<_CustomerRequestDetailRoute> createState() =>
+      _CustomerRequestDetailRouteState();
+}
+
+class _CustomerRequestDetailRouteState
+    extends ConsumerState<_CustomerRequestDetailRoute>
+    with WidgetsBindingObserver {
+  CustomerServiceRequest? _retainedRequest;
+  ServiceRequest? _retainedServiceRequest;
+  List<ConversationMessage> _retainedMessages = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _retainedRequest = widget.initialRequest;
+    _debugLog('route_entered', providerState: 'not_read');
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _debugLog('lifecycle_resume', providerState: 'unchanged');
+    }
+  }
+
+  @override
+  void dispose() {
+    _debugLog('navigation_exit', providerState: 'disposed');
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  String _stateName(AsyncValue<Object?> state) {
+    if (state.hasError) return 'error';
+    if (state.isLoading) return 'loading';
+    return 'data';
+  }
+
+  void _debugLog(
+    String event, {
+    required String providerState,
+    _CustomerRequestDetailBranch? branch,
+  }) {
+    if (!kDebugMode) return;
+    debugPrint(
+      'linko_customer_request_detail event=$event '
+      'route=${AppRouteNames.customerRequestDetail} '
+      'request_id=${widget.requestId} '
+      'snapshot=${widget.initialRequest != null} '
+      'provider=$providerState '
+      'retained=${_retainedRequest != null} '
+      'branch=${branch?.name ?? 'none'}',
+    );
+  }
+
+  Widget _renderBranch(
+    _CustomerRequestDetailBranch branch,
+    Widget child, {
+    required String providerState,
+  }) {
+    _debugLog('render', providerState: providerState, branch: branch);
+    return child;
+  }
+
+  Widget _failFastGuard(String providerState) {
+    if (kDebugMode) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Diagnóstico de solicitud')),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Ruta: ${AppRouteNames.customerRequestDetail}\n'
+            'ID presente: ${widget.requestId.isNotEmpty ? 'sí' : 'no'}\n'
+            'Proveedor: $providerState',
+          ),
+        ),
+      );
+    }
+    return const Scaffold(
+      body: Center(child: Text('No pudimos mostrar la solicitud.')),
+    );
+  }
+
+  Widget _guardDestination(Widget? destination, String providerState) =>
+      destination ?? _failFastGuard(providerState);
+
+  @override
+  Widget build(BuildContext context) {
+    final isMock =
+        ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
+    AsyncValue<ServiceRequest?>? persistedState;
+    ServiceRequest? serviceRequest;
+
+    if (isMock) {
+      serviceRequest = ref.watch(requestDetailProvider(widget.requestId));
+    } else {
+      final state = ref.watch(persistedRequestDetailProvider(widget.requestId));
+      persistedState = state;
+      if (!state.hasError) {
+        final freshRequest = state.value;
+        if (freshRequest != null) {
+          _retainedServiceRequest = freshRequest;
+          _retainedRequest = freshRequest.toCustomerRequest();
+        }
+        serviceRequest = freshRequest ?? _retainedServiceRequest;
+      }
+    }
+
+    final providerState = persistedState == null
+        ? 'mock_data'
+        : _stateName(persistedState);
+    _debugLog('provider_state', providerState: providerState);
+
+    if (persistedState?.hasError ?? false) {
+      return _renderBranch(
+        _CustomerRequestDetailBranch.error,
+        Scaffold(
+          appBar: AppBar(
+            leading: BackButton(
+              onPressed: () => _popOrGo(context, AppRoutes.customerRequests),
+            ),
+            title: const Text('Detalle de solicitud'),
+          ),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'No pudimos cargar la solicitud.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () => ref.invalidate(
+                      persistedRequestDetailProvider(widget.requestId),
+                    ),
+                    child: const Text('Reintentar'),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        _popOrGo(context, AppRoutes.customerRequests),
+                    child: const Text('Volver'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        providerState: providerState,
+      );
+    }
+
+    final request = serviceRequest?.toCustomerRequest() ?? _retainedRequest;
+    if (request == null && (persistedState?.isLoading ?? false)) {
+      return _renderBranch(
+        _CustomerRequestDetailBranch.loading,
+        Scaffold(
+          appBar: AppBar(
+            leading: BackButton(
+              onPressed: () => _popOrGo(context, AppRoutes.customerRequests),
+            ),
+            title: const Text('Detalle de solicitud'),
+          ),
+          body: const LabeledLoadingIndicator(label: 'Cargando solicitud…'),
+        ),
+        providerState: providerState,
+      );
+    }
+    if (request == null) {
+      return _renderBranch(
+        _CustomerRequestDetailBranch.notFound,
+        Scaffold(
+          appBar: AppBar(
+            leading: BackButton(
+              onPressed: () => _popOrGo(context, AppRoutes.customerRequests),
+            ),
+            title: const Text('Detalle de solicitud'),
+          ),
+          body: const Center(child: Text('No se encontró la solicitud.')),
+        ),
+        providerState: providerState,
+      );
+    }
+
+    final realtimeStatusState = serviceRequest == null || isMock
+        ? null
+        : ref.watch(realtimeRequestStatusProvider(widget.requestId));
+    final realtimeQuotationState = serviceRequest == null || isMock
+        ? null
+        : ref.watch(realtimeQuotationProvider(widget.requestId));
+    final realtimeTimelineState = serviceRequest == null || isMock
+        ? null
+        : ref.watch(realtimeTimelineProvider(widget.requestId));
+    final messagesState = ref.watch(
+      requestConversationMessagesProvider(widget.requestId),
+    );
+    if ((realtimeStatusState?.hasError ?? false) ||
+        (realtimeQuotationState?.hasError ?? false) ||
+        (realtimeTimelineState?.hasError ?? false) ||
+        messagesState.hasError) {
+      return _renderBranch(
+        _CustomerRequestDetailBranch.error,
+        Scaffold(
+          appBar: AppBar(
+            leading: BackButton(
+              onPressed: () => _popOrGo(context, AppRoutes.customerRequests),
+            ),
+            title: const Text('Detalle de solicitud'),
+          ),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Perdimos la sincronización de la solicitud.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () {
+                      ref
+                        ..invalidate(
+                          realtimeRequestStatusProvider(widget.requestId),
+                        )
+                        ..invalidate(
+                          realtimeQuotationProvider(widget.requestId),
+                        )
+                        ..invalidate(realtimeTimelineProvider(widget.requestId))
+                        ..invalidate(
+                          requestConversationMessagesProvider(widget.requestId),
+                        );
+                    },
+                    child: const Text('Reconectar'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        providerState: providerState,
+      );
+    }
+
+    var resolvedRequest = serviceRequest;
+    final realtimeStatus = realtimeStatusState?.value;
+    if (resolvedRequest != null && realtimeStatus != null) {
+      resolvedRequest = resolvedRequest.copyWith(state: realtimeStatus);
+      _retainedServiceRequest = resolvedRequest;
+      _retainedRequest = resolvedRequest.toCustomerRequest();
+    }
+    final visibleRequest = resolvedRequest?.toCustomerRequest() ?? request;
+    final professionalId = resolvedRequest?.professional.user.id;
+    final quotation = isMock
+        ? ref.watch(quotationProvider(widget.requestId))
+        : realtimeQuotationState?.value;
+    final freshMessages = messagesState.value;
+    if (freshMessages != null) _retainedMessages = freshMessages;
+    final messages = freshMessages ?? _retainedMessages;
+    Widget? destination = CustomerRequestDetailScreen(
+      request: visibleRequest,
+      onBack: () => _popOrGo(context, AppRoutes.customerRequests),
+      timelineEvents: isMock
+          ? ref.watch(timelineProvider(widget.requestId))
+          : realtimeTimelineState?.value ?? const [],
+      scheduledDateLabel: _scheduledDateLabel(messages),
+      onSubmitRating: professionalId == null
+          ? null
+          : (stars, comment) async {
+              final rating = ServiceRating(
+                requestId: widget.requestId,
+                professionalId: professionalId,
+                stars: stars,
+                comment: comment,
+              );
+              try {
+                await ref
+                    .read(requestWorkflowControllerProvider)
+                    .submitRating(rating);
+                ref
+                  ..invalidate(requestDetailProvider(widget.requestId))
+                  ..invalidate(customerRequestsProvider)
+                  ..invalidate(professionalRequestsProvider)
+                  ..invalidate(
+                    requestConversationMessagesProvider(widget.requestId),
+                  )
+                  ..invalidate(timelineProvider(widget.requestId))
+                  ..invalidate(ratingProvider(widget.requestId))
+                  ..invalidate(
+                    professionalRatingSummaryProvider(professionalId),
+                  )
+                  ..invalidate(professionalRequestFlowProvider);
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('No pudimos enviar la calificación.'),
+                    ),
+                  );
+                }
+              }
+            },
+      onViewQuotation: quotation == null
+          ? null
+          : () => context.pushNamed(
+              AppRouteNames.customerQuotation,
+              pathParameters: {'requestId': visibleRequest.id},
+            ),
+      onOpenConversation: () => context.pushNamed(
+        AppRouteNames.customerConversation,
+        pathParameters: {'requestId': visibleRequest.id},
+        extra: visibleRequest,
+      ),
+    );
+    destination = _renderBranch(
+      _CustomerRequestDetailBranch.content,
+      destination,
+      providerState: providerState,
+    );
+    return _guardDestination(destination, providerState);
+  }
 }
 
 String? _scheduledDateLabel(List<ConversationMessage> messages) {
@@ -298,6 +722,7 @@ Future<void> _signOut(BuildContext context) async {
 
 final GoRouter appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
+  observers: [_DevelopmentRouteObserver()],
   routes: [
     GoRoute(
       path: AppRoutes.splash,
@@ -659,7 +1084,7 @@ final GoRouter appRouter = GoRouter(
                   : ref.watch(persistedRequestDetailProvider(request.id));
               if (persisted?.isLoading ?? false) {
                 return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
+                  body: LabeledLoadingIndicator(label: 'Cargando solicitud…'),
                 );
               }
               if (persisted?.hasError ?? false) {
@@ -843,13 +1268,14 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.professionalProfile,
       name: AppRouteNames.professionalProfile,
       builder: (context, state) {
+        final extra = state.extra;
         return ProfessionalProfileRoute(
           professionalId: state.pathParameters['professionalId']!,
-          initialProfessional: state.extra as ProfessionalProfileData?,
+          initialProfessional: extra is ProfessionalProfileData ? extra : null,
           onRequestService: (professional) {
             context.pushNamed(
               AppRouteNames.requestService,
-              pathParameters: {'professionalName': professional.name},
+              pathParameters: {'professionalName': professional.id},
               extra: professional,
             );
           },
@@ -860,19 +1286,45 @@ final GoRouter appRouter = GoRouter(
       path: AppRoutes.requestService,
       name: AppRouteNames.requestService,
       builder: (context, state) {
-        final professional = state.extra as ProfessionalProfileData?;
-        if (professional == null) {
-          return const Scaffold(
-            body: Center(
-              child: Text('No se encontró el profesional seleccionado.'),
-            ),
-          );
-        }
-
-        return RequestServiceScreen(
-          professional: professional,
-          onContinue: (draft) {
-            context.push(AppRoutes.confirmRequest, extra: draft);
+        final professionalId = state.pathParameters['professionalName']!;
+        final extra = state.extra;
+        return Consumer(
+          builder: (context, ref, child) {
+            final selected =
+                extra is ProfessionalProfileData && extra.id == professionalId
+                ? extra
+                : null;
+            final lookup = selected == null
+                ? ref.watch(professionalProfileByIdProvider(professionalId))
+                : AsyncData<ProfessionalProfileData?>(selected);
+            if (lookup.hasError) {
+              return _HiringRouteState(
+                title: 'Solicitar servicio',
+                message: 'No pudimos cargar el profesional seleccionado.',
+                onRetry: () => ref.invalidate(
+                  professionalProfileByIdProvider(professionalId),
+                ),
+              );
+            }
+            final professional = lookup.value;
+            if (professional == null && lookup.isLoading) {
+              return const _HiringRouteState(
+                title: 'Solicitar servicio',
+                loading: true,
+              );
+            }
+            if (professional == null) {
+              return const _HiringRouteState(
+                title: 'Solicitar servicio',
+                message: 'No se encontró el profesional seleccionado.',
+              );
+            }
+            return RequestServiceScreen(
+              professional: professional,
+              onContinue: (draft) {
+                context.push(AppRoutes.confirmRequest, extra: draft);
+              },
+            );
           },
         );
       },
@@ -880,12 +1332,12 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.confirmRequest,
       builder: (context, state) {
-        final draft = state.extra as RequestDraft?;
+        final extra = state.extra;
+        final draft = extra is RequestDraft ? extra : null;
         if (draft == null) {
-          return const Scaffold(
-            body: Center(
-              child: Text('No se encontraron los datos de la solicitud.'),
-            ),
+          return const _HiringRouteState(
+            title: 'Confirmar solicitud',
+            message: 'No se encontraron los datos de la solicitud.',
           );
         }
         return ConfirmRequestScreen(
@@ -905,13 +1357,9 @@ final GoRouter appRouter = GoRouter(
             }
             final persistedProfessional = isMock
                 ? null
-                : (await container
-                          .read(professionalsRepositoryProvider)
-                          .getProfessionals())
-                      .where(
-                        (item) => item.user.name == draft.professional.name,
-                      )
-                      .firstOrNull;
+                : await container
+                      .read(professionalsRepositoryProvider)
+                      .getProfessionalById(draft.professional.id);
             if (!isMock && persistedProfessional == null) {
               throw StateError('No se encontró el profesional seleccionado.');
             }
@@ -975,7 +1423,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.requestSuccess,
       builder: (context, state) {
-        final professionalName = state.extra as String?;
+        final extra = state.extra;
+        final professionalName = extra is String ? extra : null;
         if (professionalName == null) {
           return const _MissingRequestScreen();
         }
@@ -1086,172 +1535,10 @@ final GoRouter appRouter = GoRouter(
       name: AppRouteNames.customerRequestDetail,
       builder: (context, state) {
         final requestId = state.pathParameters['requestId']!;
-        return Consumer(
-          builder: (context, ref, child) {
-            ServiceRequest? serviceRequest;
-            if (ref.watch(backendRepositoriesProvider).mode ==
-                BackendMode.mock) {
-              serviceRequest = ref.watch(requestDetailProvider(requestId));
-            } else {
-              final requestState = ref.watch(
-                persistedRequestDetailProvider(requestId),
-              );
-              if (requestState.isLoading) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (requestState.hasError) {
-                return Scaffold(
-                  body: Center(
-                    child: TextButton(
-                      onPressed: () => ref.invalidate(
-                        persistedRequestDetailProvider(requestId),
-                      ),
-                      child: const Text(
-                        'No pudimos cargar la solicitud. Reintentar',
-                      ),
-                    ),
-                  ),
-                );
-              }
-              serviceRequest = requestState.value;
-            }
-            if (serviceRequest == null) {
-              return const Scaffold(
-                body: Center(child: Text('No se encontró la solicitud.')),
-              );
-            }
-            var resolvedRequest = serviceRequest;
-            final isMock =
-                ref.watch(backendRepositoriesProvider).mode == BackendMode.mock;
-            final realtimeStatusState = isMock
-                ? null
-                : ref.watch(realtimeRequestStatusProvider(requestId));
-            final realtimeQuotationState = isMock
-                ? null
-                : ref.watch(realtimeQuotationProvider(requestId));
-            final realtimeTimelineState = isMock
-                ? null
-                : ref.watch(realtimeTimelineProvider(requestId));
-            if ((realtimeStatusState?.hasError ?? false) ||
-                (realtimeQuotationState?.hasError ?? false) ||
-                (realtimeTimelineState?.hasError ?? false)) {
-              return Scaffold(
-                body: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Perdimos la sincronización de la solicitud.',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () {
-                            ref
-                              ..invalidate(
-                                realtimeRequestStatusProvider(requestId),
-                              )
-                              ..invalidate(realtimeQuotationProvider(requestId))
-                              ..invalidate(realtimeTimelineProvider(requestId));
-                          },
-                          child: const Text('Reconectar'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }
-            if (!isMock) {
-              if ((realtimeStatusState?.isLoading ?? false) ||
-                  (realtimeQuotationState?.isLoading ?? false) ||
-                  (realtimeTimelineState?.isLoading ?? false)) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
-              final realtimeStatus = realtimeStatusState?.value;
-              if (realtimeStatus != null) {
-                resolvedRequest = resolvedRequest.copyWith(
-                  state: realtimeStatus,
-                );
-              }
-            }
-            final request = resolvedRequest.toCustomerRequest();
-            final quotation = isMock
-                ? ref.watch(quotationProvider(requestId))
-                : realtimeQuotationState?.value;
-            final messages = ref.watch(conversationProvider(requestId));
-            return CustomerRequestDetailScreen(
-              request: request,
-              onBack: () => _popOrGo(context, AppRoutes.customerRequests),
-              timelineEvents: isMock
-                  ? ref.watch(timelineProvider(requestId))
-                  : realtimeTimelineState?.value ?? const [],
-              scheduledDateLabel: _scheduledDateLabel(messages),
-              onSubmitRating: (stars, comment) async {
-                final container = ProviderScope.containerOf(
-                  context,
-                  listen: false,
-                );
-                final rating = ServiceRating(
-                  requestId: requestId,
-                  professionalId: resolvedRequest.professional.user.id,
-                  stars: stars,
-                  comment: comment,
-                );
-                void invalidateRatingData() {
-                  container
-                    ..invalidate(requestDetailProvider(requestId))
-                    ..invalidate(customerRequestsProvider)
-                    ..invalidate(professionalRequestsProvider)
-                    ..invalidate(conversationProvider(requestId))
-                    ..invalidate(timelineProvider(requestId))
-                    ..invalidate(ratingProvider(requestId))
-                    ..invalidate(
-                      professionalRatingSummaryProvider(
-                        resolvedRequest.professional.user.id,
-                      ),
-                    )
-                    ..invalidate(professionalRequestFlowProvider);
-                }
-
-                try {
-                  await container
-                      .read(requestWorkflowControllerProvider)
-                      .submitRating(rating);
-                  invalidateRatingData();
-                } catch (_) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('No pudimos enviar la calificación.'),
-                      ),
-                    );
-                  }
-                }
-              },
-              onViewQuotation: quotation == null
-                  ? null
-                  : () {
-                      context.pushNamed(
-                        AppRouteNames.customerQuotation,
-                        pathParameters: {'requestId': request.id},
-                      );
-                    },
-              onOpenConversation: () {
-                context.pushNamed(
-                  AppRouteNames.customerConversation,
-                  pathParameters: {'requestId': request.id},
-                  extra: request,
-                );
-              },
-            );
-          },
+        final extra = state.extra;
+        return _CustomerRequestDetailRoute(
+          requestId: requestId,
+          initialRequest: extra is CustomerServiceRequest ? extra : null,
         );
       },
     ),
@@ -1276,7 +1563,8 @@ final GoRouter appRouter = GoRouter(
               final quotationState = ref.watch(
                 realtimeQuotationProvider(requestId),
               );
-              if (requestState.isLoading || quotationState.isLoading) {
+              if ((requestState.isLoading && requestState.value == null) ||
+                  (quotationState.isLoading && quotationState.value == null)) {
                 return const Scaffold(
                   body: Center(child: CircularProgressIndicator()),
                 );
@@ -1352,7 +1640,7 @@ final GoRouter appRouter = GoRouter(
                   ..invalidate(requestDetailProvider(requestId))
                   ..invalidate(customerRequestsProvider)
                   ..invalidate(professionalRequestsProvider)
-                  ..invalidate(conversationProvider(requestId))
+                  ..invalidate(requestConversationMessagesProvider(requestId))
                   ..invalidate(timelineProvider(requestId))
                   ..invalidate(professionalRequestFlowProvider);
                 context.goNamed(

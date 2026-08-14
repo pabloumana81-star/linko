@@ -55,6 +55,7 @@ class RequestWorkflowController {
       ..invalidate(professionalRequestsProvider)
       ..invalidate(requestDetailProvider(requestId))
       ..invalidate(conversationProvider(requestId))
+      ..invalidate(requestConversationMessagesProvider(requestId))
       ..invalidate(timelineProvider(requestId));
   }
 

@@ -45,6 +45,7 @@ void main() {
       final service = SupabaseClient(_url, _serviceKey);
       final adminClient = SupabaseClient(_url, _anonKey);
       final customerClient = SupabaseClient(_url, _anonKey);
+      final unrelatedCustomerClient = SupabaseClient(_url, _anonKey);
       final professionalClient = SupabaseClient(_url, _anonKey);
       final unrelatedProfessionalClient = SupabaseClient(_url, _anonKey);
       final createdUserIds = <String>[];
@@ -86,6 +87,10 @@ void main() {
         );
 
         final customerUser = await createUser('customer', AppMode.customer);
+        final unrelatedCustomerUser = await createUser(
+          'unrelated_customer',
+          AppMode.customer,
+        );
         final professionalUser = await createUser(
           'professional',
           AppMode.professional,
@@ -96,6 +101,10 @@ void main() {
         );
         await customerClient.auth.signInWithPassword(
           email: '${prefix}_customer@example.invalid',
+          password: password,
+        );
+        await unrelatedCustomerClient.auth.signInWithPassword(
+          email: '${prefix}_unrelated_customer@example.invalid',
           password: password,
         );
         await professionalClient.auth.signInWithPassword(
@@ -170,8 +179,8 @@ void main() {
         await professionalClient.from('professional_profiles').insert({
           'id': professionalUser.id,
           'display_name': prefix,
-          'profession': 'Certificación QA',
-          'location': 'San José',
+          'profession': 'Electricista',
+          'location': 'San Jose',
           'skills': ['qa'],
           'verification_status': 'pending',
         });
@@ -344,19 +353,22 @@ void main() {
         }
         await professionalProfessionals.updateOwnProfessionalProfile(
           ProfessionalProfileUpdate(
-            profession: 'Certificación QA',
-            location: 'San José',
+            profession: 'Electricista',
+            location: 'San Jose',
             biography: '${prefix}_biography',
-            services: const ['QA E2E', 'Sincronización'],
-            experienceYears: 6,
+            services: const [
+              'instalación eléctrica',
+              'reparaciones eléctricas',
+            ],
+            experienceYears: 5,
             experienceDescription: '${prefix}_experience',
-            coverageArea: 'GAM QA',
+            coverageArea: 'San Jose',
           ),
         );
         final ownProfessional = await professionalProfessionals
             .getOwnProfessionalProfile();
         expect(ownProfessional?.biography, '${prefix}_biography');
-        expect(ownProfessional?.services, contains('QA E2E'));
+        expect(ownProfessional?.services, contains('instalación eléctrica'));
         expect(
           () => customerProfessionals.updateOwnProfessionalProfile(
             const ProfessionalProfileUpdate(
@@ -382,8 +394,45 @@ void main() {
           isTrue,
         );
         expect(
-          discovery.current.any((item) => item.id == professionalUser.id),
+          discovery.current.where((item) => item.id == professionalUser.id),
+          hasLength(1),
+        );
+        expect(
+          discovery.current
+              .singleWhere((item) => item.id == professionalUser.id)
+              .isVerified,
           isFalse,
+        );
+
+        await professionalProfiles.updateProfile(
+          userId: professionalUser.id,
+          activeMode: AppMode.customer,
+        );
+        final customerModeRow = await professionalClient
+            .from('professional_profiles')
+            .select('id, profession, categories, verification_status')
+            .eq('id', professionalUser.id)
+            .single();
+        expect(customerModeRow['profession'], 'Electricista');
+        expect(
+          customerModeRow['categories'],
+          contains('instalación eléctrica'),
+        );
+        expect(customerModeRow['verification_status'], 'pending');
+        final sameAccountDiscovery = SupabaseProfessionalsRepository(
+          professionalClient,
+        );
+        final customerModeProfessionals = await sameAccountDiscovery
+            .getProfessionals();
+        expect(
+          customerModeProfessionals.where(
+            (item) => item.id == professionalUser.id,
+          ),
+          hasLength(1),
+        );
+        await professionalProfiles.updateProfile(
+          userId: professionalUser.id,
+          activeMode: AppMode.professional,
         );
 
         await adminProfessionals.approveVerification(professionalUser.id);
@@ -425,8 +474,8 @@ void main() {
         expect(directProfessional?.id, professionalUser.id);
         expect(directProfessional?.user.name, prefix);
         expect(directProfessional?.biography, '${prefix}_biography');
-        expect(directProfessional?.services, contains('QA E2E'));
-        expect(directProfessional?.experienceYears, 6);
+        expect(directProfessional?.services, contains('instalación eléctrica'));
+        expect(directProfessional?.experienceYears, 5);
         expect(directProfessional?.portfolio, hasLength(1));
         expect(
           await customerClient.storage
@@ -474,6 +523,9 @@ void main() {
         final professionalRequests = ServiceRequestsRepositorySupabase(
           professionalClient,
         );
+        final unrelatedCustomerRequests = ServiceRequestsRepositorySupabase(
+          unrelatedCustomerClient,
+        );
         requestId = const Uuid().v4();
         await customerRequests.createRequest(
           ServiceRequest(
@@ -482,7 +534,7 @@ void main() {
             professional: ProfessionalProfile(
               id: professionalUser.id,
               user: AppUser(id: professionalUser.id, name: prefix),
-              profession: 'Certificación QA',
+              profession: 'Electricista',
               rating: 0,
               reviewCount: 0,
               location: 'San José',
@@ -499,6 +551,32 @@ void main() {
             memberSinceLabel: 'QA',
             attachedPhotoCount: 0,
           ),
+        );
+
+        expect(customerClient.auth.currentUser?.id, customerUser.id);
+        expect(
+          (await customerRequests.listCustomerRequests(
+            customerUser.id,
+          )).where((request) => request.id == requestId),
+          hasLength(1),
+        );
+        expect(
+          (await customerRequests.getRequestById(requestId))?.id,
+          requestId,
+        );
+        expect(
+          (await professionalRequests.getRequestById(requestId))?.id,
+          requestId,
+        );
+        expect(
+          await unrelatedCustomerRequests.getRequestById(requestId),
+          isNull,
+        );
+        expect(
+          await unrelatedCustomerRequests.listCustomerRequests(
+            unrelatedCustomerUser.id,
+          ),
+          isEmpty,
         );
 
         customerStatuses = StreamIterator(

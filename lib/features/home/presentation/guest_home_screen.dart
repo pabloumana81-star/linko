@@ -5,6 +5,7 @@ import 'package:linko/features/home/presentation/providers/professional_discover
 import 'package:linko/features/home/presentation/widgets/bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/widgets/category_card.dart';
 import 'package:linko/features/home/presentation/widgets/professional_card.dart';
+import 'package:linko/features/home/presentation/widgets/labeled_loading_indicator.dart';
 import 'package:linko/features/home/presentation/widgets/search_bar_widget.dart';
 
 class GuestHomeScreen extends ConsumerWidget {
@@ -117,8 +118,9 @@ class GuestHomeScreen extends ConsumerWidget {
                     const _SectionTitle(label: 'Profesionales destacados'),
                     const SizedBox(height: 18),
                     professionals.when(
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
+                      loading: () => const LabeledLoadingIndicator(
+                        label: 'Cargando profesionales…',
+                      ),
                       error: (_, _) =>
                           const Text('No pudimos cargar los profesionales.'),
                       data: (items) => GridView.builder(
