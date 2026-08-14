@@ -6,6 +6,11 @@ import 'package:linko/core/backend/backend_providers.dart';
 import 'package:linko/core/diagnostics/diagnostics_service.dart';
 import 'package:linko/features/auth/presentation/auth_controller.dart';
 
+const diagnosticsOverlayEnabled = bool.fromEnvironment(
+  'SHOW_DIAGNOSTICS_OVERLAY',
+  defaultValue: false,
+);
+
 class DebugDiagnosticsOverlay extends ConsumerWidget {
   const DebugDiagnosticsOverlay({required this.child, super.key});
 
@@ -17,7 +22,7 @@ class DebugDiagnosticsOverlay extends ConsumerWidget {
     if (auth.status == AuthStatus.suspended) {
       return const _SuspendedAccountView();
     }
-    if (!kDebugMode) return child;
+    if (!kDebugMode || !diagnosticsOverlayEnabled) return child;
     final diagnostics = ref.watch(diagnosticsServiceProvider);
     final repositories = ref.watch(backendRepositoriesProvider);
     final initialization = ref.watch(backendInitializationProvider);
