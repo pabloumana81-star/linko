@@ -16,7 +16,7 @@ class LinkoApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(authControllerProvider, (previous, next) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
         final location = appRouter.routeInformationProvider.value.uri.path;
         if (next.status == AuthStatus.unauthenticated &&
             (ref.read(backendRepositoriesProvider).mode ==
@@ -24,11 +24,14 @@ class LinkoApp extends ConsumerWidget {
                 previous?.status == AuthStatus.authenticated ||
                 previous?.status == AuthStatus.suspended) &&
             location != AppRoutes.splash &&
-            location != AppRoutes.welcome) {
+            location != AppRoutes.welcome &&
+            location != AppRoutes.hiringAuth) {
           appRouter.go(AppRoutes.welcome);
           return;
         }
         if (next.status != AuthStatus.authenticated) return;
+        final container = ProviderScope.containerOf(context, listen: false);
+        if (await resumePendingHiring(container)) return;
         if (next.user?.onboardingCompleted == false) {
           if (location != AppRoutes.userType) appRouter.go(AppRoutes.userType);
           return;

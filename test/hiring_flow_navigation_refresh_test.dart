@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:linko/app/app.dart';
+import 'package:linko/app/app_mode.dart';
 import 'package:linko/app/router.dart';
+import 'package:linko/core/backend/backend_providers.dart';
+import 'package:linko/core/backend/data/mock_backend_repositories.dart';
+import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/home/presentation/providers/professional_discovery_provider.dart';
 import 'package:linko/features/home/presentation/widgets/request_card.dart';
 import 'package:linko/features/requests/presentation/providers/request_providers.dart';
@@ -12,7 +16,25 @@ void main() {
     'complete customer hiring route stays rendered through invalidations',
     (tester) async {
       appRouter.go(AppRoutes.guestHome);
-      await tester.pumpWidget(const ProviderScope(child: LinkoApp()));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authenticationRepositoryProvider.overrideWithValue(
+              MockAuthenticationRepository(
+                initialUser: AppUserProfile(
+                  id: 'authenticated-customer',
+                  displayName: 'Cliente',
+                  email: 'cliente@linko.test',
+                  avatarUrl: null,
+                  activeMode: AppMode.customer,
+                  createdAt: DateTime.utc(2026),
+                ),
+              ),
+            ),
+          ],
+          child: const LinkoApp(),
+        ),
+      );
       await tester.pumpAndSettle();
       final container = ProviderScope.containerOf(
         tester.element(find.text('¿Qué servicio necesitas hoy?')),

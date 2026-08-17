@@ -103,6 +103,14 @@ void main() {
     await tester.tap(find.text('Solicitar servicio'));
     await tester.pumpAndSettle();
 
+    expect(
+      find.text('Inicia sesión para solicitar el servicio'),
+      findsOneWidget,
+    );
+    expect(find.text('¿Qué necesitas?'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('hiring-auth-google')));
+    await tester.pumpAndSettle();
+
     expect(find.text('Solicitar servicio'), findsOneWidget);
     expect(find.text('¿Qué necesitas?'), findsOneWidget);
     expect(
@@ -297,6 +305,7 @@ void main() {
         home: ConfirmRequestScreen(
           draft: RequestDraft(
             professional: professional,
+            selectedService: professional.profession,
             description: 'Revisión de instalación eléctrica.',
             location: 'San José',
             timing: RequestTiming.flexible,
@@ -318,6 +327,7 @@ void main() {
         home: ConfirmRequestScreen(
           draft: RequestDraft(
             professional: professional,
+            selectedService: professional.profession,
             description: 'Revisión de instalación eléctrica.',
             location: 'San José',
             timing: RequestTiming.specificDate,

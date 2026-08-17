@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   late String privacyMigration;
   late String publicProfileMigration;
+  late String anonymousDiscoveryMigration;
 
   setUpAll(() async {
     privacyMigration = await File(
@@ -12,6 +13,9 @@ void main() {
     ).readAsString();
     publicProfileMigration = await File(
       'supabase/migrations/202608080005_production_professional_profiles.sql',
+    ).readAsString();
+    anonymousDiscoveryMigration = await File(
+      'supabase/migrations/202608160001_allow_anon_professional_discovery.sql',
     ).readAsString();
   });
 
@@ -50,6 +54,13 @@ void main() {
       expect(publicProfileMigration, contains('verification_status text'));
       expect(publicProfileMigration, isNot(contains('verification_documents')));
       expect(publicProfileMigration, isNot(contains('submission_metadata')));
+      expect(
+        anonymousDiscoveryMigration,
+        contains(
+          'grant execute on function public.list_available_professionals()',
+        ),
+      );
+      expect(anonymousDiscoveryMigration, contains('to anon, authenticated'));
       expect(
         privacyMigration,
         contains('left join public.professional_verification_submissions'),

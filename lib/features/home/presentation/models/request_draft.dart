@@ -36,6 +36,7 @@ extension RequestDateLabel on DateTime {
 class RequestDraft {
   const RequestDraft({
     required this.professional,
+    required this.selectedService,
     required this.description,
     required this.location,
     required this.timing,
@@ -44,6 +45,7 @@ class RequestDraft {
   });
 
   final ProfessionalProfileData professional;
+  final String selectedService;
   final String description;
   final String location;
   final RequestTiming timing;

@@ -43,6 +43,7 @@ void main() {
       final prefix = 'qa_${DateTime.now().toUtc().microsecondsSinceEpoch}';
       const password = 'LinkO-QA-only-42!';
       final service = SupabaseClient(_url, _serviceKey);
+      final anonymousClient = SupabaseClient(_url, _anonKey);
       final adminClient = SupabaseClient(_url, _anonKey);
       final customerClient = SupabaseClient(_url, _anonKey);
       final unrelatedCustomerClient = SupabaseClient(_url, _anonKey);
@@ -369,6 +370,53 @@ void main() {
             .getOwnProfessionalProfile();
         expect(ownProfessional?.biography, '${prefix}_biography');
         expect(ownProfessional?.services, contains('instalación eléctrica'));
+        final anonymousRows =
+            await anonymousClient.rpc('list_available_professionals') as List;
+        final anonymousProfessional = anonymousRows.cast<Map>().singleWhere(
+          (row) => row['id'] == professionalUser.id,
+        );
+        expect(anonymousProfessional['profession'], 'Electricista');
+        expect(anonymousProfessional['verification_status'], 'pending');
+        expect(
+          anonymousProfessional.keys.toSet(),
+          equals({
+            'id',
+            'display_name',
+            'avatar_url',
+            'profession',
+            'rating',
+            'review_count',
+            'location',
+            'biography',
+            'services',
+            'experience_years',
+            'experience_description',
+            'portfolio',
+            'completed_jobs_count',
+            'reviews',
+            'coverage_area',
+            'verification_status',
+          }),
+        );
+        expect(anonymousProfessional.containsKey('email'), isFalse);
+        expect(anonymousProfessional.containsKey('phone'), isFalse);
+        final anonymousDetail = await SupabaseProfessionalsRepository(
+          anonymousClient,
+        ).getProfessionalById(professionalUser.id);
+        expect(anonymousDetail?.id, professionalUser.id);
+        expect(anonymousDetail?.services, contains('instalación eléctrica'));
+        await expectLater(
+          anonymousClient.storage
+              .from(SupabaseProfessionalsRepository.verificationBucket)
+              .download(verificationObjectPath),
+          throwsA(isA<StorageException>()),
+        );
+        await _expectAnonymousReadInaccessible(
+          anonymousClient
+              .from('professional_verification_submissions')
+              .select('professional_id')
+              .eq('professional_id', professionalUser.id),
+        );
         expect(
           () => customerProfessionals.updateOwnProfessionalProfile(
             const ProfessionalProfileUpdate(
@@ -551,6 +599,23 @@ void main() {
             memberSinceLabel: 'QA',
             attachedPhotoCount: 0,
           ),
+        );
+        await expectLater(
+          anonymousClient.from('service_requests').insert({
+            'id': const Uuid().v4(),
+            'customer_id': customerUser.id,
+            'professional_id': professionalUser.id,
+            'service_category': 'maintenance',
+            'title': '${prefix}_anonymous_request',
+            'description': 'Debe ser rechazada',
+          }),
+          throwsA(isA<PostgrestException>()),
+        );
+        await _expectAnonymousReadInaccessible(
+          anonymousClient
+              .from('service_requests')
+              .select('id')
+              .eq('id', requestId),
         );
 
         expect(customerClient.auth.currentUser?.id, customerUser.id);
@@ -746,6 +811,24 @@ void main() {
             startTiming: 'Esta semana',
             validityDays: 7,
           ),
+        );
+        await _expectAnonymousReadInaccessible(
+          anonymousClient
+              .from('quotations')
+              .select('request_id')
+              .eq('request_id', requestId),
+        );
+        await _expectAnonymousReadInaccessible(
+          anonymousClient
+              .from('conversations')
+              .select('id')
+              .eq('id', conversation.id),
+        );
+        await _expectAnonymousReadInaccessible(
+          anonymousClient
+              .from('messages')
+              .select('id')
+              .eq('conversation_id', conversation.id),
         );
         await _stateTransition(
           requestId,
@@ -1154,6 +1237,16 @@ Future<List<ConversationMessage>> _waitForMessages(
     if (iterator.current.length >= count) return iterator.current;
   }
   fail('Realtime no entregó $count mensajes.');
+}
+
+Future<void> _expectAnonymousReadInaccessible(Future<dynamic> operation) async {
+  try {
+    final result = await operation;
+    expect(result, isA<Iterable>());
+    expect(result as Iterable, isEmpty);
+  } on PostgrestException catch (error) {
+    expect(error.code, isNotEmpty);
+  }
 }
 
 Future<List<ProfessionalProfile>> _waitForProfessional(

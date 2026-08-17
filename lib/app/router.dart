@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:linko/features/auth/presentation/user_type_screen.dart';
 import 'package:linko/features/auth/presentation/welcome_screen.dart';
+import 'package:linko/features/auth/presentation/hiring_authentication_screen.dart';
 import 'package:linko/features/auth/presentation/auth_controller.dart';
 import 'package:linko/app/app_mode.dart';
 import 'package:linko/app/app_mode_provider.dart';
@@ -20,6 +21,7 @@ import 'package:linko/features/home/presentation/models/professional_profile_dat
 import 'package:linko/features/home/presentation/models/customer_service_request.dart';
 import 'package:linko/features/home/presentation/models/incoming_service_request.dart';
 import 'package:linko/features/home/presentation/models/request_draft.dart';
+import 'package:linko/features/home/presentation/models/pending_hiring_intent.dart';
 import 'package:linko/features/home/presentation/models/quotation_draft.dart';
 import 'package:linko/features/home/presentation/professional_home_screen.dart';
 import 'package:linko/features/home/presentation/professional_profile_route.dart';
@@ -27,6 +29,7 @@ import 'package:linko/features/home/presentation/professional_request_detail_scr
 import 'package:linko/features/home/presentation/professional_requests_screen.dart';
 import 'package:linko/features/home/presentation/providers/professional_requests_provider.dart';
 import 'package:linko/features/home/presentation/providers/professional_discovery_provider.dart';
+import 'package:linko/features/home/presentation/providers/pending_hiring_intent_provider.dart';
 import 'package:linko/features/home/presentation/professionals_results_screen.dart';
 import 'package:linko/features/home/presentation/quotation_form_screen.dart';
 import 'package:linko/features/home/presentation/quotation_review_screen.dart';
@@ -54,6 +57,7 @@ import 'package:uuid/uuid.dart';
 abstract final class AppRoutes {
   static const splash = '/';
   static const welcome = '/welcome';
+  static const hiringAuth = '/hiring-auth';
   static const userType = '/user-type';
   static const guestHome = '/guest-home';
   static const search = '/search';
@@ -693,11 +697,40 @@ void _popOrGo(BuildContext context, String fallbackLocation) {
   }
 }
 
-void _goToAuthenticatedHome(
+bool _pendingHiringResumeInProgress = false;
+
+Future<bool> resumePendingHiring(ProviderContainer container) async {
+  if (_pendingHiringResumeInProgress) return true;
+  final auth = container.read(authControllerProvider);
+  if (auth.status != AuthStatus.authenticated) return false;
+  final intent = await container.read(pendingHiringIntentProvider.future);
+  if (intent == null) return false;
+  _pendingHiringResumeInProgress = true;
+  try {
+    if (auth.user?.onboardingCompleted == false ||
+        auth.user?.activeMode != AppMode.customer) {
+      appRouter.go(AppRoutes.userType);
+      return true;
+    }
+    appRouter.goNamed(
+      AppRouteNames.requestService,
+      pathParameters: {'professionalName': intent.professionalId},
+      queryParameters: {'service': intent.selectedService},
+    );
+    await container.read(pendingHiringIntentProvider.notifier).clear();
+    return true;
+  } finally {
+    _pendingHiringResumeInProgress = false;
+  }
+}
+
+Future<void> _goToAuthenticatedHome(
   BuildContext context,
   ProviderContainer container,
   AuthState auth,
-) {
+) async {
+  if (await resumePendingHiring(container)) return;
+  if (!context.mounted) return;
   if (auth.user?.onboardingCompleted == false) {
     context.go(AppRoutes.userType);
     return;
@@ -739,7 +772,7 @@ final GoRouter appRouter = GoRouter(
                 }
                 final auth = ref.read(authControllerProvider);
                 if (auth.status == AuthStatus.authenticated) {
-                  _goToAuthenticatedHome(
+                  await _goToAuthenticatedHome(
                     context,
                     ProviderScope.containerOf(context, listen: false),
                     auth,
@@ -767,7 +800,7 @@ final GoRouter appRouter = GoRouter(
               }
               final updated = ref.read(authControllerProvider);
               if (updated.status == AuthStatus.authenticated) {
-                _goToAuthenticatedHome(
+                await _goToAuthenticatedHome(
                   context,
                   ProviderScope.containerOf(context, listen: false),
                   updated,
@@ -794,6 +827,39 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: AppRoutes.hiringAuth,
+      builder: (context, state) => Consumer(
+        builder: (context, ref, child) {
+          final auth = ref.watch(authControllerProvider);
+          return HiringAuthenticationScreen(
+            isLoading: auth.status == AuthStatus.loading,
+            message: auth.message,
+            errorMessage: auth.error == null
+                ? null
+                : 'No fue posible iniciar sesión. Intenta nuevamente.',
+            onGoogleSignIn: () =>
+                ref.read(authControllerProvider.notifier).signInWithGoogle(),
+            onCancel: () async {
+              final intent = await ref.read(pendingHiringIntentProvider.future);
+              await ref.read(pendingHiringIntentProvider.notifier).clear();
+              if (!context.mounted) return;
+              if (context.canPop()) {
+                context.pop();
+              } else if (intent != null) {
+                context.goNamed(
+                  AppRouteNames.professionalProfile,
+                  pathParameters: {'professionalId': intent.professionalId},
+                  queryParameters: {'service': intent.selectedService},
+                );
+              } else {
+                context.go(AppRoutes.guestHome);
+              }
+            },
+          );
+        },
+      ),
+    ),
+    GoRoute(
       path: AppRoutes.userType,
       builder: (context, state) {
         return UserTypeScreen(
@@ -813,11 +879,15 @@ final GoRouter appRouter = GoRouter(
                 auth.user?.activeMode == AppMode.customer &&
                 auth.user?.onboardingCompleted == true) {
               container.read(appModeProvider.notifier).select(AppMode.customer);
-              context.go(AppRoutes.guestHome);
+              if (!await resumePendingHiring(container) && context.mounted) {
+                context.go(AppRoutes.guestHome);
+              }
             }
           },
           onProfessionalSelected: () async {
             final container = ProviderScope.containerOf(context, listen: false);
+            await container.read(pendingHiringIntentProvider.notifier).clear();
+            if (!context.mounted) return;
             if (container.read(authControllerProvider).user == null) {
               container
                   .read(appModeProvider.notifier)
@@ -869,6 +939,7 @@ final GoRouter appRouter = GoRouter(
             context.pushNamed(
               AppRouteNames.professionalProfile,
               pathParameters: {'professionalId': professional.id},
+              queryParameters: {'service': professional.profession},
               extra: professional,
             );
           },
@@ -885,6 +956,7 @@ final GoRouter appRouter = GoRouter(
             context.pushNamed(
               AppRouteNames.professionalProfile,
               pathParameters: {'professionalId': professional.id},
+              queryParameters: {'service': professional.profession},
               extra: professional,
             );
           },
@@ -913,6 +985,9 @@ final GoRouter appRouter = GoRouter(
             context.pushNamed(
               AppRouteNames.professionalProfile,
               pathParameters: {'professionalId': professional.id},
+              queryParameters: {
+                'service': state.pathParameters['serviceName']!,
+              },
               extra: professional,
             );
           },
@@ -1269,15 +1344,43 @@ final GoRouter appRouter = GoRouter(
       name: AppRouteNames.professionalProfile,
       builder: (context, state) {
         final extra = state.extra;
+        final selectedService = state.uri.queryParameters['service'];
         return ProfessionalProfileRoute(
           professionalId: state.pathParameters['professionalId']!,
           initialProfessional: extra is ProfessionalProfileData ? extra : null,
-          onRequestService: (professional) {
-            context.pushNamed(
-              AppRouteNames.requestService,
-              pathParameters: {'professionalName': professional.id},
-              extra: professional,
-            );
+          onRequestService: (professional) async {
+            if (selectedService == null || selectedService.trim().isEmpty) {
+              context.go(AppRoutes.search);
+              return;
+            }
+            final service = selectedService;
+            final container = ProviderScope.containerOf(context, listen: false);
+            final auth = container.read(authControllerProvider);
+            if (auth.status == AuthStatus.authenticated &&
+                auth.user?.onboardingCompleted == true &&
+                auth.user?.activeMode == AppMode.customer) {
+              context.pushNamed(
+                AppRouteNames.requestService,
+                pathParameters: {'professionalName': professional.id},
+                queryParameters: {'service': service},
+                extra: professional,
+              );
+              return;
+            }
+            await container
+                .read(pendingHiringIntentProvider.notifier)
+                .save(
+                  PendingHiringIntent(
+                    professionalId: professional.id,
+                    selectedService: service,
+                  ),
+                );
+            if (!context.mounted) return;
+            if (auth.status == AuthStatus.authenticated) {
+              context.go(AppRoutes.userType);
+            } else {
+              context.push(AppRoutes.hiringAuth);
+            }
           },
         );
       },
@@ -1287,7 +1390,14 @@ final GoRouter appRouter = GoRouter(
       name: AppRouteNames.requestService,
       builder: (context, state) {
         final professionalId = state.pathParameters['professionalName']!;
+        final selectedService = state.uri.queryParameters['service'];
         final extra = state.extra;
+        if (selectedService == null || selectedService.trim().isEmpty) {
+          return const _HiringRouteState(
+            title: 'Solicitar servicio',
+            message: 'No se encontró el servicio seleccionado.',
+          );
+        }
         return Consumer(
           builder: (context, ref, child) {
             final selected =
@@ -1321,6 +1431,7 @@ final GoRouter appRouter = GoRouter(
             }
             return RequestServiceScreen(
               professional: professional,
+              selectedService: selectedService,
               onContinue: (draft) {
                 context.push(AppRoutes.confirmRequest, extra: draft);
               },
@@ -1385,8 +1496,8 @@ final GoRouter appRouter = GoRouter(
                     reviewCount: draft.professional.reviewCount,
                     location: draft.professional.location,
                   ),
-              serviceName: draft.professional.profession,
-              category: _serviceCategoryFor(draft.professional.profession),
+              serviceName: draft.selectedService,
+              category: _serviceCategoryFor(draft.selectedService),
               description: draft.description,
               location: draft.location,
               availabilityLabel:

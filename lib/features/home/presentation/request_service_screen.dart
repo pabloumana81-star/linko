@@ -9,11 +9,13 @@ import 'package:linko/features/home/presentation/widgets/timing_option_card.dart
 class RequestServiceScreen extends StatefulWidget {
   const RequestServiceScreen({
     required this.professional,
+    required this.selectedService,
     required this.onContinue,
     super.key,
   });
 
   final ProfessionalProfileData professional;
+  final String selectedService;
   final ValueChanged<RequestDraft> onContinue;
 
   @override
@@ -102,6 +104,7 @@ class _RequestServiceScreenState extends State<RequestServiceScreen> {
     widget.onContinue(
       RequestDraft(
         professional: widget.professional,
+        selectedService: widget.selectedService,
         description: _descriptionController.text.trim(),
         location: _locationController.text.trim(),
         timing: _timing!,

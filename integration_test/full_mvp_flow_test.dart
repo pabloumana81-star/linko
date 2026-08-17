@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:linko/app/app.dart';
+import 'package:linko/app/app_mode.dart';
 import 'package:linko/app/router.dart';
+import 'package:linko/core/backend/backend_providers.dart';
+import 'package:linko/core/backend/data/mock_backend_repositories.dart';
+import 'package:linko/features/auth/domain/models/app_user_profile.dart';
 import 'package:linko/features/requests/data/mock_request_repository.dart';
 import 'package:linko/features/requests/domain/models/conversation_message.dart';
 import 'package:linko/features/requests/domain/models/request_state.dart';
@@ -29,7 +33,21 @@ void main() {
     appRouter.go(AppRoutes.guestHome);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [requestRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          requestRepositoryProvider.overrideWithValue(repository),
+          authenticationRepositoryProvider.overrideWithValue(
+            MockAuthenticationRepository(
+              initialUser: AppUserProfile(
+                id: 'authenticated-customer',
+                displayName: 'Cliente',
+                email: 'cliente@linko.test',
+                avatarUrl: null,
+                activeMode: AppMode.customer,
+                createdAt: DateTime.utc(2026),
+              ),
+            ),
+          ),
+        ],
         child: const LinkoApp(),
       ),
     );
