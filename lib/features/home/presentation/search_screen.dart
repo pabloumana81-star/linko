@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:linko/core/backend/backend_providers.dart';
 import 'package:linko/features/home/presentation/models/professional_profile_data.dart';
 import 'package:linko/features/home/presentation/providers/professional_discovery_provider.dart';
 import 'package:linko/features/home/presentation/widgets/bottom_navigation_widget.dart';
 import 'package:linko/features/home/presentation/widgets/category_card.dart';
 import 'package:linko/features/home/presentation/widgets/professional_card.dart';
 import 'package:linko/features/home/presentation/widgets/labeled_loading_indicator.dart';
+import 'package:linko/features/home/presentation/widgets/professional_discovery_state.dart';
 import 'package:linko/features/home/presentation/widgets/search_bar_widget.dart';
 import 'package:linko/features/home/presentation/widgets/search_chip_widget.dart';
 
@@ -133,30 +135,47 @@ class SearchScreen extends ConsumerWidget {
                       loading: () => const LabeledLoadingIndicator(
                         label: 'Buscando profesionales…',
                       ),
-                      error: (_, _) =>
-                          const Text('No pudimos cargar los profesionales.'),
-                      data: (items) => GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: items.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: resultColumns,
-                          crossAxisSpacing: 18,
-                          mainAxisSpacing: 18,
-                          mainAxisExtent: textScaler.scale(300),
-                        ),
-                        itemBuilder: (context, index) {
-                          final professional = items[index];
-                          return ProfessionalCard(
-                            name: professional.name,
-                            rating: professional.rating,
-                            profession: professional.profession,
-                            location: professional.location,
-                            onViewProfile: () =>
-                                onProfessionalSelected(professional),
-                          );
+                      error: (_, _) => ProfessionalDiscoveryState.error(
+                        onPrimaryAction: () {
+                          ref.invalidate(availableProfessionalsProvider);
+                          ref.invalidate(professionalDiscoveryProvider);
                         },
+                        onHome: onHomeSelected,
                       ),
+                      data: (items) => items.isEmpty
+                          ? ProfessionalDiscoveryState.empty(
+                              onPrimaryAction: () {
+                                Scrollable.ensureVisible(
+                                  context,
+                                  alignment: 0,
+                                  duration: const Duration(milliseconds: 250),
+                                );
+                              },
+                              onHome: onHomeSelected,
+                            )
+                          : GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: items.length,
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: resultColumns,
+                                    crossAxisSpacing: 18,
+                                    mainAxisSpacing: 18,
+                                    mainAxisExtent: textScaler.scale(300),
+                                  ),
+                              itemBuilder: (context, index) {
+                                final professional = items[index];
+                                return ProfessionalCard(
+                                  name: professional.name,
+                                  rating: professional.rating,
+                                  profession: professional.profession,
+                                  location: professional.location,
+                                  onViewProfile: () =>
+                                      onProfessionalSelected(professional),
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),

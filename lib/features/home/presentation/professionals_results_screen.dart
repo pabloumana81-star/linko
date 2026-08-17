@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:linko/core/backend/backend_config.dart';
 import 'package:linko/core/backend/backend_providers.dart';
 import 'package:linko/features/home/presentation/models/professional_profile_data.dart';
@@ -8,6 +9,7 @@ import 'package:linko/features/home/presentation/widgets/filter_chip_widget.dart
 import 'package:linko/features/home/presentation/widgets/professional_card_compact.dart';
 import 'package:linko/features/home/presentation/widgets/search_bar_widget.dart';
 import 'package:linko/features/home/presentation/widgets/labeled_loading_indicator.dart';
+import 'package:linko/features/home/presentation/widgets/professional_discovery_state.dart';
 
 class ProfessionalsResultsScreen extends ConsumerWidget {
   const ProfessionalsResultsScreen({
@@ -81,8 +83,12 @@ class ProfessionalsResultsScreen extends ConsumerWidget {
                         loading: () => const LabeledLoadingIndicator(
                           label: 'Buscando profesionales…',
                         ),
-                        error: (_, _) => const Center(
-                          child: Text('No pudimos cargar los profesionales.'),
+                        error: (_, _) => ProfessionalDiscoveryState.error(
+                          onPrimaryAction: () {
+                            ref.invalidate(availableProfessionalsProvider);
+                            ref.invalidate(professionalDiscoveryProvider);
+                          },
+                          onHome: () => context.go('/guest-home'),
                         ),
                         data: (items) {
                           final visible = isMock
@@ -96,6 +102,12 @@ class ProfessionalsResultsScreen extends ConsumerWidget {
                                           ),
                                     )
                                     .toList();
+                          if (visible.isEmpty) {
+                            return ProfessionalDiscoveryState.empty(
+                              onPrimaryAction: () => context.go('/search'),
+                              onHome: () => context.go('/guest-home'),
+                            );
+                          }
                           return ListView.separated(
                             padding: const EdgeInsets.only(bottom: 32),
                             itemCount: visible.length,
