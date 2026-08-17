@@ -11,7 +11,7 @@ extension ServiceRequestViewAdapter on ServiceRequest {
       customerName: customer.name,
       serviceCategory: serviceName,
       description: description,
-      location: location,
+      location: displayLocation,
       timing: _timing,
       status: state,
       relativeDate: _updatedLabel,
@@ -28,6 +28,7 @@ extension ServiceRequestViewAdapter on ServiceRequest {
       categoryIcon: _categoryIcon,
       professionalName: professional.user.name,
       professionalAvatar: _initials(professional.user.name),
+      location: displayLocation,
       status: state,
       updatedLabel: _updatedLabel,
     );

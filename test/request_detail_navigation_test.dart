@@ -113,6 +113,7 @@ void main() {
       categoryIcon: Icons.electrical_services_outlined,
       professionalName: 'Profesional',
       professionalAvatar: '',
+      location: 'Escazú, San José',
       status: RequestState.quoted,
       updatedLabel: 'Ahora',
     );
@@ -132,6 +133,7 @@ void main() {
 
     expect(find.byType(CustomerRequestDetailScreen), findsOneWidget);
     expect(find.text('Detalle de solicitud'), findsOneWidget);
+    expect(find.textContaining('Escazú, San José'), findsOneWidget);
     expect(conversations.requestedIds, [requestId]);
     final container = ProviderScope.containerOf(
       tester.element(find.byType(CustomerRequestDetailScreen)),

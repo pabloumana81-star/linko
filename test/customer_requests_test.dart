@@ -14,7 +14,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Mis solicitudes'), findsNWidgets(2));
-    expect(find.text('Electricista'), findsOneWidget);
+    expect(find.textContaining('Electricista'), findsWidgets);
     expect(find.text('Carlos Rodríguez'), findsOneWidget);
     expect(find.textContaining('Actualizada'), findsWidgets);
     expect(find.text('Ver solicitud'), findsNothing);
@@ -49,11 +49,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Detalle de solicitud'), findsOneWidget);
-    expect(find.text('Electricista'), findsOneWidget);
+    expect(find.textContaining('Electricista'), findsOneWidget);
     expect(find.text('En construcción'), findsNothing);
     expect(find.text('Resumen de la solicitud'), findsOneWidget);
     expect(find.text('Profesional'), findsOneWidget);
-    expect(find.text('Servicio solicitado'), findsOneWidget);
+    expect(find.text('Servicio solicitado · Ubicación'), findsOneWidget);
+    expect(find.textContaining('Curridabat, San José'), findsOneWidget);
     expect(find.text('Estado actual'), findsOneWidget);
     expect(find.text('Siguiente paso'), findsOneWidget);
     expect(find.text('Resumen'), findsOneWidget);

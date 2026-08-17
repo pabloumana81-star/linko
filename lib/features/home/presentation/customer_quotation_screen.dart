@@ -47,8 +47,9 @@ class CustomerQuotationScreen extends StatelessWidget {
                   ),
                   RequestSummaryItem(
                     icon: Icons.home_repair_service_outlined,
-                    label: 'Servicio',
-                    value: request.serviceName,
+                    label: 'Servicio · Ubicación',
+                    value:
+                        '${request.serviceName} · ${request.displayLocation}',
                   ),
                   RequestSummaryItem(
                     icon: Icons.description_outlined,

@@ -11,6 +11,7 @@ import 'package:linko/features/requests/domain/models/app_user.dart';
 import 'package:linko/features/requests/domain/models/professional_profile.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/timeline_event.dart';
+import 'package:linko/features/requests/presentation/adapters/request_view_adapters.dart';
 import 'package:linko/features/requests/presentation/providers/request_providers.dart';
 
 void main() {
@@ -150,6 +151,7 @@ void main() {
         mapper.toInsert(request)['professional_id'],
         request.professional.id,
       );
+      expect(mapper.toInsert(request)['location'], 'San José');
       expect(
         () => mapper.toInsert(
           ServiceRequest(
@@ -170,6 +172,35 @@ void main() {
         ),
         throwsA(isA<FormatException>()),
       );
+    });
+
+    test('maps persisted and historical request locations', () {
+      const mapper = ServiceRequestSupabaseMapper();
+      final baseRow = <String, dynamic>{
+        'id': '018f47a6-7200-4d31-8f6c-1bc183202111',
+        'customer_id': '018f47a6-7200-4d31-8f6c-1bc183202222',
+        'professional_id': '018f47a6-7200-4d31-8f6c-1bc183202333',
+        'service_category': 'electrical',
+        'title': 'Electricista',
+        'description': 'Revisión',
+        'status': 'pending',
+        'scheduled_at': null,
+        'created_at': '2026-08-16T12:00:00Z',
+        'updated_at': '2026-08-16T12:00:00Z',
+      };
+
+      final persisted = mapper.fromRow({
+        ...baseRow,
+        'location': 'San José, Escazú',
+      });
+      final historical = mapper.fromRow({...baseRow, 'location': null});
+
+      expect(persisted.location, 'San José, Escazú');
+      expect(persisted.displayLocation, 'San José, Escazú');
+      expect(historical.location, isEmpty);
+      expect(historical.displayLocation, 'No especificada');
+      expect(historical.toIncomingRequest().location, 'No especificada');
+      expect(historical.toCustomerRequest().location, 'No especificada');
     });
 
     test('maps every status explicitly in both directions', () {

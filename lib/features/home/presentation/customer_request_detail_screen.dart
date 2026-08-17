@@ -124,8 +124,8 @@ class _RequestSummaryState extends State<_RequestSummary> {
         ),
         RequestSummaryItem(
           icon: Icons.home_repair_service_outlined,
-          label: 'Servicio solicitado',
-          value: widget.request.serviceName,
+          label: 'Servicio solicitado · Ubicación',
+          value: '${widget.request.serviceName} · ${widget.request.location}',
         ),
         RequestSummaryItem(
           icon: Icons.info_outline_rounded,

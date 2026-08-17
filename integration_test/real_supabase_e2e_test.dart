@@ -16,6 +16,7 @@ import 'package:linko/features/requests/domain/models/request_state.dart';
 import 'package:linko/features/requests/domain/models/service_rating.dart';
 import 'package:linko/features/requests/domain/models/service_request.dart';
 import 'package:linko/features/requests/domain/models/timeline_event.dart';
+import 'package:linko/features/requests/presentation/adapters/request_view_adapters.dart';
 import 'package:linko/features/admin/data/supabase_admin_dashboard_repository.dart';
 import 'package:linko/features/admin/data/supabase_admin_professionals_repository.dart';
 import 'package:linko/features/admin/data/supabase_admin_requests_repository.dart';
@@ -574,6 +575,7 @@ void main() {
         final unrelatedCustomerRequests = ServiceRequestsRepositorySupabase(
           unrelatedCustomerClient,
         );
+        final requestLocation = 'San José, Escazú · $prefix';
         requestId = const Uuid().v4();
         await customerRequests.createRequest(
           ServiceRequest(
@@ -591,7 +593,7 @@ void main() {
             serviceName: '${prefix}_request',
             category: ServiceCategory.maintenance,
             description: '${prefix}_description',
-            location: 'San José',
+            location: requestLocation,
             availabilityLabel: 'Flexible',
             state: RequestState.pending,
             updatedAt: DateTime.now().toUtc(),
@@ -619,24 +621,41 @@ void main() {
         );
 
         expect(customerClient.auth.currentUser?.id, customerUser.id);
+        final persistedRequestRow = await customerClient
+            .from('service_requests')
+            .select('id,location')
+            .eq('id', requestId)
+            .single();
+        expect(persistedRequestRow['location'], requestLocation);
         expect(
           (await customerRequests.listCustomerRequests(
             customerUser.id,
           )).where((request) => request.id == requestId),
           hasLength(1),
         );
-        expect(
-          (await customerRequests.getRequestById(requestId))?.id,
+        final customerRequest = await customerRequests.getRequestById(
           requestId,
         );
-        expect(
-          (await professionalRequests.getRequestById(requestId))?.id,
+        final professionalRequest = await professionalRequests.getRequestById(
           requestId,
+        );
+        expect(customerRequest?.id, requestId);
+        expect(customerRequest?.location, requestLocation);
+        expect(professionalRequest?.id, requestId);
+        expect(professionalRequest?.location, requestLocation);
+        expect(
+          professionalRequest?.toIncomingRequest().location,
+          requestLocation,
         );
         expect(
           await unrelatedCustomerRequests.getRequestById(requestId),
           isNull,
         );
+        final unrelatedRequestRows = await unrelatedCustomerClient
+            .from('service_requests')
+            .select('id,location')
+            .eq('id', requestId);
+        expect(unrelatedRequestRows, isEmpty);
         expect(
           await unrelatedCustomerRequests.listCustomerRequests(
             unrelatedCustomerUser.id,

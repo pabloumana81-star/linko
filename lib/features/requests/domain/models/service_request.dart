@@ -10,6 +10,11 @@ enum ServiceCategory {
   cleaning,
 }
 
+extension ServiceRequestLocation on ServiceRequest {
+  String get displayLocation =>
+      location.trim().isEmpty ? 'No especificada' : location;
+}
+
 class ServiceRequest {
   const ServiceRequest({
     required this.id,

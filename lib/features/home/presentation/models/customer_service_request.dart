@@ -8,6 +8,7 @@ class CustomerServiceRequest {
     required this.categoryIcon,
     required this.professionalName,
     required this.professionalAvatar,
+    required this.location,
     required this.status,
     required this.updatedLabel,
   });
@@ -17,6 +18,7 @@ class CustomerServiceRequest {
   final IconData categoryIcon;
   final String professionalName;
   final String professionalAvatar;
+  final String location;
   final RequestState status;
   final String updatedLabel;
 }

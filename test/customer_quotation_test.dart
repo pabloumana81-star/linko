@@ -22,13 +22,15 @@ void main() {
 
     expect(find.text('Ver cotización'), findsOneWidget);
     expect(find.text('María Fernández'), findsOneWidget);
-    expect(find.text('Limpieza'), findsOneWidget);
+    expect(find.textContaining('Limpieza'), findsOneWidget);
+    expect(find.textContaining('Heredia centro'), findsOneWidget);
     expect(find.text('Qué incluye'), findsOneWidget);
     expect(find.text('Tiempo estimado'), findsOneWidget);
     expect(find.text('Fecha disponible'), findsOneWidget);
     expect(find.text('Garantía'), findsOneWidget);
     expect(find.text('₡ 65 000'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Aceptar cotización'));
     await tester.tap(find.text('Aceptar cotización'));
     await tester.pumpAndSettle();
 

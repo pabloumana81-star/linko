@@ -63,6 +63,7 @@ class ServiceRequestSupabaseMapper {
       'service_category': request.category.name,
       'title': request.serviceName,
       'description': request.description,
+      'location': request.location,
       'status': RequestStatusMapper.toDatabase(request.state),
       'scheduled_at': request.scheduledAt?.toUtc().toIso8601String(),
     };
@@ -99,7 +100,7 @@ class ServiceRequestSupabaseMapper {
       serviceName: row['title'] as String,
       category: _category(row['service_category']),
       description: row['description'] as String,
-      location: '',
+      location: row['location'] as String? ?? '',
       availabilityLabel: row['scheduled_at'] == null
           ? 'Soy flexible'
           : 'Fecha programada',
